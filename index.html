@@ -1147,6 +1147,34 @@
       assert(zh === en, "Translation dictionaries diverged");
     });
 
+    test("first-round translations stay in parity", () => {
+      const zhKeys = Object.keys(TRANSLATIONS.zh).sort().join("|");
+      const enKeys = Object.keys(TRANSLATIONS.en).sort().join("|");
+      assert(zhKeys === enKeys, "Translation keys diverged");
+      ["settings", "country", "filterCountry", "sortNewest", "sortLiked", "viewFullProfile", "communityOverview", "trendingSkills"].forEach(key => {
+        assert(TRANSLATIONS.zh[key] && TRANSLATIONS.en[key], `Missing translation: ${key}`);
+      });
+    });
+
+    test("expanded seed catalog is complete and deterministic", () => {
+      assert(SKILLS.length === 28, `Expected 28 skills, received ${SKILLS.length}`);
+      assert(MOCK_USERS.length === 12, `Expected 12 users, received ${MOCK_USERS.length}`);
+      assert(new Set(SKILLS.map(skill => skill.id)).size === 28, "Skill ids must be unique");
+      assert(new Set(MOCK_USERS.map(user => user.id)).size === 12, "User ids must be unique");
+      MOCK_USERS.forEach(user => {
+        ["countryId", "cityId", "interests", "likes", "publishedAt", "availability", "meetingModes", "reliability", "memberSince"].forEach(key => {
+          assert(user[key] !== undefined, `${user.id} missing ${key}`);
+        });
+      });
+    });
+
+    test("country catalog puts China first and resolves dependent cities", () => {
+      assert(COUNTRIES[0].id === "cn", "China must be first");
+      assert(getCitiesForCountry("cn").some(city => city.id === "tianjin"), "Tianjin missing");
+      assert(getCitiesForCountry("us").some(city => city.id === "san-francisco"), "San Francisco missing");
+      assert(getCitiesForCountry("missing").length === 0, "Unknown country should return no cities");
+    });
+
     test("demo login restores Daniel", () => {
       const state = loginAsDemoUser(createInitialState());
       assert(state.currentUser.id === "daniel", "Daniel was not restored");
