@@ -2,6 +2,8 @@
 
 一个可直接演示的双语技能交换前端：分享自己会的技能、发现能教你的人、解释双向匹配理由，并发起技能交换请求。
 
+在线演示：[https://leonliu09.github.io/MicroEngine-SkillSwap20/](https://leonliu09.github.io/MicroEngine-SkillSwap20/)
+
 ## 本地运行
 
 项目无需安装依赖，所有产品代码都在根目录的 `index.html` 中。为保证 CDN 与 Hash 路由正常工作，请在仓库目录运行静态服务器：
