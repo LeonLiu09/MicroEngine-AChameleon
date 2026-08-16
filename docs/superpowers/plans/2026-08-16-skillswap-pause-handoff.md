@@ -3,6 +3,10 @@
 暂停时间：2026-08-16  
 当前分支：`main`
 
+本地暂停检查点：`d44140a chore: checkpoint SkillSwap improvement work`  
+GitHub 备份分支：`codex/wip-2026-08-16-first-round-improvements`  
+远端备份最新提交：`6d954d08ee279151861c931391a25ccccaca4018`
+
 ## 已安全完成
 
 - 第一版网站仍可正常打开，线上版本未被本轮未完成改动覆盖。
@@ -39,4 +43,3 @@ git diff --check
 ```
 
 不要删除 `.superpowers/sdd/progress.md`；它记录 subagent-driven 执行的恢复位置。不要暂存 `.DS_Store` 或 `.superpowers/`。
-
