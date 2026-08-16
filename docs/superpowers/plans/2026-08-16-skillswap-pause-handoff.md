@@ -5,7 +5,6 @@
 
 本地暂停检查点：`d44140a chore: checkpoint SkillSwap improvement work`  
 GitHub 备份分支：`codex/wip-2026-08-16-first-round-improvements`  
-远端备份最新提交：`6d954d08ee279151861c931391a25ccccaca4018`
 
 ## 已安全完成
 
