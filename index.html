@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e89bb1">
+  <meta name="description" content="SkillSwap — 学你所爱，分享你所会。">
+  <title>SkillSwap</title>
+  <style>
+    /* 1. Design tokens */
+    :root {
+      --ink: #181818; --paper: #fff9fa; --deep-rose: #b85f7d; --rose: #d97091;
+      --soft-rose: #eba0b5; --blush: #f7dce3; --glass: rgba(255,255,255,.58);
+      --line: rgba(255,255,255,.66); --muted: rgba(24,24,24,.64); --focus: #6f2243;
+      --danger: #7e1838; --success: #17633c; --shadow: 0 26px 80px rgba(77,28,48,.16);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    /* 2. Reset / base */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { color-scheme: light; scroll-behavior: smooth; }
+    body {
+      margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; color: var(--ink); font-family: var(--font);
+      background:
+        radial-gradient(circle at 8% 12%, rgba(255,249,250,.76), transparent 22%),
+        radial-gradient(circle at 88% 18%, rgba(255,255,255,.48), transparent 28%),
+        linear-gradient(145deg, #b75f7d 0%, #e99bb1 42%, #f5cbd5 72%, #d67e9a 100%);
+      background-attachment: fixed;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .17;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+    }
+    button, input, select, textarea { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; }
+    h1, h2, h3, p { margin-top: 0; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid var(--focus); outline-offset: 3px;
+    }
+    #root { min-height: 100vh; position: relative; isolation: isolate; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    /* 3. Failure-safe / generic */
+    .static-fallback, .boot-shell, .recovery, .self-tests { width: min(680px, calc(100% - 32px)); margin: 0 auto; padding: 15vh 28px 36px; }
+    .fallback-kicker, .eyebrow { margin: 0 0 12px; font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    .static-fallback h1, .boot-shell h1, .recovery h1 { margin: 0 0 16px; font-size: clamp(42px, 9vw, 76px); line-height: .94; letter-spacing: -.06em; font-weight: 500; }
+    .panel, .glass { border: 1px solid var(--line); background: var(--glass); box-shadow: var(--shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    .panel { padding: 24px; border-radius: 28px; }
+    .test-list { display: grid; gap: 10px; padding: 0; list-style: none; }
+    .test-item { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.7); }
+    .test-item.pass { border-left: 5px solid var(--success); } .test-item.fail { border-left: 5px solid var(--danger); }
+    .test-error { display: block; margin-top: 4px; font-size: 13px; }
+
+    /* 4. App chrome */
+    .app-shell { min-height: 100vh; padding: 18px 24px 56px; }
+    .site-header {
+      position: sticky; top: 14px; z-index: 30; width: min(1180px, 100%); min-height: 64px; margin: 0 auto 30px;
+      padding: 10px 12px 10px 18px; display: flex; align-items: center; gap: 22px; border-radius: 22px;
+    }
+    .brand { border: 0; background: transparent; font-weight: 850; font-size: 21px; letter-spacing: -.04em; }
+    .brand-dot { color: var(--deep-rose); }
+    .top-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+    .nav-link { min-height: 42px; padding: 10px 15px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-weight: 700; }
+    .nav-link.active { color: white; background: var(--ink); }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .lang-toggle, .icon-btn { min-width: 44px; min-height: 44px; border: 1px solid rgba(24,24,24,.12); border-radius: 999px; background: rgba(255,255,255,.74); color: var(--ink); font-weight: 800; }
+    .page { width: min(1180px, 100%); margin: 0 auto; }
+    .page-head { margin: 0 0 30px; display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+    .page-title { margin: 0; max-width: 780px; font-size: clamp(42px, 7vw, 82px); font-weight: 500; line-height: .93; letter-spacing: -.065em; }
+    .page-subtitle { max-width: 620px; margin: 14px 0 0; color: var(--muted); font-size: 17px; line-height: 1.65; }
+    .section { margin-top: 60px; }
+    .section-head { margin-bottom: 20px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+    .section-title { margin: 0; font-size: clamp(28px, 4vw, 44px); font-weight: 570; letter-spacing: -.045em; }
+    .section-note { margin: 0; color: var(--muted); }
+
+    /* 5. Buttons / form controls */
+    .btn { min-height: 46px; padding: 11px 20px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 999px; font-weight: 800; text-decoration: none; transition: transform .22s ease, box-shadow .22s ease, background .22s ease; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--ink); color: white; box-shadow: 0 12px 28px rgba(24,24,24,.18); }
+    .btn-light { background: rgba(255,255,255,.82); color: var(--ink); border-color: rgba(24,24,24,.08); }
+    .btn-rose { background: var(--deep-rose); color: white; }
+    .btn-ghost { background: transparent; color: var(--ink); border-color: rgba(24,24,24,.14); }
+    .btn-small { min-height: 40px; padding: 8px 15px; font-size: 13px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .field { display: grid; gap: 7px; }
+    .field label, .field-label { font-size: 13px; font-weight: 800; }
+    .input, .select, .textarea { width: 100%; min-height: 50px; padding: 13px 15px; border: 1px solid rgba(24,24,24,.12); border-radius: 17px; background: rgba(255,255,255,.82); color: var(--ink); }
+    .textarea { min-height: 110px; resize: vertical; }
+    .field-error, .form-error { margin: 0; color: var(--danger); font-size: 13px; font-weight: 700; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+    .span-2 { grid-column: 1 / -1; }
+    .auth-form { display: grid; gap: 15px; }
+
+    /* 6. Landing */
+    .landing-shell { min-height: 100vh; padding: 18px 24px 48px; overflow: hidden; }
+    .landing-nav { width: min(1180px,100%); min-height: 60px; margin: 0 auto 26px; display: flex; align-items: center; }
+    .landing-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .hero-grid { width: min(1180px,100%); margin: 0 auto; display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; align-items: stretch; }
+    .hero-copy { min-height: 530px; padding: clamp(28px,5vw,68px); border-radius: 32px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; }
+    .hero-copy::after { content: ""; position: absolute; width: 300px; height: 300px; right: -100px; bottom: -110px; border-radius: 50%; background: linear-gradient(145deg, rgba(255,255,255,.62), rgba(217,112,145,.52)); }
+    .hero-title { position: relative; z-index: 1; margin: 0; max-width: 780px; font-size: clamp(58px,8.2vw,112px); line-height: .82; letter-spacing: -.085em; font-weight: 500; white-space: nowrap; }
+    .hero-title span { display: block; margin-left: 15%; color: var(--deep-rose); }
+    .hero-bottom { position: relative; z-index: 1; max-width: 600px; }
+    .hero-lead { font-size: clamp(18px,2vw,23px); line-height: 1.45; }
+    .hero-side { display: grid; grid-template-rows: 1fr auto; gap: 18px; }
+    .gallery-card { min-height: 390px; padding: 22px; border-radius: 32px; background: var(--paper); overflow: hidden; position: relative; }
+    .gallery-date { margin: 0; font-size: clamp(56px,7vw,92px); font-weight: 500; line-height: .78; letter-spacing: -.07em; }
+    .gallery-date span { display: block; color: #aaa; font-weight: 350; }
+    .gallery-orbit { position: absolute; width: 230px; height: 230px; right: -55px; bottom: 58px; border-radius: 50%; background: linear-gradient(140deg,#f6a0b5,#df6c91); }
+    .avatar-stack { position: absolute; left: 24px; bottom: 24px; display: flex; }
+    .avatar-stack .avatar { margin-left: -12px; border: 4px solid var(--paper); }
+    .avatar-stack .avatar:first-child { margin-left: 0; }
+    .black-card { min-height: 122px; padding: 22px; border-radius: 28px; background: var(--ink); color: white; display: flex; align-items: end; justify-content: space-between; }
+    .black-card h2 { margin: 0; font-size: 30px; font-weight: 500; letter-spacing: -.04em; }
+    .black-card p { margin: 4px 0 0; color: rgba(255,255,255,.55); }
+    .marquee-zone { width: min(1180px,100%); margin: 22px auto 0; display: grid; gap: 10px; }
+    .marquee { overflow: hidden; border-radius: 999px; }
+    .marquee-track { width: max-content; display: flex; gap: 10px; padding: 3px 0; animation: flow-left 26s linear infinite; }
+    .marquee.reverse .marquee-track { animation: flow-right 32s linear infinite; }
+    .marquee:hover .marquee-track, .marquee:focus-within .marquee-track { animation-play-state: paused; }
+    @keyframes flow-left { to { transform: translateX(-50%); } }
+    @keyframes flow-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+    .skill-tag { min-height: 42px; padding: 10px 17px; border: 1px solid rgba(255,255,255,.6); border-radius: 999px; background: rgba(255,255,255,.7); color: var(--ink); font-size: 13px; font-weight: 800; white-space: nowrap; }
+    button.skill-tag:hover { background: var(--ink); color: white; }
+    .skill-tag.tech { background: rgba(222,211,242,.88); } .skill-tag.creative { background: rgba(255,220,204,.88); }
+    .skill-tag.sports { background: rgba(250,183,178,.88); } .skill-tag.lifestyle { background: rgba(241,224,190,.9); }
+
+    /* 7. Auth / onboarding */
+    .auth-layout { width: min(1040px,100%); min-height: calc(100vh - 150px); margin: 0 auto; display: grid; grid-template-columns: .92fr 1.08fr; gap: 18px; }
+    .auth-art { padding: 36px; border-radius: 32px; background: var(--ink); color: white; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; }
+    .auth-art::after { content:""; width: 300px; height: 300px; position: absolute; right: -90px; bottom: 38px; border-radius: 50%; background: linear-gradient(150deg,#f3cbd6,#c96888); }
+    .auth-art h1 { position: relative; z-index: 1; margin: 0; font-size: clamp(48px,7vw,84px); line-height: .9; letter-spacing: -.07em; font-weight: 500; }
+    .auth-card { padding: clamp(26px,5vw,54px); border-radius: 32px; display: flex; flex-direction: column; justify-content: center; }
+    .auth-card h1 { margin-bottom: 8px; font-size: clamp(40px,5vw,62px); letter-spacing: -.06em; font-weight: 500; }
+    .muted { color: var(--muted); }
+    .divider { margin: 20px 0; display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+    .divider::before, .divider::after { content:""; height: 1px; flex: 1; background: rgba(24,24,24,.13); }
+    .progress-wrap { margin-bottom: 28px; }
+    .progress-meta { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-size:12px; font-weight:800; }
+    .progress-bar { height: 8px; overflow: hidden; border-radius:999px; background:rgba(255,255,255,.48); }
+    .progress-fill { height:100%; border-radius:inherit; background:var(--ink); transition:width .25s ease; }
+    .onboarding-card { width:min(860px,100%); margin:0 auto; padding:clamp(24px,5vw,52px); border-radius:32px; }
+    .skill-editor-list { display:grid; gap:14px; margin:20px 0; }
+    .skill-editor { padding:16px; border-radius:22px; background:rgba(255,255,255,.58); border:1px solid rgba(24,24,24,.08); }
+    .skill-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .skill-editor .remove { margin-top:10px; }
+
+    /* 8. Cards / discover */
+    .search-hero { padding: 18px; border-radius: 25px; display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+    .search-input { width:100%; min-height:54px; padding:14px 18px; border:0; border-radius:18px; background:rgba(255,255,255,.84); font-size:17px; }
+    .goal-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+    .card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .user-card { min-width:0; min-height:410px; padding:18px; border-radius:26px; background:rgba(255,249,250,.88); display:flex; flex-direction:column; box-shadow:0 18px 55px rgba(77,28,48,.13); }
+    .card-top { display:flex; align-items:center; gap:13px; }
+    .avatar { width:60px; height:60px; flex:0 0 auto; border-radius:50%; overflow:hidden; background:linear-gradient(145deg,#f4c6d2,#b85f7d); color:white; display:grid; place-items:center; font-weight:850; }
+    .avatar.large { width:112px; height:112px; font-size:30px; }
+    .avatar img { width:100%; height:100%; object-fit:cover; }
+    .user-name { margin:0 0 2px; font-size:21px; letter-spacing:-.03em; }
+    .user-meta { margin:0; color:var(--muted); font-size:13px; }
+    .user-bio { margin:16px 0; color:var(--muted); line-height:1.5; }
+    .mini-heading { margin:0 0 7px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+    .skill-pills { display:flex; flex-wrap:wrap; gap:6px; }
+    .mini-pill { padding:7px 10px; border-radius:999px; background:var(--blush); font-size:12px; font-weight:750; }
+    .match-line { margin-top:auto; padding-top:16px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .match-badge { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:7px 11px; border-radius:999px; background:var(--ink); color:white; font-size:12px; font-weight:850; }
+    .card-actions { margin-top:13px; display:grid; grid-template-columns:auto 1fr; gap:8px; }
+    .peer-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .peer-card { padding:18px; border-radius:24px; display:grid; grid-template-columns:auto 1fr; gap:13px; align-items:center; }
+    .peer-card p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+    .loop-card { padding:clamp(22px,4vw,42px); border-radius:32px; background:var(--ink); color:white; }
+    .loop-head { display:flex; align-items:start; justify-content:space-between; gap:14px; }
+    .demo-chip { padding:8px 12px; border:1px solid rgba(255,255,255,.26); border-radius:999px; font-size:11px; font-weight:800; }
+    .loop-flow { margin:30px 0; display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:13px; align-items:center; }
+    .loop-person { min-width:0; padding:18px; border-radius:23px; background:rgba(255,255,255,.1); text-align:center; }
+    .loop-person .avatar { margin:0 auto 10px; }
+    .loop-arrow { color:#f2a6ba; font-weight:850; text-align:center; }
+    .loop-arrow small { display:block; max-width:90px; color:rgba(255,255,255,.6); font-weight:600; }
+    .loop-return { margin:0 0 22px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.1); text-align:center; }
+
+    /* 9. Search / profile / matches */
+    .filter-bar { padding:16px; border-radius:24px; display:grid; grid-template-columns:2fr repeat(4,1fr) auto; gap:10px; }
+    .filter-bar .input, .filter-bar .select { min-height:46px; }
+    .result-count { margin:20px 0 12px; font-weight:800; }
+    .profile-hero { padding:clamp(24px,5vw,48px); border-radius:32px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+    .profile-hero h1 { margin:0 0 6px; font-size:clamp(38px,6vw,66px); font-weight:500; letter-spacing:-.06em; }
+    .profile-columns { margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .profile-section { padding:24px; border-radius:26px; }
+    .profile-skill { padding:14px 0; border-top:1px solid rgba(24,24,24,.1); }
+    .profile-skill:first-of-type { border-top:0; }
+    .profile-skill h3 { margin:0 0 4px; }
+    .why-card { margin-top:18px; padding:24px; border-radius:26px; background:var(--ink); color:white; }
+    .why-list { display:grid; gap:10px; padding:0; list-style:none; }
+    .why-list li { padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.1); }
+    .tabs { display:flex; gap:7px; margin-bottom:18px; overflow:auto; }
+    .tab { min-height:44px; padding:10px 17px; border:1px solid rgba(24,24,24,.1); border-radius:999px; background:rgba(255,255,255,.55); font-weight:800; white-space:nowrap; }
+    .tab.active { background:var(--ink); color:white; }
+    .request-list { display:grid; gap:12px; }
+    .request-row { padding:17px; border-radius:22px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .empty { padding:44px 24px; border-radius:28px; text-align:center; }
+    .empty-icon { width:58px; height:58px; margin:0 auto 14px; border-radius:50%; display:grid; place-items:center; background:var(--blush); font-size:24px; }
+
+    /* 10. Modal / toasts */
+    .modal-backdrop { position:fixed; inset:0; z-index:60; padding:22px; display:grid; place-items:center; background:rgba(24,15,19,.44); backdrop-filter:blur(8px); }
+    .modal { width:min(580px,100%); max-height:calc(100vh - 44px); overflow:auto; padding:26px; border-radius:28px; background:var(--paper); box-shadow:0 35px 100px rgba(24,15,19,.35); }
+    .modal-head { display:flex; align-items:start; justify-content:space-between; gap:14px; }
+    .modal-head h2 { margin:0; font-size:31px; letter-spacing:-.04em; }
+    .modal-form { display:grid; gap:14px; margin-top:20px; }
+    .notice { padding:12px 14px; border-radius:15px; background:#e0f2e7; color:#124d30; font-size:13px; font-weight:750; }
+    .bottom-nav { display:none; }
+
+    /* 11. Responsive */
+    @media (max-width: 1024px) {
+      .card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .filter-bar { grid-template-columns:2fr repeat(2,1fr); }
+      .filter-bar > :nth-child(n+4) { grid-row:2; }
+      .hero-title { font-size:clamp(62px,10vw,102px); }
+    }
+    @media (max-width: 767px) {
+      body { background-attachment:scroll; }
+      .app-shell, .landing-shell { padding:12px 14px calc(92px + env(safe-area-inset-bottom)); }
+      .site-header { position:relative; top:0; margin-bottom:22px; min-height:56px; padding:8px 10px 8px 14px; }
+      .top-nav { display:none; } .header-actions { margin-left:auto; }
+      .hero-grid, .auth-layout { grid-template-columns:1fr; }
+      .hero-copy { min-height:520px; padding:28px 22px; }
+      .hero-title { white-space: normal; font-size: clamp(54px,15vw,78px); }
+      .hero-title span { margin-left:0; }
+      .hero-side { grid-template-columns:1fr 1fr; grid-template-rows:auto; }
+      .gallery-card { min-height:310px; } .black-card { min-height:310px; align-items:flex-end; }
+      .landing-actions .desktop-only { display:none; }
+      .page-head, .section-head { align-items:start; flex-direction:column; }
+      .page-title { font-size:clamp(46px,16vw,72px); }
+      .section { margin-top:46px; }
+      .card-grid, .peer-grid, .profile-columns { grid-template-columns:1fr; }
+      .user-card { min-height:0; }
+      .filter-bar, .form-grid, .skill-editor-grid { grid-template-columns:1fr; }
+      .filter-bar > :nth-child(n), .span-2 { grid-column:auto; grid-row:auto; }
+      .profile-hero { grid-template-columns:auto 1fr; }
+      .profile-hero > .button-row { grid-column:1/-1; }
+      .loop-flow { grid-template-columns:1fr; }
+      .loop-arrow { transform:rotate(90deg); min-height:56px; }
+      .loop-arrow small { display:none; }
+      .auth-art { min-height:230px; } .auth-art::after { width:190px; height:190px; }
+      .auth-card { min-height:500px; }
+      .search-hero { grid-template-columns:1fr; }
+      .bottom-nav { position:fixed; z-index:45; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); padding:7px; display:grid; grid-template-columns:repeat(4,1fr); border-radius:22px; }
+      .bottom-link { min-height:54px; padding:6px 3px; border:0; border-radius:16px; background:transparent; color:var(--muted); display:grid; place-items:center; gap:1px; font-size:10px; font-weight:800; }
+      .bottom-link span:first-child { font-size:18px; }
+      .bottom-link.active { background:var(--ink); color:white; }
+      .marquee-track { animation-duration:38s; } .marquee.reverse .marquee-track { animation-duration:44s; }
+      .modal-backdrop { padding:10px; align-items:end; }
+      .modal { width:100%; max-height:88vh; border-radius:26px 26px 14px 14px; }
+    }
+    @media (max-width: 520px) {
+      .hero-side { grid-template-columns:1fr; }
+      .gallery-card { min-height:350px; } .black-card { min-height:130px; }
+      .landing-nav { margin-bottom:14px; }
+      .hero-title span { margin-left:7%; }
+      .button-row .btn { flex:1; }
+      .profile-hero { grid-template-columns:1fr; text-align:center; }
+      .profile-hero .avatar { margin:auto; }
+      .profile-hero .button-row { justify-content:center; }
+      .request-row { align-items:start; flex-direction:column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior:auto; }
+      *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+      .marquee { overflow:visible; }
+      .marquee-track { width:auto; flex-wrap:wrap; transform:none !important; animation:none !important; }
+      .marquee-track [data-duplicate="true"] { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <main class="static-fallback" aria-labelledby="fallback-title">
+      <p class="fallback-kicker">SKILLSWAP</p>
+      <h1 id="fallback-title">正在载入 SkillSwap…</h1>
+      <p>如果应用没有出现，请检查网络连接并刷新页面。</p>
+      <p lang="en">If the app does not load, check your connection and refresh.</p>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.6/babel.min.js" crossorigin="anonymous"></script>
+  <script type="text/babel" data-presets="env,react">
+    "use strict";
+
+    /* 1. Constants */
+    const STORAGE_KEY = "skillswap-mvp-v1";
+    const STATE_VERSION = 1;
+    const DEFAULT_LANGUAGE = "zh";
+
+    /* 2. Translation dictionaries */
+    const TRANSLATIONS = Object.freeze({
+      zh: Object.freeze({
+        brand: "SkillSwap",
+        slogan: "学你所爱，分享你所会。",
+        discover: "发现",
+        search: "搜索",
+        matches: "匹配",
+        profile: "我的",
+        login: "登录",
+        signup: "创建账号",
+        tryDemo: "体验 Daniel 演示账号",
+        resetDemo: "重置演示",
+        reload: "重新载入",
+        somethingWrong: "出现了一点问题",
+        pageNotFound: "页面不存在",
+        userNotFound: "没有找到这个用户",
+        backHome: "返回 SkillSwap",
+        backDiscover: "返回发现",
+        save: "收藏",
+        saved: "已收藏",
+        viewProfile: "查看资料",
+        sendRequest: "发送技能交换请求",
+        requestSent: "请求已发送",
+        pending: "等待回应",
+        connected: "已连接",
+        messagingSoon: "聊天功能即将推出",
+        noResults: "没有找到符合条件的人",
+        clearFilters: "清除筛选",
+        match: "匹配",
+        twoWay: "双向交换",
+        peerBuddy: "学习搭子",
+        canTeach: "可以教你",
+        wantsLearn: "想要学习",
+        whyMatch: "为什么适合交换",
+        demoLabel: "前端演示数据",
+        localNotice: "所有资料仅保存在此浏览器。",
+        landingEyebrow: "技能交换社区 · 2.0",
+        landingTitleA: "交换技能，",
+        landingTitleB: "遇见同路人。",
+        landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
+        exploreDemo: "直接体验完整演示",
+        socialGallery: "技能社交画廊",
+        realPeople: "真实的人，清晰的交换理由",
+        members: "位演示伙伴",
+        welcomeBack: "欢迎回来",
+        loginIntro: "登录以继续寻找技能交换伙伴。",
+        email: "邮箱",
+        password: "密码",
+        confirmPassword: "确认密码",
+        mockLogin: "登录演示账号",
+        noAccount: "还没有账号？",
+        haveAccount: "已经有账号？",
+        signupIntro: "创建一个只保存在本机的演示资料。",
+        emailError: "请输入有效邮箱。",
+        passwordError: "密码至少需要 8 个字符。",
+        confirmError: "两次输入的密码不一致。",
+        continue: "继续",
+        back: "返回",
+        step: "步骤",
+        profileStep: "介绍你自己",
+        shareStep: "分享你会的",
+        learnStep: "选择想学的",
+        completeStep: "准备完成",
+        nickname: "昵称",
+        bio: "个人介绍",
+        city: "城市",
+        languages: "语言（可多选）",
+        age: "年龄",
+        requiredFields: "请填写昵称和城市。",
+        offeredTitle: "你可以分享什么？",
+        wantedTitle: "你想学习什么？",
+        skill: "技能",
+        level: "水平",
+        description: "简单描述",
+        addSkill: "添加一项技能",
+        remove: "移除",
+        skillRequired: "至少保留一项技能。",
+        skillDuplicate: "同一技能只能添加一次。",
+        beginner: "入门",
+        completeBeginner: "零基础",
+        intermediate: "中级",
+        advanced: "熟练",
+        onboardingDone: "你的 SkillSwap 资料已准备好",
+        findPartners: "寻找技能伙伴",
+        hello: "你好，{name}",
+        discoverLead: "今天想和谁交换一点新本领？",
+        searchPeople: "搜索技能或伙伴",
+        searchAction: "开始搜索",
+        yourGoals: "你的学习目标",
+        recommended: "为你推荐",
+        recommendedNote: "根据真实技能方向与共同语言排序",
+        peerBuddies: "同水平学习搭子",
+        peerNote: "用相近节奏一起练习",
+        skillLoop: "三人技能环",
+        demoMatch: "演示匹配",
+        sharedTime: "共同时间",
+        filterLevel: "所有水平",
+        filterCity: "所有城市",
+        filterLanguage: "所有语言",
+        sortBest: "最佳匹配",
+        sortName: "按姓名",
+        results: "找到 {count} 位伙伴",
+        suggested: "推荐",
+        requests: "请求",
+        connections: "连接",
+        sentRequests: "已发送请求",
+        incomingRequests: "收到的请求",
+        noRequests: "还没有技能交换请求",
+        noConnections: "还没有新的连接",
+        startChat: "开始聊天",
+        matchCenter: "匹配中心",
+        matchLead: "把推荐、请求和已连接伙伴放在同一个地方。",
+        editProfile: "编辑资料",
+        cancel: "取消",
+        saveChanges: "保存修改",
+        memberSince: "SkillSwap 演示成员",
+        teachSection: "我可以分享",
+        learnSection: "我想学习",
+        languageLabel: "语言",
+        profileSaved: "资料已保存",
+        requestTitle: "发起技能交换",
+        iCanOffer: "我可以分享",
+        iWantLearn: "我想学习",
+        optionalMessage: "留言（仅本次显示，不会保存）",
+        send: "发送请求",
+        requestExists: "这项交换请求已在等待回应。",
+        requestSuccess: "请求已保存到匹配中心。",
+        viewMatches: "前往匹配中心",
+        oneWay: "互补技能",
+        sameLevel: "同水平 · {skill}",
+        teachesWanted: "{name} 可以教你 {skill}",
+        reciprocalReason: "你可以用 {offer} 交换对方的 {learn}",
+        ageCity: "{age} 岁 · {city}",
+        languageChinese: "中文",
+        languageEnglish: "English",
+        demoSafety: "演示资料仅展示城市，不包含学校、精确位置或联系方式。",
+        notFoundBody: "这个链接可能已过期，或页面尚未加入演示。",
+        userNotFoundBody: "该演示用户不存在或已被移除。",
+        searchPlaceholder: "例如：摄影、Python、烹饪…",
+        resetFilters: "重置筛选"
+      }),
+      en: Object.freeze({
+        brand: "SkillSwap",
+        slogan: "Learn what you love. Share what you know.",
+        discover: "Discover",
+        search: "Search",
+        matches: "Matches",
+        profile: "Profile",
+        login: "Log in",
+        signup: "Create account",
+        tryDemo: "Try Daniel's demo",
+        resetDemo: "Reset demo",
+        reload: "Reload",
+        somethingWrong: "Something went wrong",
+        pageNotFound: "Page not found",
+        userNotFound: "User not found",
+        backHome: "Back to SkillSwap",
+        backDiscover: "Back to Discover",
+        save: "Save",
+        saved: "Saved",
+        viewProfile: "View profile",
+        sendRequest: "Send Skill Swap request",
+        requestSent: "Request sent",
+        pending: "Pending",
+        connected: "Connected",
+        messagingSoon: "Messaging coming soon",
+        noResults: "No people match these filters",
+        clearFilters: "Clear filters",
+        match: "Match",
+        twoWay: "Two-way swap",
+        peerBuddy: "Peer buddy",
+        canTeach: "Can teach",
+        wantsLearn: "Wants to learn",
+        whyMatch: "Why you match",
+        demoLabel: "Frontend demo data",
+        localNotice: "Everything is stored only in this browser.",
+        landingEyebrow: "Skill exchange community · 2.0",
+        landingTitleA: "Trade skills,",
+        landingTitleB: "meet your people.",
+        landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
+        exploreDemo: "Explore the full demo",
+        socialGallery: "Skill social gallery",
+        realPeople: "Real people, clear exchange reasons",
+        members: "demo partners",
+        welcomeBack: "Welcome back",
+        loginIntro: "Log in to keep finding skill-swap partners.",
+        email: "Email",
+        password: "Password",
+        confirmPassword: "Confirm password",
+        mockLogin: "Log in to demo",
+        noAccount: "New to SkillSwap?",
+        haveAccount: "Already have an account?",
+        signupIntro: "Create a demo profile stored only on this device.",
+        emailError: "Enter a valid email.",
+        passwordError: "Use at least 8 characters.",
+        confirmError: "The passwords do not match.",
+        continue: "Continue",
+        back: "Back",
+        step: "Step",
+        profileStep: "Introduce yourself",
+        shareStep: "Share what you know",
+        learnStep: "Choose what to learn",
+        completeStep: "Ready to go",
+        nickname: "Nickname",
+        bio: "About you",
+        city: "City",
+        languages: "Languages (select any)",
+        age: "Age",
+        requiredFields: "Please add a nickname and city.",
+        offeredTitle: "What can you share?",
+        wantedTitle: "What do you want to learn?",
+        skill: "Skill",
+        level: "Level",
+        description: "Short description",
+        addSkill: "Add a skill",
+        remove: "Remove",
+        skillRequired: "Keep at least one skill.",
+        skillDuplicate: "Each skill can only be added once.",
+        beginner: "Beginner",
+        completeBeginner: "Complete beginner",
+        intermediate: "Intermediate",
+        advanced: "Advanced",
+        onboardingDone: "Your SkillSwap profile is ready",
+        findPartners: "Find skill partners",
+        hello: "Hello, {name}",
+        discoverLead: "Who will you swap a new skill with today?",
+        searchPeople: "Search skills or people",
+        searchAction: "Start searching",
+        yourGoals: "Your learning goals",
+        recommended: "Recommended for you",
+        recommendedNote: "Ranked by real skill direction and shared language",
+        peerBuddies: "Same-level peer buddies",
+        peerNote: "Practice together at a comfortable pace",
+        skillLoop: "Three-person SkillLoop",
+        demoMatch: "Demo match",
+        sharedTime: "Shared time",
+        filterLevel: "All levels",
+        filterCity: "All cities",
+        filterLanguage: "All languages",
+        sortBest: "Best match",
+        sortName: "By name",
+        results: "{count} partners found",
+        suggested: "Suggested",
+        requests: "Requests",
+        connections: "Connections",
+        sentRequests: "Sent requests",
+        incomingRequests: "Incoming requests",
+        noRequests: "No skill-swap requests yet",
+        noConnections: "No new connections yet",
+        startChat: "Start chat",
+        matchCenter: "Match center",
+        matchLead: "Keep suggestions, requests, and connections in one place.",
+        editProfile: "Edit profile",
+        cancel: "Cancel",
+        saveChanges: "Save changes",
+        memberSince: "SkillSwap demo member",
+        teachSection: "I can share",
+        learnSection: "I want to learn",
+        languageLabel: "Languages",
+        profileSaved: "Profile saved",
+        requestTitle: "Propose a skill swap",
+        iCanOffer: "I can offer",
+        iWantLearn: "I want to learn",
+        optionalMessage: "Message (shown now, not stored)",
+        send: "Send request",
+        requestExists: "This swap request is already pending.",
+        requestSuccess: "Request saved in the Match center.",
+        viewMatches: "Go to Match center",
+        oneWay: "Complementary skill",
+        sameLevel: "Same level · {skill}",
+        teachesWanted: "{name} can teach you {skill}",
+        reciprocalReason: "Offer {offer} in exchange for {learn}",
+        ageCity: "Age {age} · {city}",
+        languageChinese: "中文",
+        languageEnglish: "English",
+        demoSafety: "Demo profiles show city only—never school, precise location, or contact details.",
+        notFoundBody: "This link may have expired, or the page is not part of the demo yet.",
+        userNotFoundBody: "That demo user does not exist or has been removed.",
+        searchPlaceholder: "Try Photography, Python, Cooking…",
+        resetFilters: "Reset filters"
+      })
+    });
+
+    function t(language, key, variables = {}) {
+      const dictionary = TRANSLATIONS[language] || TRANSLATIONS[DEFAULT_LANGUAGE];
+      const value = dictionary[key] || TRANSLATIONS.en[key] || key;
+      return Object.entries(variables).reduce(
+        (text, [name, replacement]) => text.replaceAll(`{${name}}`, String(replacement)),
+        value
+      );
+    }
+
+    /* 3. Mock / seed data */
+    const SKILL_LEVELS = Object.freeze(["complete-beginner", "beginner", "intermediate", "advanced"]);
+    const CATEGORIES = Object.freeze(["academic", "technology", "creative", "sports", "lifestyle"]);
+    const SKILLS = Object.freeze([
+      { id: "photography", category: "creative", zh: "摄影", en: "Photography" },
+      { id: "chemistry", category: "academic", zh: "化学", en: "Chemistry" },
+      { id: "python", category: "technology", zh: "Python 编程", en: "Python" },
+      { id: "guitar", category: "creative", zh: "吉他", en: "Guitar" },
+      { id: "badminton", category: "sports", zh: "羽毛球", en: "Badminton" },
+      { id: "cooking", category: "lifestyle", zh: "烹饪", en: "Cooking" },
+      { id: "english", category: "academic", zh: "英语", en: "English" },
+      { id: "drawing", category: "creative", zh: "绘画", en: "Drawing" },
+      { id: "fitness", category: "sports", zh: "健身", en: "Fitness" },
+      { id: "video-editing", category: "technology", zh: "视频剪辑", en: "Video Editing" },
+      { id: "arduino", category: "technology", zh: "Arduino", en: "Arduino" },
+      { id: "writing", category: "academic", zh: "写作", en: "Writing" },
+      { id: "basketball", category: "sports", zh: "篮球", en: "Basketball" },
+      { id: "planting", category: "lifestyle", zh: "植物养护", en: "Plant Care" }
+    ]);
+
+    const DEMO_USER = Object.freeze({
+      id: "daniel",
+      name: "Daniel Kim",
+      age: 19,
+      city: "Tianjin",
+      languages: ["zh", "en"],
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&q=80",
+      bio: {
+        zh: "化学爱好者、健身常客，也一直在尝试学习新东西。",
+        en: "Chemistry enthusiast, gym regular, and always trying to learn something new."
+      },
+      skillsOffered: [
+        { id: "daniel-chemistry", skillId: "chemistry", level: "advanced", desc: { zh: "可以辅导 A-Level 化学与热力学。", en: "I can help with A-Level chemistry and thermodynamics." } },
+        { id: "daniel-badminton", skillId: "badminton", level: "intermediate", desc: { zh: "一起练习步法和基础对打。", en: "Let's practice footwork and steady rallies." } },
+        { id: "daniel-fitness", skillId: "fitness", level: "advanced", desc: { zh: "制定安全、简单的力量训练计划。", en: "I can build a safe, simple strength routine." } }
+      ],
+      skillsWanted: [
+        { id: "daniel-photography", skillId: "photography", level: "beginner", desc: { zh: "想学会手动曝光和人像构图。", en: "I want to learn manual exposure and portrait composition." } },
+        { id: "daniel-python", skillId: "python", level: "complete-beginner", desc: { zh: "想用 Python 做第一个小项目。", en: "I want to build my first small Python project." } },
+        { id: "daniel-cooking", skillId: "cooking", level: "beginner", desc: { zh: "想学几道适合宿舍的快手菜。", en: "I want a few quick dorm-friendly recipes." } }
+      ]
+    });
+
+    const MOCK_USERS = Object.freeze([
+      {
+        id: "alice-01", name: "Alice Chen", age: 18, city: "Tianjin", languages: ["zh", "en"],
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "喜欢用照片记录城市里安静的瞬间。", en: "I love documenting quiet moments around the city." },
+        skillsOffered: [
+          { id: "alice-photography", skillId: "photography", level: "advanced", desc: { zh: "人像、构图与手动曝光。", en: "Portraits, composition, and manual exposure." } },
+          { id: "alice-editing", skillId: "video-editing", level: "intermediate", desc: { zh: "短视频节奏和基础调色。", en: "Short-form pacing and basic color work." } }
+        ],
+        skillsWanted: [
+          { id: "alice-chemistry", skillId: "chemistry", level: "beginner", desc: { zh: "想补齐基础化学知识。", en: "I want to strengthen my chemistry basics." } },
+          { id: "alice-cooking", skillId: "cooking", level: "beginner", desc: { zh: "想学简单的家常菜。", en: "I want to learn simple home cooking." } }
+        ]
+      },
+      {
+        id: "bob-01", name: "Bob Li", age: 20, city: "Beijing", languages: ["zh", "en"],
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "周末研究新菜，也热衷篮球。", en: "Weekend recipe tinkerer and committed basketball fan." },
+        skillsOffered: [
+          { id: "bob-cooking", skillId: "cooking", level: "advanced", desc: { zh: "中式快手菜和烘焙基础。", en: "Quick Chinese dishes and baking basics." } },
+          { id: "bob-basketball", skillId: "basketball", level: "intermediate", desc: { zh: "基础运球与投篮动作。", en: "Ball handling and shooting fundamentals." } }
+        ],
+        skillsWanted: [
+          { id: "bob-chemistry", skillId: "chemistry", level: "beginner", desc: { zh: "为考试复习化学。", en: "Reviewing chemistry for an exam." } },
+          { id: "bob-arduino", skillId: "arduino", level: "complete-beginner", desc: { zh: "想让第一颗 LED 亮起来。", en: "I want to light my first LED." } }
+        ]
+      },
+      {
+        id: "mika-01", name: "Mika Zhou", age: 17, city: "Shanghai", languages: ["zh", "en"],
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "独立音乐爱好者，正在组建校园乐队。", en: "Indie music fan putting together a campus band." },
+        skillsOffered: [
+          { id: "mika-guitar", skillId: "guitar", level: "advanced", desc: { zh: "和弦转换和节奏型。", en: "Chord changes and rhythm patterns." } },
+          { id: "mika-english", skillId: "english", level: "intermediate", desc: { zh: "日常英语口语练习。", en: "Everyday English conversation." } }
+        ],
+        skillsWanted: [
+          { id: "mika-fitness", skillId: "fitness", level: "beginner", desc: { zh: "想建立稳定训练习惯。", en: "I want a consistent training habit." } },
+          { id: "mika-writing", skillId: "writing", level: "beginner", desc: { zh: "想写更好的歌词。", en: "I want to write better lyrics." } }
+        ]
+      },
+      {
+        id: "jun-01", name: "Jun Park", age: 21, city: "Seoul", languages: ["en", "ko"],
+        avatar: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "喜欢把小想法做成真正能运行的东西。", en: "I enjoy turning small ideas into things that actually work." },
+        skillsOffered: [
+          { id: "jun-python", skillId: "python", level: "intermediate", desc: { zh: "Python 入门与小型自动化。", en: "Python basics and small automations." } },
+          { id: "jun-arduino", skillId: "arduino", level: "advanced", desc: { zh: "传感器和基础硬件原型。", en: "Sensors and simple hardware prototypes." } }
+        ],
+        skillsWanted: [
+          { id: "jun-photography", skillId: "photography", level: "beginner", desc: { zh: "想拍出更好的项目照片。", en: "I want better photos of my projects." } },
+          { id: "jun-badminton", skillId: "badminton", level: "intermediate", desc: { zh: "寻找同水平练习搭子。", en: "Looking for a same-level practice buddy." } }
+        ]
+      },
+      {
+        id: "lina-01", name: "Lina Wang", age: 16, city: "Hangzhou", languages: ["zh", "en"],
+        avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "速写本不离手，也喜欢收集旧杂志。", en: "Always carrying a sketchbook and collecting old magazines." },
+        skillsOffered: [
+          { id: "lina-drawing", skillId: "drawing", level: "advanced", desc: { zh: "人物速写和色彩练习。", en: "Figure sketching and color studies." } },
+          { id: "lina-writing", skillId: "writing", level: "intermediate", desc: { zh: "短篇故事与视觉叙事。", en: "Short stories and visual narratives." } }
+        ],
+        skillsWanted: [
+          { id: "lina-guitar", skillId: "guitar", level: "complete-beginner", desc: { zh: "想学会第一首歌。", en: "I want to play my first song." } },
+          { id: "lina-photography", skillId: "photography", level: "beginner", desc: { zh: "想记录作品过程。", en: "I want to document my art process." } }
+        ]
+      },
+      {
+        id: "sarah-01", name: "Sarah Wu", age: 20, city: "Tianjin", languages: ["zh", "en"],
+        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "辩论队成员，也在学习创意编程。", en: "Debate team member exploring creative coding." },
+        skillsOffered: [
+          { id: "sarah-english", skillId: "english", level: "advanced", desc: { zh: "口语表达和演讲反馈。", en: "Conversation and presentation feedback." } },
+          { id: "sarah-photography", skillId: "photography", level: "intermediate", desc: { zh: "手机摄影和构图。", en: "Mobile photography and composition." } }
+        ],
+        skillsWanted: [
+          { id: "sarah-python", skillId: "python", level: "complete-beginner", desc: { zh: "想理解基础编程思维。", en: "I want to understand basic programming logic." } },
+          { id: "sarah-drawing", skillId: "drawing", level: "beginner", desc: { zh: "想练习视觉笔记。", en: "I want to practice visual note-taking." } }
+        ]
+      },
+      {
+        id: "nora-01", name: "Nora Chen", age: 18, city: "Tianjin", languages: ["zh", "en"],
+        avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=500&q=80",
+        bio: { zh: "化学竞赛选手，也喜欢慢跑和植物。", en: "Chemistry competitor who also enjoys running and plants." },
+        skillsOffered: [
+          { id: "nora-chemistry", skillId: "chemistry", level: "advanced", desc: { zh: "化学竞赛题和实验思路。", en: "Chemistry contest problems and lab reasoning." } },
+          { id: "nora-planting", skillId: "planting", level: "intermediate", desc: { zh: "室内植物养护。", en: "Indoor plant care." } }
+        ],
+        skillsWanted: [
+          { id: "nora-fitness", skillId: "fitness", level: "advanced", desc: { zh: "寻找同水平训练搭子。", en: "Looking for an advanced training buddy." } },
+          { id: "nora-video", skillId: "video-editing", level: "beginner", desc: { zh: "想剪辑实验记录。", en: "I want to edit lab diaries." } }
+        ]
+      }
+    ]);
+
+    const SEEDED_REQUESTS = Object.freeze([
+      { id: "request-demo-01", targetUserId: "mika-01", offeredSkillId: "fitness", requestedSkillId: "guitar", status: "pending", createdAt: "2026-08-16T08:00:00.000Z" }
+    ]);
+    const SEEDED_CONNECTIONS = Object.freeze(["sarah-01"]);
+    const SKILL_LOOP = Object.freeze({
+      id: "loop-demo-01",
+      participantIds: ["daniel", "bob-01", "alice-01"],
+      sharedTime: { zh: "周日 15:00–17:00（UTC+8）", en: "Sunday 15:00–17:00 (UTC+8)" },
+      edges: [
+        { teacherId: "alice-01", learnerId: "daniel", skillId: "photography" },
+        { teacherId: "daniel", learnerId: "bob-01", skillId: "chemistry" },
+        { teacherId: "bob-01", learnerId: "alice-01", skillId: "cooking" }
+      ]
+    });
+
+    /* 4. State and helper functions */
+    function cloneData(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function createInitialState() {
+      return {
+        version: STATE_VERSION,
+        language: DEFAULT_LANGUAGE,
+        isAuthenticated: false,
+        currentUser: null,
+        onboardingCompleted: false,
+        onboardingStep: "profile",
+        favorites: [],
+        sentRequests: [],
+        connections: [],
+        editedSkills: []
+      };
+    }
+
+    function normalizeState(value) {
+      const base = createInitialState();
+      if (!value || typeof value !== "object") return base;
+      return {
+        ...base,
+        version: STATE_VERSION,
+        language: ["zh", "en"].includes(value.language) ? value.language : base.language,
+        isAuthenticated: value.isAuthenticated === true,
+        currentUser: value.currentUser && typeof value.currentUser === "object" ? cloneData(value.currentUser) : null,
+        onboardingCompleted: value.onboardingCompleted === true,
+        onboardingStep: ["profile", "share", "learn", "complete"].includes(value.onboardingStep) ? value.onboardingStep : base.onboardingStep,
+        favorites: Array.isArray(value.favorites) ? value.favorites.filter(item => typeof item === "string") : [],
+        sentRequests: Array.isArray(value.sentRequests) ? value.sentRequests.filter(item => item && typeof item === "object") : [],
+        connections: Array.isArray(value.connections) ? value.connections.filter(item => typeof item === "string") : [],
+        editedSkills: Array.isArray(value.editedSkills) ? cloneData(value.editedSkills) : []
+      };
+    }
+
+    function loadState(storage = window.localStorage) {
+      try {
+        const raw = storage.getItem(STORAGE_KEY);
+        if (!raw) return createInitialState();
+        const parsed = JSON.parse(raw);
+        if (parsed.version !== STATE_VERSION) return createInitialState();
+        return normalizeState(parsed);
+      } catch (error) {
+        console.warn("SkillSwap state recovery", error);
+        return createInitialState();
+      }
+    }
+
+    function saveState(state, storage = window.localStorage) {
+      try {
+        storage.setItem(STORAGE_KEY, JSON.stringify(normalizeState(state)));
+        return true;
+      } catch (error) {
+        console.warn("SkillSwap state save failed", error);
+        return false;
+      }
+    }
+
+    function loginAsDemoUser(baseState = createInitialState()) {
+      return normalizeState({
+        ...baseState,
+        version: STATE_VERSION,
+        isAuthenticated: true,
+        currentUser: cloneData(DEMO_USER),
+        onboardingCompleted: true,
+        onboardingStep: "complete",
+        favorites: ["alice-01", "jun-01"],
+        sentRequests: cloneData(SEEDED_REQUESTS),
+        connections: [...SEEDED_CONNECTIONS],
+        editedSkills: cloneData(DEMO_USER.skillsOffered)
+      });
+    }
+
+    function clearDemoStorage(storage = window.localStorage) {
+      try {
+        storage.removeItem(STORAGE_KEY);
+        return true;
+      } catch (error) {
+        console.warn("SkillSwap reset failed", error);
+        return false;
+      }
+    }
+
+    function resetDemo() {
+      if (!window.confirm("重置 SkillSwap 本地演示数据？\nReset local SkillSwap demo data?")) return;
+      clearDemoStorage();
+      window.location.hash = "#/";
+      window.location.reload();
+    }
+
+    /* 5. Router */
+    const ROUTES = Object.freeze({
+      "#/": "landing",
+      "#/login": "login",
+      "#/signup": "signup",
+      "#/onboarding/profile": "onboarding-profile",
+      "#/onboarding/share": "onboarding-share",
+      "#/onboarding/learn": "onboarding-learn",
+      "#/onboarding/complete": "onboarding-complete",
+      "#/discover": "discover",
+      "#/search": "search",
+      "#/matches": "matches",
+      "#/profile": "profile"
+    });
+
+    function parseHash(hash = window.location.hash || "#/") {
+      const raw = hash.startsWith("#") ? hash : `#${hash}`;
+      const [pathPart, queryPart = ""] = raw.split("?");
+      const path = pathPart || "#/";
+      const query = Object.fromEntries(new URLSearchParams(queryPart).entries());
+      const personMatch = path.match(/^#\/people\/([^/?#]+)$/);
+      if (personMatch) {
+        return {
+          name: "person",
+          path,
+          params: { id: decodeURIComponent(personMatch[1]) },
+          query,
+          isKnown: true
+        };
+      }
+      const name = ROUTES[path] || "not-found";
+      return { name, path, params: {}, query, isKnown: name !== "not-found" };
+    }
+
+    function buildHash(path, query = {}) {
+      const normalized = path.startsWith("#")
+        ? path
+        : `#${path.startsWith("/") ? path : `/${path}`}`;
+      const params = new URLSearchParams();
+      Object.entries(query).forEach(([key, value]) => {
+        if (value !== "" && value != null) params.set(key, String(value));
+      });
+      const queryString = params.toString();
+      return queryString ? `${normalized}?${queryString}` : normalized;
+    }
+
+    function navigate(path, query = {}) {
+      window.location.hash = buildHash(path, query);
+    }
+
+    function guardRoute(route, state) {
+      const publicRoutes = new Set(["landing", "login", "signup"]);
+      const onboardingRoutes = new Set([
+        "onboarding-profile", "onboarding-share", "onboarding-learn", "onboarding-complete"
+      ]);
+      const appRoutes = new Set(["discover", "search", "matches", "profile", "person"]);
+
+      if (publicRoutes.has(route.name)) {
+        if (state.isAuthenticated && state.onboardingCompleted && ["login", "signup"].includes(route.name)) {
+          return "#/discover";
+        }
+        return null;
+      }
+      if (onboardingRoutes.has(route.name)) {
+        if (!state.isAuthenticated) return "#/signup";
+        if (state.onboardingCompleted) return "#/discover";
+        return null;
+      }
+      if (appRoutes.has(route.name)) {
+        if (!state.isAuthenticated) return "#/login";
+        if (!state.onboardingCompleted) {
+          const step = ["profile", "share", "learn"].includes(state.onboardingStep)
+            ? state.onboardingStep
+            : "profile";
+          return `#/onboarding/${step}`;
+        }
+      }
+      return null;
+    }
+
+    function useHashRoute() {
+      const [route, setRoute] = React.useState(() => parseHash());
+      React.useEffect(() => {
+        const handleChange = () => setRoute(parseHash());
+        window.addEventListener("hashchange", handleChange);
+        return () => window.removeEventListener("hashchange", handleChange);
+      }, []);
+      return route;
+    }
+
+    /* 6. Matching logic */
+    function getSkillById(skillId) {
+      return SKILLS.find(skill => skill.id === skillId) || null;
+    }
+
+    function getUserById(userId) {
+      if (userId === DEMO_USER.id) return DEMO_USER;
+      return MOCK_USERS.find(user => user.id === userId) || null;
+    }
+
+    function getSkillName(skillId, language = DEFAULT_LANGUAGE) {
+      const skill = getSkillById(skillId);
+      return skill ? (skill[language] || skill.en) : skillId;
+    }
+
+    function getInitials(name = "") {
+      return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+    }
+
+    function getLevelRank(level) {
+      const rank = SKILL_LEVELS.indexOf(level);
+      return rank < 0 ? 0 : rank;
+    }
+
+    function scoreComplementaryMatch(currentUser, candidate) {
+      const teachable = candidate.skillsOffered.filter(offered =>
+        currentUser.skillsWanted.some(wanted => wanted.skillId === offered.skillId)
+      );
+      if (!teachable.length) {
+        return { user: candidate, score: 0, reciprocal: false, reasons: [] };
+      }
+
+      const reciprocalPairs = [];
+      candidate.skillsWanted.forEach(wanted => {
+        const offered = currentUser.skillsOffered.find(item => item.skillId === wanted.skillId);
+        if (offered) reciprocalPairs.push({ offered, wanted });
+      });
+      const reciprocal = reciprocalPairs.length > 0;
+      const sharedLanguage = candidate.languages.some(language => currentUser.languages.includes(language));
+      const sameCity = candidate.city.toLowerCase() === currentUser.city.toLowerCase();
+      const levelFit = teachable.some(offered => {
+        const wanted = currentUser.skillsWanted.find(item => item.skillId === offered.skillId);
+        return wanted && getLevelRank(offered.level) >= getLevelRank(wanted.level);
+      });
+      const categoryFit = teachable.some(offered => {
+        const skill = getSkillById(offered.skillId);
+        return skill && currentUser.skillsOffered.some(item => getSkillById(item.skillId)?.category === skill.category);
+      });
+
+      const reasons = teachable.map(offered => ({ type: "can-teach", skillId: offered.skillId }));
+      reciprocalPairs.forEach(pair => reasons.push({
+        type: "reciprocal",
+        skillId: pair.wanted.skillId,
+        reciprocalSkillId: teachable[0].skillId
+      }));
+
+      const score = Math.min(99,
+        55 +
+        (reciprocal ? 25 : 0) +
+        (sharedLanguage ? 7 : 0) +
+        (levelFit ? 7 : 0) +
+        (sameCity ? 4 : 0) +
+        (categoryFit ? 1 : 0)
+      );
+      return { user: candidate, score, reciprocal, reasons };
+    }
+
+    function findComplementaryMatches(currentUser, users = MOCK_USERS) {
+      return users
+        .map(user => scoreComplementaryMatch(currentUser, user))
+        .filter(match => match.score > 0)
+        .sort((a, b) => b.score - a.score || a.user.id.localeCompare(b.user.id));
+    }
+
+    function findPeerBuddies(currentUser, users = MOCK_USERS) {
+      const currentSkills = [...currentUser.skillsOffered, ...currentUser.skillsWanted];
+      return users
+        .map(user => {
+          const shared = [...user.skillsOffered, ...user.skillsWanted].filter(candidateSkill =>
+            currentSkills.some(currentSkill =>
+              currentSkill.skillId === candidateSkill.skillId && currentSkill.level === candidateSkill.level
+            )
+          );
+          const sharedLanguage = user.languages.some(language => currentUser.languages.includes(language));
+          return {
+            user,
+            score: shared.length && sharedLanguage ? 80 : 0,
+            sharedSkillIds: [...new Set(shared.map(item => item.skillId))]
+          };
+        })
+        .filter(match => match.score > 0)
+        .sort((a, b) => b.score - a.score || a.user.id.localeCompare(b.user.id));
+    }
+
+    function filterUsers(users, filters = {}, language = DEFAULT_LANGUAGE) {
+      const query = (filters.q || "").trim().toLocaleLowerCase();
+      const matchingSkillIds = query ? SKILLS.filter(skill =>
+        [skill.id, skill.zh, skill.en].some(value => value.toLocaleLowerCase().includes(query))
+      ).map(skill => skill.id) : [];
+      return users.filter(user => {
+        const searchableSkills = user.skillsOffered
+          .flatMap(item => {
+            const skill = getSkillById(item.skillId);
+            return skill ? [skill.id, skill.zh, skill.en] : [item.skillId];
+          });
+        const haystack = [
+          user.name,
+          user.city,
+          user.bio?.[language],
+          user.bio?.zh,
+          user.bio?.en,
+          ...searchableSkills
+        ].filter(Boolean).join(" ").toLocaleLowerCase();
+        const allSkills = [...user.skillsOffered, ...user.skillsWanted];
+        const queryMatches = !query || (matchingSkillIds.length
+          ? user.skillsOffered.some(item => matchingSkillIds.includes(item.skillId))
+          : haystack.includes(query));
+        const levelMatches = !filters.level || allSkills.some(item => item.level === filters.level);
+        const cityMatches = !filters.city || user.city.toLocaleLowerCase() === filters.city.toLocaleLowerCase();
+        const languageMatches = !filters.lang || user.languages.includes(filters.lang);
+        return queryMatches && levelMatches && cityMatches && languageMatches;
+      }).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    /* 7. Utilities */
+    function validateSignup(email, password, confirmation) {
+      const errors = [];
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "")) errors.push("email");
+      if ((password || "").length < 8) errors.push("password");
+      if (password !== confirmation) errors.push("confirmation");
+      return errors;
+    }
+
+    function validateProfile(profile) {
+      const errors = [];
+      if (!(profile?.name || "").trim()) errors.push("name");
+      if (!(profile?.city || "").trim()) errors.push("city");
+      return errors;
+    }
+
+    function validateSkillList(items) {
+      const errors = [];
+      if (!Array.isArray(items) || items.length === 0) return ["required"];
+      const ids = items.map(item => item?.skillId).filter(Boolean);
+      if (ids.length !== items.length) errors.push("skill");
+      if (new Set(ids).size !== ids.length) errors.push("duplicate");
+      return errors;
+    }
+
+    function toggleFavorite(favorites, userId) {
+      return favorites.includes(userId)
+        ? favorites.filter(id => id !== userId)
+        : [...favorites, userId];
+    }
+
+    function createSwapRequest(requests, targetUserId, offeredSkillId, requestedSkillId, now = new Date()) {
+      const duplicate = requests.find(request =>
+        request.targetUserId === targetUserId &&
+        request.offeredSkillId === offeredSkillId &&
+        request.requestedSkillId === requestedSkillId &&
+        request.status === "pending"
+      );
+      if (duplicate) return { requests: [...requests], request: duplicate, created: false };
+      const request = {
+        id: `request-${targetUserId}-${offeredSkillId}-${requestedSkillId}`,
+        targetUserId,
+        offeredSkillId,
+        requestedSkillId,
+        status: "pending",
+        createdAt: now.toISOString()
+      };
+      return { requests: [...requests, request], request, created: true };
+    }
+
+    function localized(value, language) {
+      return typeof value === "string" ? value : (value?.[language] || value?.en || "");
+    }
+
+    /* 8. Self tests */
+    const SELF_TEST_MODE = new URLSearchParams(window.location.search).get("selftest") === "1";
+    const TEST_CASES = [];
+    function test(name, run) { TEST_CASES.push({ name, run }); }
+    function assert(condition, message) { if (!condition) throw new Error(message); }
+
+    test("storage key is stable", () => {
+      assert(STORAGE_KEY === "skillswap-mvp-v1", "Unexpected storage key");
+    });
+
+    test("initial language is Chinese", () => {
+      assert(DEFAULT_LANGUAGE === "zh", "Initial language must be zh");
+    });
+
+    test("initial state is versioned and unauthenticated", () => {
+      const state = createInitialState();
+      assert(state.version === 1, "Wrong state version");
+      assert(state.language === "zh", "Wrong initial state language");
+      assert(state.isAuthenticated === false, "Fresh state must be logged out");
+    });
+
+    test("invalid storage JSON recovers", () => {
+      const storage = { getItem: () => "{bad", setItem() {}, removeItem() {} };
+      assert(loadState(storage).version === 1, "Invalid JSON must recover");
+    });
+
+    test("old storage versions recover", () => {
+      const storage = {
+        getItem: () => JSON.stringify({ version: 0, isAuthenticated: true }),
+        setItem() {},
+        removeItem() {}
+      };
+      assert(loadState(storage).isAuthenticated === false, "Old version must reset");
+    });
+
+    test("storage access exceptions do not crash", () => {
+      const storage = { getItem() { throw new Error("denied"); } };
+      assert(loadState(storage).version === 1, "Denied storage must recover");
+    });
+
+    test("translation key sets match", () => {
+      const zh = Object.keys(TRANSLATIONS.zh).sort().join("|");
+      const en = Object.keys(TRANSLATIONS.en).sort().join("|");
+      assert(zh === en, "Translation dictionaries diverged");
+    });
+
+    test("demo login restores Daniel", () => {
+      const state = loginAsDemoUser(createInitialState());
+      assert(state.currentUser.id === "daniel", "Daniel was not restored");
+      assert(state.onboardingCompleted === true, "Demo onboarding must be complete");
+      assert(state.favorites.length > 0, "Demo favorites missing");
+    });
+
+    test("demo reset removes only SkillSwap key", () => {
+      const calls = [];
+      const storage = { removeItem(key) { calls.push(key); } };
+      clearDemoStorage(storage);
+      assert(calls.length === 1 && calls[0] === STORAGE_KEY, "Reset touched the wrong key");
+    });
+
+    test("dynamic people route extracts id", () => {
+      const route = parseHash("#/people/alice-01");
+      assert(route.name === "person" && route.params.id === "alice-01", "Dynamic route failed");
+    });
+
+    test("search query parses from hash", () => {
+      const route = parseHash("#/search?q=python&level=beginner");
+      assert(route.query.q === "python" && route.query.level === "beginner", "Query parse failed");
+    });
+
+    test("logged-out app route redirects to login", () => {
+      assert(guardRoute(parseHash("#/discover"), createInitialState()) === "#/login", "Logged-out guard failed");
+    });
+
+    test("incomplete user resumes onboarding", () => {
+      const state = { ...createInitialState(), isAuthenticated: true, onboardingStep: "share" };
+      assert(guardRoute(parseHash("#/search"), state) === "#/onboarding/share", "Onboarding guard failed");
+    });
+
+    test("completed user skips login", () => {
+      const state = loginAsDemoUser(createInitialState());
+      assert(guardRoute(parseHash("#/login"), state) === "#/discover", "Completed user redirect failed");
+    });
+
+    test("skill and user lookup helpers are stable", () => {
+      assert(getSkillById("photography").en === "Photography", "Skill lookup failed");
+      assert(getUserById("alice-01").name === "Alice Chen", "User lookup failed");
+      assert(getInitials("Alice Chen") === "AC", "Initials failed");
+    });
+
+    test("reciprocal matches score above one-way matches", () => {
+      const alice = scoreComplementaryMatch(DEMO_USER, getUserById("alice-01"));
+      const jun = scoreComplementaryMatch(DEMO_USER, getUserById("jun-01"));
+      assert(alice.score > jun.score, "Reciprocal match should rank higher");
+      assert(alice.reciprocal === true, "Alice should be marked reciprocal");
+    });
+
+    test("complementary matches are deterministic", () => {
+      const first = findComplementaryMatches(DEMO_USER).map(item => item.user.id).join("|");
+      const second = findComplementaryMatches(DEMO_USER).map(item => item.user.id).join("|");
+      assert(first === second && first.startsWith("alice-01"), "Match order is unstable");
+    });
+
+    test("peer buddies require a shared skill and level", () => {
+      const buddies = findPeerBuddies(DEMO_USER);
+      assert(buddies.some(item => item.user.id === "nora-01"), "Expected Nora fitness buddy");
+      assert(!buddies.some(item => item.user.id === "mika-01"), "Mika should not be a level peer");
+    });
+
+    test("search matches bilingual skill names", () => {
+      const zhResults = filterUsers(MOCK_USERS, { q: "摄影" }, "zh");
+      const enResults = filterUsers(MOCK_USERS, { q: "photography" }, "en");
+      assert(zhResults.length > 0 && zhResults.every(user => user.skillsOffered.some(item => item.skillId === "photography")), "Chinese skill search leaked learners");
+      assert(enResults.length > 0 && enResults.every(user => user.skillsOffered.some(item => item.skillId === "photography")), "English skill search leaked learners");
+    });
+
+    test("search filters compose", () => {
+      const results = filterUsers(MOCK_USERS, { q: "", level: "advanced", city: "Tianjin", lang: "en" }, "en");
+      assert(results.some(user => user.id === "alice-01"), "Composed filters lost Alice");
+      assert(!results.some(user => user.id === "mika-01"), "City filter failed");
+    });
+
+    test("signup validation rejects unsafe input", () => {
+      assert(validateSignup("bad", "123", "456").length === 3, "Signup validation missed errors");
+      assert(validateSignup("daniel@example.com", "password", "password").length === 0, "Valid signup was rejected");
+    });
+
+    test("profile and skill validation protect onboarding", () => {
+      assert(validateProfile({ name: "", city: "" }).length === 2, "Profile validation missed fields");
+      assert(validateSkillList([]).length > 0, "Empty skill list was accepted");
+      assert(validateSkillList([{ skillId: "python" }, { skillId: "python" }]).length > 0, "Duplicate skill was accepted");
+    });
+
+    test("favorite transition only changes target id", () => {
+      const added = toggleFavorite(["alice-01"], "bob-01");
+      const removed = toggleFavorite(added, "alice-01");
+      assert(added.join("|") === "alice-01|bob-01", "Favorite add failed");
+      assert(removed.join("|") === "bob-01", "Favorite remove failed");
+    });
+
+    test("swap requests normalize and deduplicate", () => {
+      const first = createSwapRequest([], "alice-01", "chemistry", "photography", new Date("2026-08-16T10:00:00Z"));
+      const second = createSwapRequest(first.requests, "alice-01", "chemistry", "photography", new Date("2026-08-16T11:00:00Z"));
+      assert(first.created === true && first.requests.length === 1, "Request was not created");
+      assert(first.requests[0].status === "pending", "Request status is wrong");
+      assert(second.created === false && second.requests.length === 1, "Duplicate request was added");
+    });
+
+    function runSelfTests() {
+      return TEST_CASES.map(({ name, run }) => {
+        try {
+          run();
+          return { name, pass: true, error: "" };
+        } catch (error) {
+          return { name, pass: false, error: error.message };
+        }
+      });
+    }
+
+    /* 9. Reusable UI components */
+    function Button({ children, variant = "primary", small = false, className = "", ...props }) {
+      return <button className={`btn btn-${variant} ${small ? "btn-small" : ""} ${className}`} {...props}>{children}</button>;
+    }
+
+    function Avatar({ user, size = "normal" }) {
+      const [failed, setFailed] = React.useState(false);
+      const label = user?.name || "SkillSwap";
+      return (
+        <div className={`avatar ${size === "large" ? "large" : ""}`} aria-label={label}>
+          {!failed && user?.avatar
+            ? <img src={user.avatar} alt="" onError={() => setFailed(true)} />
+            : <span aria-hidden="true">{getInitials(label) || "SS"}</span>}
+        </div>
+      );
+    }
+
+    function SkillTag({ skillId, language, onClick, duplicate = false }) {
+      const skill = getSkillById(skillId);
+      const className = `skill-tag ${skill?.category === "technology" ? "tech" : skill?.category || ""}`;
+      const content = getSkillName(skillId, language);
+      return onClick
+        ? <button type="button" className={className} onClick={onClick} data-duplicate={duplicate || undefined} tabIndex={duplicate ? -1 : 0} aria-hidden={duplicate || undefined}>{content}</button>
+        : <span className={className} data-duplicate={duplicate || undefined} aria-hidden={duplicate || undefined}>{content}</span>;
+    }
+
+    function SkillMarquee({ language, interactive = false }) {
+      const rows = [
+        ["photography", "python", "cooking", "guitar", "chemistry", "fitness", "drawing"],
+        ["english", "badminton", "video-editing", "arduino", "writing", "basketball", "planting"]
+      ];
+      return (
+        <div className="marquee-zone" aria-label={t(language, "socialGallery")}>
+          {rows.map((row, rowIndex) => (
+            <div className={`marquee ${rowIndex ? "reverse" : ""}`} key={rowIndex}>
+              <div className="marquee-track">
+                {[...row, ...row].map((skillId, index) => (
+                  <SkillTag
+                    key={`${rowIndex}-${skillId}-${index}`}
+                    skillId={skillId}
+                    language={language}
+                    duplicate={index >= row.length}
+                    onClick={interactive && index < row.length ? () => navigate("#/search", { q: skillId }) : null}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function navItems(language) {
+      return [
+        { route: "discover", hash: "#/discover", icon: "◉", label: t(language, "discover") },
+        { route: "search", hash: "#/search", icon: "⌕", label: t(language, "search") },
+        { route: "matches", hash: "#/matches", icon: "↔", label: t(language, "matches") },
+        { route: "profile", hash: "#/profile", icon: "☺", label: t(language, "profile") }
+      ];
+    }
+
+    function Navigation({ language, routeName }) {
+      return <nav className="top-nav" aria-label="Primary">{navItems(language).map(item => <button key={item.route} type="button" className={`nav-link ${routeName === item.route ? "active" : ""}`} onClick={() => navigate(item.hash)}>{item.label}</button>)}</nav>;
+    }
+
+    function MobileNavigation({ language, routeName }) {
+      return <nav className="bottom-nav glass" aria-label="Mobile primary">{navItems(language).map(item => <button key={item.route} type="button" className={`bottom-link ${routeName === item.route ? "active" : ""}`} onClick={() => navigate(item.hash)}><span aria-hidden="true">{item.icon}</span><span>{item.label}</span></button>)}</nav>;
+    }
+
+    function AppShell({ children, language, routeName, onLanguage, showNavigation = true }) {
+      return (
+        <div className="app-shell">
+          <header className="site-header glass">
+            <button className="brand" type="button" onClick={() => navigate(showNavigation ? "#/discover" : "#/")}>SkillSwap<span className="brand-dot">.</span></button>
+            {showNavigation && <Navigation language={language} routeName={routeName} />}
+            <div className="header-actions"><button className="lang-toggle" type="button" onClick={onLanguage} aria-label={language === "zh" ? "Switch to English" : "切换到中文"}>{language === "zh" ? "EN" : "中"}</button></div>
+          </header>
+          {children}
+          {showNavigation && <MobileNavigation language={language} routeName={routeName} />}
+        </div>
+      );
+    }
+
+    function Progress({ step, language }) {
+      const labels = ["profileStep", "shareStep", "learnStep", "completeStep"];
+      return <div className="progress-wrap"><div className="progress-meta"><span>{t(language,"step")} {step}/4</span><span>{t(language,labels[step-1])}</span></div><div className="progress-bar" aria-label={`${step}/4`}><div className="progress-fill" style={{width:`${step*25}%`}} /></div></div>;
+    }
+
+    function EmptyState({ title, body, actionLabel, onAction }) {
+      return <section className="empty glass"><div className="empty-icon" aria-hidden="true">✦</div><h2>{title}</h2>{body && <p className="muted">{body}</p>}{actionLabel && <Button variant="light" onClick={onAction}>{actionLabel}</Button>}</section>;
+    }
+
+    function MatchBadge({ match, language }) {
+      return <span className="match-badge"><span aria-hidden="true">{match.reciprocal ? "↔" : "→"}</span>{match.reciprocal ? t(language,"twoWay") : t(language,"oneWay")} · {match.score}%</span>;
+    }
+
+    function UserCard({ user, match, language, saved, onSave, fromHash }) {
+      const teach = user.skillsOffered.slice(0,2);
+      return (
+        <article className="user-card">
+          <div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user.name}</h3><p className="user-meta">{t(language,"ageCity",{age:user.age,city:user.city})}</p></div></div>
+          <p className="user-bio">{localized(user.bio,language)}</p>
+          <p className="mini-heading">{t(language,"canTeach")}</p>
+          <div className="skill-pills">{teach.map(item=><span className="mini-pill" key={item.id}>{getSkillName(item.skillId,language)}</span>)}</div>
+          {match && <div className="match-line"><MatchBadge match={match} language={language}/></div>}
+          <div className="card-actions">
+            <button className="icon-btn" type="button" onClick={()=>onSave(user.id)} aria-label={saved?t(language,"saved"):t(language,"save")}>{saved ? "♥" : "♡"}</button>
+            <Button small onClick={()=>navigate(`#/people/${user.id}`, fromHash ? {from:fromHash} : {})}>{t(language,"viewProfile")} <span aria-hidden="true">→</span></Button>
+          </div>
+        </article>
+      );
+    }
+
+    function Modal({ title, children, onClose }) {
+      const dialogRef = React.useRef(null);
+      const previousFocus = React.useRef(document.activeElement);
+      React.useEffect(() => {
+        const dialog = dialogRef.current;
+        dialog?.focus();
+        const handleKey = event => {
+          if (event.key === "Escape") onClose();
+          if (event.key === "Tab" && dialog) {
+            const focusable = [...dialog.querySelectorAll("button,input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter(item=>!item.disabled);
+            if (!focusable.length) return;
+            const first = focusable[0], last = focusable[focusable.length-1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+          }
+        };
+        document.addEventListener("keydown",handleKey);
+        return () => { document.removeEventListener("keydown",handleKey); previousFocus.current?.focus?.(); };
+      }, [onClose]);
+      return <div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex="-1" ref={dialogRef}><div className="modal-head"><h2 id="modal-title">{title}</h2><button type="button" className="icon-btn" onClick={onClose} aria-label="Close">×</button></div>{children}</section></div>;
+    }
+
+    function SkillEditor({ items, onChange, language, wanted = false }) {
+      const add = () => onChange([...items,{id:`local-${wanted?"want":"offer"}-${Date.now()}`,skillId:wanted?"guitar":"english",level:wanted?"complete-beginner":"beginner",desc:{zh:"",en:""}}]);
+      const update = (index,key,value) => onChange(items.map((item,i)=>i===index?{...item,[key]:value}:item));
+      const remove = index => { if(items.length>1) onChange(items.filter((_,i)=>i!==index)); };
+      return <div><div className="skill-editor-list">{items.map((item,index)=><div className="skill-editor" key={item.id}><div className="skill-editor-grid"><label className="field"><span>{t(language,"skill")}</span><select className="select" value={item.skillId} onChange={event=>update(index,"skillId",event.target.value)}>{SKILLS.map(skill=><option key={skill.id} value={skill.id}>{skill[language]}</option>)}</select></label><label className="field"><span>{t(language,"level")}</span><select className="select" value={item.level} onChange={event=>update(index,"level",event.target.value)}>{SKILL_LEVELS.filter(level=>!wanted||level!=="advanced").map(level=><option key={level} value={level}>{levelLabel(level,language)}</option>)}</select></label><label className="field span-2"><span>{t(language,"description")}</span><input className="input" value={localized(item.desc,language)} onChange={event=>update(index,"desc",{...(item.desc||{}),[language]:event.target.value})}/></label></div><Button className="remove" type="button" small variant="ghost" disabled={items.length===1} onClick={()=>remove(index)}>{t(language,"remove")}</Button></div>)}</div><Button type="button" variant="light" onClick={add}>＋ {t(language,"addSkill")}</Button></div>;
+    }
+
+    function levelLabel(level, language) {
+      const key = {"complete-beginner":"completeBeginner",beginner:"beginner",intermediate:"intermediate",advanced:"advanced"}[level];
+      return t(language,key || level);
+    }
+
+    function ProfileSkillSection({ title, items, language }) {
+      return <section className="profile-section glass"><h2>{title}</h2>{items.map(item=><div className="profile-skill" key={item.id}><h3>{getSkillName(item.skillId,language)}</h3><p className="user-meta">{levelLabel(item.level,language)}</p><p className="muted">{localized(item.desc,language)}</p></div>)}</section>;
+    }
+
+    function RecoveryScreen({ onReload, onReset }) {
+      return <main className="recovery"><section className="panel" aria-labelledby="recovery-title"><p className="fallback-kicker">SKILLSWAP</p><h1 id="recovery-title">出现了一点问题</h1><p>Something went wrong. You can reload the app or reset the local demo.</p><div className="button-row"><Button onClick={onReload}>重新载入 / Reload</Button><Button variant="light" onClick={onReset}>重置演示 / Reset Demo</Button></div></section></main>;
+    }
+
+    function SelfTestReport() {
+      const results = runSelfTests();
+      const failures = results.filter(result => !result.pass).length;
+      React.useEffect(() => { document.title = "SkillSwap Self Tests"; }, []);
+      return (
+        <main className="self-tests">
+          <section className="panel" aria-labelledby="tests-title">
+            <p className="fallback-kicker">SKILLSWAP SELF TESTS</p>
+            <h1 id="tests-title">{failures ? `${failures} failed` : "All tests pass"}</h1>
+            <ul className="test-list">
+              {results.map(result => (
+                <li key={result.name} className={`test-item ${result.pass ? "pass" : "fail"}`}>
+                  <strong>{result.pass ? "PASS" : "FAIL"}: {result.name}</strong>
+                  {result.error && <span className="test-error">{result.error}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </main>
+      );
+    }
+
+    /* 10. Page components */
+    function LandingPage({ language, onLanguage, onDemo }) {
+      const previewUsers=[MOCK_USERS[0],MOCK_USERS[1],MOCK_USERS[2]];
+      return <div className="landing-shell"><header className="landing-nav"><button className="brand" type="button" onClick={()=>navigate("#/")}>SkillSwap<span className="brand-dot">.</span></button><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" className="desktop-only" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small className="desktop-only" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p><div className="button-row"><Button onClick={onDemo}>{t(language,"exploreDemo")} <span aria-hidden="true">→</span></Button><Button variant="light" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button><Button variant="ghost" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button></div></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{previewUsers.map(user=><Avatar user={user} key={user.id}/>)}</div></section><section className="black-card"><div><h2>{t(language,"socialGallery")}</h2><p>{t(language,"realPeople")}</p></div><span>{MOCK_USERS.length} {t(language,"members")}</span></section></aside></div><SkillMarquee language={language}/></main></div>;
+    }
+
+    function AuthArt({ language }) {
+      return <aside className="auth-art"><p className="eyebrow">SKILLSWAP · 2026</p><h1>{t(language,"slogan")}</h1><p>{t(language,"localNotice")}</p></aside>;
+    }
+
+    function LoginPage({ language, onDemo }) {
+      const [email,setEmail]=React.useState("daniel@example.com"); const [password,setPassword]=React.useState("password");
+      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"welcomeBack")}</h1><p className="muted">{t(language,"loginIntro")}</p><form className="auth-form" onSubmit={event=>{event.preventDefault();onDemo();}}><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={email} onChange={event=>setEmail(event.target.value)} required/></label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={password} onChange={event=>setPassword(event.target.value)} required/></label><Button type="submit">{t(language,"mockLogin")}</Button></form><div className="divider">OR</div><Button variant="rose" onClick={onDemo}>✦ {t(language,"tryDemo")}</Button><p className="muted" style={{marginTop:18}}>{t(language,"noAccount")} <button type="button" className="brand" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</button></p></section></main>;
+    }
+
+    function SignupPage({ language, onSignup }) {
+      const [form,setForm]=React.useState({email:"",password:"",confirmation:""}); const [errors,setErrors]=React.useState([]);
+      const submit=event=>{event.preventDefault();const next=validateSignup(form.email,form.password,form.confirmation);setErrors(next);if(!next.length)onSignup();};
+      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"signup")}</h1><p className="muted">{t(language,"signupIntro")}</p><form className="auth-form" onSubmit={submit} noValidate><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={form.email} onChange={event=>setForm({...form,email:event.target.value})}/>{errors.includes("email")&&<span className="field-error">{t(language,"emailError")}</span>}</label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={form.password} onChange={event=>setForm({...form,password:event.target.value})}/>{errors.includes("password")&&<span className="field-error">{t(language,"passwordError")}</span>}</label><label className="field"><span>{t(language,"confirmPassword")}</span><input className="input" type="password" value={form.confirmation} onChange={event=>setForm({...form,confirmation:event.target.value})}/>{errors.includes("confirmation")&&<span className="field-error">{t(language,"confirmError")}</span>}</label><Button type="submit">{t(language,"continue")} →</Button></form><p className="muted" style={{marginTop:18}}>{t(language,"haveAccount")} <button type="button" className="brand" onClick={()=>navigate("#/login")}>{t(language,"login")}</button></p></section></main>;
+    }
+
+    function ProfileOnboardingPage({ state, language, updateState }) {
+      const [form,setForm]=React.useState(()=>({...state.currentUser})); const [error,setError]=React.useState(false);
+      const submit=event=>{event.preventDefault();if(validateProfile(form).length){setError(true);return;}updateState({...state,currentUser:{...form,languages:form.languages?.length?form.languages:["zh"]},onboardingStep:"share"});navigate("#/onboarding/share");};
+      const toggleLang=lang=>setForm({...form,languages:(form.languages||[]).includes(lang)?form.languages.filter(item=>item!==lang):[...(form.languages||[]),lang]});
+      return <main className="page"><section className="onboarding-card glass"><Progress step={1} language={language}/><h1 className="section-title">{t(language,"profileStep")}</h1><p className="muted">{t(language,"demoSafety")}</p><form className="form-grid" onSubmit={submit}><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={form.name||""} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>{t(language,"city")}</span><input className="input" value={form.city||""} onChange={event=>setForm({...form,city:event.target.value})}/></label><label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(form.bio,language)} onChange={event=>setForm({...form,bio:{...(form.bio||{}),[language]:event.target.value}})}/></label><label className="field"><span>{t(language,"age")}</span><input className="input" type="number" min="13" max="99" value={form.age||18} onChange={event=>setForm({...form,age:Number(event.target.value)})}/></label><fieldset className="field" style={{border:0,padding:0}}><legend className="field-label">{t(language,"languages")}</legend><div className="button-row">{["zh","en"].map(lang=><Button key={lang} type="button" small variant={(form.languages||[]).includes(lang)?"primary":"light"} onClick={()=>toggleLang(lang)}>{lang==="zh"?"中文":"English"}</Button>)}</div></fieldset>{error&&<p className="form-error span-2" role="alert">{t(language,"requiredFields")}</p>}<div className="button-row span-2"><Button type="button" variant="ghost" onClick={()=>navigate("#/signup")}>{t(language,"back")}</Button><Button type="submit">{t(language,"continue")} →</Button></div></form></section></main>;
+    }
+
+    function SkillOnboardingPage({ state, language, updateState, wanted=false }) {
+      const key=wanted?"skillsWanted":"skillsOffered"; const initial=state.currentUser?.[key]?.length?state.currentUser[key]:[{id:`local-${wanted?"want":"offer"}-1`,skillId:wanted?"photography":"chemistry",level:wanted?"complete-beginner":"beginner",desc:{zh:"",en:""}}];
+      const [items,setItems]=React.useState(initial); const [errors,setErrors]=React.useState([]);
+      const submit=event=>{event.preventDefault();const next=validateSkillList(items);setErrors(next);if(next.length)return;updateState({...state,currentUser:{...state.currentUser,[key]:items},editedSkills:wanted?state.editedSkills:items,onboardingStep:wanted?"complete":"learn"});navigate(wanted?"#/onboarding/complete":"#/onboarding/learn");};
+      return <main className="page"><section className="onboarding-card glass"><Progress step={wanted?3:2} language={language}/><h1 className="section-title">{t(language,wanted?"wantedTitle":"offeredTitle")}</h1><form onSubmit={submit}><SkillEditor items={items} onChange={setItems} language={language} wanted={wanted}/>{errors.includes("required")&&<p className="form-error">{t(language,"skillRequired")}</p>}{errors.includes("duplicate")&&<p className="form-error">{t(language,"skillDuplicate")}</p>}<div className="button-row" style={{marginTop:22}}><Button type="button" variant="ghost" onClick={()=>navigate(wanted?"#/onboarding/share":"#/onboarding/profile")}>{t(language,"back")}</Button><Button type="submit">{t(language,"continue")} →</Button></div></form></section></main>;
+    }
+
+    function OnboardingCompletePage({ state, language, updateState }) {
+      const finish=()=>{updateState({...state,onboardingCompleted:true,onboardingStep:"complete"});navigate("#/discover");};
+      return <main className="page"><section className="onboarding-card glass"><Progress step={4} language={language}/><p className="eyebrow">SKILLSWAP READY</p><h1 className="page-title">{t(language,"onboardingDone")}</h1><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={state.currentUser.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={state.currentUser.skillsWanted} language={language}/></div><div className="button-row" style={{marginTop:24}}><Button variant="ghost" onClick={()=>navigate("#/onboarding/learn")}>{t(language,"back")}</Button><Button onClick={finish}>{t(language,"findPartners")} →</Button></div></section></main>;
+    }
+
+    function DiscoverPage({ state, language, updateState }) {
+      const user=state.currentUser; const matches=findComplementaryMatches(user); const peers=findPeerBuddies(user).slice(0,3); const [query,setQuery]=React.useState("");
+      const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP DISCOVER</p><h1 className="page-title">{t(language,"hello",{name:user.name.split(" ")[0]})}</h1><p className="page-subtitle">{t(language,"discoverLead")}</p></div></header><form className="search-hero glass" onSubmit={event=>{event.preventDefault();navigate("#/search",query?{q:query}:{})}}><label className="sr-only" htmlFor="discover-search">{t(language,"searchPeople")}</label><input id="discover-search" className="search-input" value={query} onChange={event=>setQuery(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} →</Button></form><div className="goal-row"><strong>{t(language,"yourGoals")}:</strong>{user.skillsWanted.map(item=><SkillTag key={item.id} skillId={item.skillId} language={language} onClick={()=>navigate("#/search",{q:item.skillId})}/>)}</div><SkillMarquee language={language} interactive/><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"recommended")}</h2><p className="section-note">{t(language,"recommendedNote")}</p></div><div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div></section><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"peerBuddies")}</h2><p className="section-note">{t(language,"peerNote")}</p></div><div className="peer-grid">{peers.map(peer=><article className="peer-card glass" key={peer.user.id}><Avatar user={peer.user}/><div><h3 className="user-name">{peer.user.name}</h3><p>{t(language,"sameLevel",{skill:getSkillName(peer.sharedSkillIds[0],language)})}</p><button className="brand" type="button" onClick={()=>navigate(`#/people/${peer.user.id}`)}>{t(language,"viewProfile")} →</button></div></article>)}</div></section><SkillLoopCard language={language}/></main>;
+    }
+
+    function SkillLoopCard({ language }) {
+      const edges=SKILL_LOOP.edges;
+      const people=[getUserById(edges[0].teacherId),getUserById(edges[0].learnerId),getUserById(edges[1].learnerId)];
+      return <section className="section loop-card"><div className="loop-head"><div><p className="eyebrow">SKILLLOOP</p><h2 className="section-title">{t(language,"skillLoop")}</h2></div><span className="demo-chip">{t(language,"demoMatch")}</span></div><div className="loop-flow">{people.map((person,index)=><React.Fragment key={person.id}><div className="loop-person"><Avatar user={person}/><strong>{person.name}</strong></div>{index<2&&<div className="loop-arrow">→<small>{getSkillName(edges[index].skillId,language)}</small></div>}</React.Fragment>)}</div><p className="loop-return">↩ {getUserById(edges[2].teacherId).name} → {getUserById(edges[2].learnerId).name} · {getSkillName(edges[2].skillId,language)}</p><p><strong>{t(language,"sharedTime")}:</strong> {localized(SKILL_LOOP.sharedTime,language)}</p></section>;
+    }
+
+    function SearchPage({ route, state, language, updateState }) {
+      const filters={q:route.query.q||"",level:route.query.level||"",city:route.query.city||"",lang:route.query.lang||"",sort:route.query.sort||"best"};
+      let users=filterUsers(MOCK_USERS,filters,language); if(filters.sort==="best") users=users.map(user=>({user,match:scoreComplementaryMatch(state.currentUser,user)})).sort((a,b)=>b.match.score-a.match.score||a.user.id.localeCompare(b.user.id)).map(item=>item.user);
+      const setFilter=(key,value)=>navigate("#/search",{...filters,[key]:value}); const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header><section className="filter-bar glass"><label className="field"><span className="sr-only">{t(language,"search")}</span><input className="input" value={filters.q} onChange={event=>setFilter("q",event.target.value)} placeholder={t(language,"searchPlaceholder")}/></label><select className="select" aria-label={t(language,"filterLevel")} value={filters.level} onChange={event=>setFilter("level",event.target.value)}><option value="">{t(language,"filterLevel")}</option>{SKILL_LEVELS.map(level=><option value={level} key={level}>{levelLabel(level,language)}</option>)}</select><select className="select" aria-label={t(language,"filterCity")} value={filters.city} onChange={event=>setFilter("city",event.target.value)}><option value="">{t(language,"filterCity")}</option>{[...new Set(MOCK_USERS.map(user=>user.city))].map(city=><option key={city}>{city}</option>)}</select><select className="select" aria-label={t(language,"filterLanguage")} value={filters.lang} onChange={event=>setFilter("lang",event.target.value)}><option value="">{t(language,"filterLanguage")}</option><option value="zh">中文</option><option value="en">English</option></select><select className="select" aria-label={t(language,"sortBest")} value={filters.sort} onChange={event=>setFilter("sort",event.target.value)}><option value="best">{t(language,"sortBest")}</option><option value="name">{t(language,"sortName")}</option></select><Button small variant="light" onClick={()=>navigate("#/search")}>{t(language,"resetFilters")}</Button></section><p className="result-count" aria-live="polite">{t(language,"results",{count:users.length})}</p>{users.length?<div className="card-grid">{users.map(user=>{const match=scoreComplementaryMatch(state.currentUser,user);return <UserCard key={user.id} user={user} match={match.score?match:null} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>})}</div>:<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</main>;
+    }
+
+    function SwapRequestModal({ target, state, language, updateState, onClose }) {
+      const compatibleWanted=target.skillsOffered.find(item=>state.currentUser.skillsWanted.some(wanted=>wanted.skillId===item.skillId))||target.skillsOffered[0];
+      const compatibleOffer=state.currentUser.skillsOffered.find(item=>target.skillsWanted.some(wanted=>wanted.skillId===item.skillId))||state.currentUser.skillsOffered[0];
+      const [offered,setOffered]=React.useState(compatibleOffer?.skillId||""); const [wanted,setWanted]=React.useState(compatibleWanted?.skillId||""); const [message,setMessage]=React.useState(""); const [result,setResult]=React.useState(null);
+      const submit=event=>{event.preventDefault();const next=createSwapRequest(state.sentRequests,target.id,offered,wanted);updateState({...state,sentRequests:next.requests});setResult(next.created?"success":"exists");};
+      return <Modal title={t(language,"requestTitle")} onClose={onClose}>{result&&<div className="notice" role="status">{t(language,result==="success"?"requestSuccess":"requestExists")}</div>}<form className="modal-form" onSubmit={submit}><label className="field"><span>{t(language,"iCanOffer")}</span><select className="select" value={offered} onChange={event=>setOffered(event.target.value)}>{state.currentUser.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"iWantLearn")}</span><select className="select" value={wanted} onChange={event=>setWanted(event.target.value)}>{target.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"optionalMessage")}</span><textarea className="textarea" value={message} onChange={event=>setMessage(event.target.value)}/></label><div className="button-row"><Button type="button" variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"send")}</Button>{result&&<Button type="button" variant="light" onClick={()=>{onClose();navigate("#/matches")}}>{t(language,"viewMatches")}</Button>}</div></form></Modal>;
+    }
+
+    function PersonProfilePage({ route, state, language, updateState }) {
+      const user=getUserById(route.params.id); const [open,setOpen]=React.useState(false); if(!user)return <EmptyState title={t(language,"userNotFound")} body={t(language,"userNotFoundBody")} actionLabel={t(language,"backDiscover")} onAction={()=>navigate("#/discover")}/>;
+      const match=scoreComplementaryMatch(state.currentUser,user); const backHash=route.query.from||"#/discover"; const save=()=>updateState({...state,favorites:toggleFavorite(state.favorites,user.id)});
+      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p></div><div className="button-row"><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button><Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button></div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>{open&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
+    }
+
+    function MatchesPage({ state, language, updateState }) {
+      const [tab,setTab]=React.useState("suggested"); const matches=findComplementaryMatches(state.currentUser); const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header><div className="tabs" role="tablist">{[["suggested","suggested"],["requests","requests"],["connections","connections"]].map(([id,key])=><button role="tab" aria-selected={tab===id} className={`tab ${tab===id?"active":""}`} key={id} onClick={()=>setTab(id)}>{t(language,key)}</button>)}</div>{tab==="suggested"&&<div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div>}{tab==="requests"&&<section><h2>{t(language,"incomingRequests")}</h2><EmptyState title={t(language,"noRequests")} body={t(language,"peerNote")}/><h2 style={{marginTop:28}}>{t(language,"sentRequests")}</h2>{state.sentRequests.length?<div className="request-list">{state.sentRequests.map(request=>{const user=getUserById(request.targetUserId);return <article className="request-row glass" key={request.id}><div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user?.name}</h3><p className="user-meta">{getSkillName(request.offeredSkillId,language)} ↔ {getSkillName(request.requestedSkillId,language)}</p></div></div><span className="match-badge">● {t(language,"pending")}</span></article>})}</div>:<EmptyState title={t(language,"noRequests")} body={t(language,"recommendedNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>}{tab==="connections"&&<section>{state.connections.length?<div className="request-list">{state.connections.map(id=>{const user=getUserById(id);return <article className="request-row glass" key={id}><div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user?.name}</h3><p className="user-meta">{t(language,"connected")}</p></div></div><Button disabled variant="light">{t(language,"startChat")} · {t(language,"messagingSoon")}</Button></article>})}</div>:<EmptyState title={t(language,"noConnections")} body={t(language,"peerNote")}/>}</section>}</main>;
+    }
+
+    function CurrentProfilePage({ state, language, updateState }) {
+      const [editing,setEditing]=React.useState(false); const [form,setForm]=React.useState(()=>cloneData(state.currentUser)); const [notice,setNotice]=React.useState(false);
+      const cancel=()=>{setForm(cloneData(state.currentUser));setEditing(false);}; const save=event=>{event.preventDefault();updateState({...state,currentUser:form,editedSkills:form.skillsOffered});setNotice(true);setEditing(false);};
+      if(editing)return <main className="page"><section className="onboarding-card glass"><h1 className="section-title">{t(language,"editProfile")}</h1><form className="form-grid" onSubmit={save}><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>{t(language,"city")}</span><input className="input" value={form.city} onChange={event=>setForm({...form,city:event.target.value})}/></label><label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(form.bio,language)} onChange={event=>setForm({...form,bio:{...form.bio,[language]:event.target.value}})}/></label><div className="span-2"><h2>{t(language,"teachSection")}</h2><SkillEditor items={form.skillsOffered} onChange={items=>setForm({...form,skillsOffered:items})} language={language}/></div><div className="span-2"><h2>{t(language,"learnSection")}</h2><SkillEditor items={form.skillsWanted} onChange={items=>setForm({...form,skillsWanted:items})} language={language} wanted/></div><div className="button-row span-2"><Button type="button" variant="ghost" onClick={cancel}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"saveChanges")}</Button></div></form></section></main>;
+      const user=state.currentUser; return <main className="page">{notice&&<p className="notice" role="status">{t(language,"profileSaved")}</p>}<section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})}</p><p>{localized(user.bio,language)}</p></div><div className="button-row"><Button onClick={()=>{setNotice(false);setEditing(true)}}>{t(language,"editProfile")}</Button><Button variant="ghost" onClick={resetDemo}>{t(language,"resetDemo")}</Button></div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><p className="section-note" style={{marginTop:18}}>{t(language,"demoSafety")}</p></main>;
+    }
+
+    function NotFoundPage({ language }) { return <main className="page"><EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"backHome")} onAction={()=>navigate("#/")}/></main>; }
+
+    /* 11. ErrorBoundary */
+    class ErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { error: null };
+      }
+      static getDerivedStateFromError(error) { return { error }; }
+      componentDidCatch(error, info) { console.error("SkillSwap render error", error, info); }
+      render() {
+        return this.state.error
+          ? <RecoveryScreen onReload={() => window.location.reload()} onReset={resetDemo} />
+          : this.props.children;
+      }
+    }
+
+    /* 12. App */
+    function App() {
+      const [state, setState] = React.useState(() => loadState());
+      const route = useHashRoute();
+      const updateState = React.useCallback(next => {
+        setState(current => normalizeState(typeof next === "function" ? next(current) : next));
+      }, []);
+      const language = state.language;
+
+      React.useEffect(() => {
+        saveState(state);
+        document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+      }, [state, language]);
+
+      React.useEffect(() => {
+        const redirect = guardRoute(route, state);
+        if (redirect && window.location.hash !== redirect) window.location.hash = redirect;
+      }, [route, state]);
+
+      React.useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [route.path]);
+
+      const redirect = guardRoute(route, state);
+      if (redirect) return null;
+
+      const toggleLanguage = () => setState(current => ({ ...current, language: current.language === "zh" ? "en" : "zh" }));
+      const demoLogin = () => { setState(current => loginAsDemoUser(current)); navigate("#/discover"); };
+      const signup = () => {
+        const newUser = {
+          id: "local-user", name: "", age: 18, city: "", languages: ["zh"], avatar: "",
+          bio: { zh: "", en: "" }, skillsOffered: [], skillsWanted: []
+        };
+        setState(current => normalizeState({ ...current, isAuthenticated: true, currentUser: newUser, onboardingCompleted: false, onboardingStep: "profile" }));
+        navigate("#/onboarding/profile");
+      };
+
+      if (route.name === "landing") return <LandingPage language={language} onLanguage={toggleLanguage} onDemo={demoLogin}/>;
+
+      let page;
+      if (route.name === "login") page = <LoginPage language={language} onDemo={demoLogin}/>;
+      else if (route.name === "signup") page = <SignupPage language={language} onSignup={signup}/>;
+      else if (route.name === "onboarding-profile") page = <ProfileOnboardingPage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "onboarding-share") page = <SkillOnboardingPage key="share-skills" state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "onboarding-learn") page = <SkillOnboardingPage key="learn-skills" state={state} language={language} updateState={updateState} wanted/>;
+      else if (route.name === "onboarding-complete") page = <OnboardingCompletePage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "search") page = <SearchPage route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "matches") page = <MatchesPage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "profile") page = <CurrentProfilePage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "person") page = <PersonProfilePage route={route} state={state} language={language} updateState={updateState}/>;
+      else page = <NotFoundPage language={language}/>;
+
+      const publicOrOnboarding = ["login","signup"].includes(route.name) || route.name.startsWith("onboarding-");
+      return <AppShell language={language} routeName={route.name} onLanguage={toggleLanguage} showNavigation={state.isAuthenticated && state.onboardingCompleted && !publicOrOnboarding}>{page}</AppShell>;
+    }
+
+    /* 13. React createRoot entry point */
+    if (window.React && window.ReactDOM && window.Babel) {
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        <ErrorBoundary>{SELF_TEST_MODE ? <SelfTestReport /> : <App />}</ErrorBoundary>
+      );
+    }
+  </script>
+</body>
+</html>
