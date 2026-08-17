@@ -1,4 +1,4 @@
-# SkillSwap 4.0
+# SkillSwap v4.2
 
 一个可直接演示的双语技能交换前端：分享自己会的技能、按地点发现伙伴、发起技能交换、与已连接伙伴聊天，并通过自适应测评认证技能水平。
 
@@ -6,13 +6,13 @@
 
 ## 本地运行
 
-项目无需安装依赖，所有产品代码都在根目录的 `index.html` 中。为保证 CDN 与 Hash 路由正常工作，请在仓库目录运行静态服务器：
+项目无需安装依赖，v4.2 产品代码位于根目录的 `v4.2.html`；`index.html` 作为历史版本保留。为保证 CDN 与 Hash 路由正常工作，请在仓库目录运行静态服务器：
 
 ```bash
 python3 -m http.server 4173
 ```
 
-然后打开 `http://localhost:4173/`。首页保留登录/创建账号入口；使用 Daniel 演示账号可体验 Discover、Search、Matches、Chat、技能测评与 Settings。
+然后打开 `http://localhost:4173/v4.2.html`。首页保留登录/创建账号入口；使用 Daniel 演示账号可体验 Discover、Search、Matches、Chat、技能测评与 Settings。
 
 ## 功能亮点
 
@@ -26,8 +26,8 @@ python3 -m http.server 4173
 - Settings 以分组列表呈现资料、技能、通知、隐私、收藏、帮助反馈与登出；可约时间/地点使用按周日程，可点选小时格或新增连续时段并高亮显示；所有状态保存在本地 `skillswap-mvp-v1` 命名空间。
 - 本地头像仅接受 JPEG、PNG、WebP，原文件上限 5 MB；保存前裁切为 256×256 JPEG 预览数据。
 - 桌面/平板使用五项胶囊气泡导航，移动端使用五项底部导航；Hash 路由和本地状态均可恢复，“重置演示”只删除 SkillSwap 自己的数据。
-- 内置自测页：`http://localhost:4173/?selftest=1`。
-- 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0`、`v3.0` 保留历史基线，v4.0 合并版发布在同名分支。
+- 内置自测页：`http://localhost:4173/v4.2.html?selftest=1`。
+- 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0`、`v3.0` 保留历史基线，当前正式版本为 `v4.2`。
 
 ## 技术结构
 

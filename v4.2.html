@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e89bb1">
-  <meta name="description" content="SkillSwap — 学你所爱，分享你所会。">
-  <meta name="application-version" content="4.2.0">
+  <meta name="description" content="SkillSwap v4.2 — 学你所爱，分享你所会。">
+  <meta name="application-version" content="v4.2">
   <title>SkillSwap v4.2</title>
   <style>
     /* 1. Design tokens */
@@ -627,7 +627,7 @@
         whyMatch: "为什么适合交换",
         demoLabel: "前端演示数据",
         localNotice: "所有资料仅保存在此浏览器。",
-        landingEyebrow: "技能交换社区 · 3.0",
+        landingEyebrow: "技能交换社区 · v4.2",
         landingTitleA: "交换技能，",
         landingTitleB: "遇见同路人。",
         landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
@@ -778,7 +778,7 @@
         whyMatch: "Why you match",
         demoLabel: "Frontend demo data",
         localNotice: "Everything is stored only in this browser.",
-        landingEyebrow: "Skill exchange community · 3.0",
+        landingEyebrow: "Skill exchange community · v4.2",
         landingTitleA: "Trade skills,",
         landingTitleB: "meet your people.",
         landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
@@ -2165,7 +2165,7 @@
       assert(result.request.meetingPolicy === "public-place", "Public-place policy was not persisted");
     });
 
-    test("v4 chat and skill assessment routes parse and guard", () => {
+    test("v4.2 chat and skill assessment routes parse and guard", () => {
       const chat=parseHash("#/chat/sarah-01?from=%23%2Fchat");
       const assessment=parseHash("#/skill-test/python");
       assert(chat.name==="chat-room"&&chat.params.userId==="sarah-01"&&chat.query.from==="#/chat", "Chat room route failed");
@@ -2173,7 +2173,7 @@
       assert(guardRoute(chat,createInitialState())==="#/login", "Logged-out chat route was not guarded");
     });
 
-    test("legacy v3 state receives v4 feature defaults", () => {
+    test("legacy v3 state receives v4.2 feature defaults", () => {
       const state=normalizeState({version:1,language:"zh",connections:["sarah-01","sarah-01"]});
       assert(Object.keys(state.conversations).length===0, "Conversation default missing");
       assert(Object.keys(state.skillAssessments).length===0, "Assessment default missing");
