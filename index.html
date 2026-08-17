@@ -10,7 +10,7 @@
     /* 1. Design tokens */
     :root {
       --ink: #181818; --paper: #fff9fa; --deep-rose: #b85f7d; --rose: #d97091;
-      --soft-rose: #eba0b5; --blush: #f7dce3; --glass: rgba(255,255,255,.58);
+      --soft-rose: #eba0b5; --blush: #f7dce3; --tag-cream: #f5dfe5; --glass: rgba(255,255,255,.58);
       --line: rgba(255,255,255,.66); --muted: rgba(24,24,24,.64); --focus: #6f2243;
       --danger: #7e1838; --success: #17633c; --shadow: 0 26px 80px rgba(77,28,48,.16);
       --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -117,17 +117,21 @@
     .black-card { min-height: 122px; padding: 22px; border-radius: 28px; background: var(--ink); color: white; display: flex; align-items: end; justify-content: space-between; }
     .black-card h2 { margin: 0; font-size: 30px; font-weight: 500; letter-spacing: -.04em; }
     .black-card p { margin: 4px 0 0; color: rgba(255,255,255,.55); }
+    .community-stats { align-items: center; gap: 20px; }
+    .stat-row { display: flex; align-items: end; gap: 14px; text-align: right; }
+    .stat-item { display: grid; gap: 3px; }
+    .stat-item strong { font-size: 22px; }
+    .stat-item span { color: rgba(255,255,255,.62); font-size: 11px; white-space: nowrap; }
     .marquee-zone { width: min(1180px,100%); margin: 22px auto 0; display: grid; gap: 10px; }
     .marquee { overflow: hidden; border-radius: 999px; }
-    .marquee-track { width: max-content; display: flex; gap: 10px; padding: 3px 0; animation: flow-left 26s linear infinite; }
-    .marquee.reverse .marquee-track { animation: flow-right 32s linear infinite; }
-    .marquee:hover .marquee-track, .marquee:focus-within .marquee-track { animation-play-state: paused; }
-    @keyframes flow-left { to { transform: translateX(-50%); } }
-    @keyframes flow-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
-    .skill-tag { min-height: 42px; padding: 10px 17px; border: 1px solid rgba(255,255,255,.6); border-radius: 999px; background: rgba(255,255,255,.7); color: var(--ink); font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .marquee-track { width: max-content; display: flex; gap: 10px; padding: 3px 0; animation: marquee 33s linear infinite; }
+    .marquee.reverse .marquee-track { animation-duration: 40s; animation-direction: reverse; }
+    .marquee-zone:hover .marquee-track, .marquee-zone:focus-within .marquee-track { animation-play-state: paused; }
+    @keyframes marquee { to { transform: translateX(-50%); } }
+    .skill-tag { min-height: 42px; padding: 10px 17px; border: 1px solid rgba(255,255,255,.82); border-radius: 999px; background: var(--tag-cream); color: #241d20; font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .skill-tag[data-tone="1"] { background: #f8e9ed; } .skill-tag[data-tone="2"] { background: #e9c1ce; }
+    .skill-tag[data-tone="3"] { background: #fff7f2; } .skill-tag[data-tone="4"] { background: #d7a0b5; }
     button.skill-tag:hover { background: var(--ink); color: white; }
-    .skill-tag.tech { background: rgba(222,211,242,.88); } .skill-tag.creative { background: rgba(255,220,204,.88); }
-    .skill-tag.sports { background: rgba(250,183,178,.88); } .skill-tag.lifestyle { background: rgba(241,224,190,.9); }
 
     /* 7. Auth / onboarding */
     .auth-layout { width: min(1040px,100%); min-height: calc(100vh - 150px); margin: 0 auto; display: grid; grid-template-columns: .92fr 1.08fr; gap: 18px; }
@@ -171,20 +175,36 @@
     .peer-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
     .peer-card { padding:18px; border-radius:24px; display:grid; grid-template-columns:auto 1fr; gap:13px; align-items:center; }
     .peer-card p { margin:4px 0 0; color:var(--muted); font-size:13px; }
-    .loop-card { padding:clamp(22px,4vw,42px); border-radius:32px; background:var(--ink); color:white; }
-    .loop-head { display:flex; align-items:start; justify-content:space-between; gap:14px; }
     .demo-chip { padding:8px 12px; border:1px solid rgba(255,255,255,.26); border-radius:999px; font-size:11px; font-weight:800; }
-    .loop-flow { margin:30px 0; display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:13px; align-items:center; }
-    .loop-person { min-width:0; padding:18px; border-radius:23px; background:rgba(255,255,255,.1); text-align:center; }
-    .loop-person .avatar { margin:0 auto 10px; }
-    .loop-arrow { color:#f2a6ba; font-weight:850; text-align:center; }
-    .loop-arrow small { display:block; max-width:90px; color:rgba(255,255,255,.6); font-weight:600; }
-    .loop-return { margin:0 0 22px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.1); text-align:center; }
+    .trending-card { padding:22px; border-radius:28px; background:var(--ink); color:white; }
+    .trending-card .section-head { align-items:center; }
+    .trend-list { display:grid; gap:5px; margin-top:14px; }
+    .trend-row { position:relative; width:100%; overflow:hidden; display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border:0; border-radius:12px; background:rgba(255,255,255,.1); color:inherit; text-align:left; cursor:pointer; }
+    .trend-row span { position:relative; z-index:1; font-size:13px; }
+    .trend-row span:last-of-type { color:rgba(255,255,255,.72); }
+    .trend-row i { position:absolute; inset:0 auto 0 0; background:rgba(242,166,186,.28); }
 
     /* 9. Search / profile / matches */
-    .filter-bar { padding:16px; border-radius:24px; display:grid; grid-template-columns:2fr repeat(4,1fr) auto; gap:10px; }
+    .filter-bar { padding:16px; border-radius:24px; display:grid; grid-template-columns:2fr repeat(5,1fr) auto; gap:10px; }
     .filter-bar .input, .filter-bar .select { min-height:46px; }
     .result-count { margin:20px 0 12px; font-weight:800; }
+    .search-starters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .starter-card { min-height:170px; padding:20px; border-radius:24px; }
+    .starter-card h2 { margin:0 0 14px; font-size:20px; }
+    button.mini-pill { border:0; color:var(--ink); cursor:pointer; }
+    .search-result-card { display:grid; grid-template-rows:auto auto auto 1fr; }
+    .result-card-footer { align-self:end; margin-top:auto; padding-top:16px; }
+    .rating-line { margin:10px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
+    .match-badge.teaches { background:var(--deep-rose); }
+    .match-badge.filtered { background:#67535c; }
+    .contact-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .contact-card { min-width:0; padding:18px; border-radius:24px; display:grid; gap:14px; }
+    .contact-main { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; }
+    .contact-main h3 { margin:0 0 3px; font-size:20px; }
+    .contact-main p { margin:0; color:var(--muted); font-size:13px; }
+    .contact-status { max-width:150px; padding:6px 9px; border-radius:999px; background:var(--blush); color:var(--ink); font-size:11px; font-weight:800; text-align:center; }
+    .contact-skills { display:grid; gap:6px; color:var(--muted); font-size:13px; }
+    .contact-details { justify-self:start; }
     .profile-hero { padding:clamp(24px,5vw,48px); border-radius:32px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
     .profile-hero h1 { margin:0 0 6px; font-size:clamp(38px,6vw,66px); font-weight:500; letter-spacing:-.06em; }
     .profile-columns { margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
@@ -192,12 +212,16 @@
     .profile-skill { padding:14px 0; border-top:1px solid rgba(24,24,24,.1); }
     .profile-skill:first-of-type { border-top:0; }
     .profile-skill h3 { margin:0 0 4px; }
+    .profile-details { margin-top:18px; padding:24px; border-radius:26px; display:grid; grid-template-columns:1fr 1.2fr; gap:22px; }
+    .profile-details h2 { margin-top:0; }
+    .profile-details dl { margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .profile-details dl div { border-top:1px solid rgba(24,24,24,.1); padding-top:10px; }
+    .profile-details dt { color:var(--muted); font-size:12px; }
+    .profile-details dd { margin:4px 0 0; font-weight:750; }
+    .profile-details .rating-line { grid-column:1/-1; margin:0; }
     .why-card { margin-top:18px; padding:24px; border-radius:26px; background:var(--ink); color:white; }
     .why-list { display:grid; gap:10px; padding:0; list-style:none; }
     .why-list li { padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.1); }
-    .tabs { display:flex; gap:7px; margin-bottom:18px; overflow:auto; }
-    .tab { min-height:44px; padding:10px 17px; border:1px solid rgba(24,24,24,.1); border-radius:999px; background:rgba(255,255,255,.55); font-weight:800; white-space:nowrap; }
-    .tab.active { background:var(--ink); color:white; }
     .request-list { display:grid; gap:12px; }
     .request-row { padding:17px; border-radius:22px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
     .empty { padding:44px 24px; border-radius:28px; text-align:center; }
@@ -217,6 +241,7 @@
       .card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .filter-bar { grid-template-columns:2fr repeat(2,1fr); }
       .filter-bar > :nth-child(n+4) { grid-row:2; }
+      .search-starters { grid-template-columns:1fr 1fr; }
       .hero-title { font-size:clamp(62px,10vw,102px); }
     }
     @media (max-width: 767px) {
@@ -230,19 +255,17 @@
       .hero-title span { margin-left:0; }
       .hero-side { grid-template-columns:1fr 1fr; grid-template-rows:auto; }
       .gallery-card { min-height:310px; } .black-card { min-height:310px; align-items:flex-end; }
-      .landing-actions .desktop-only { display:none; }
+      .community-stats { align-items:center; }
       .page-head, .section-head { align-items:start; flex-direction:column; }
       .page-title { font-size:clamp(46px,16vw,72px); }
       .section { margin-top:46px; }
-      .card-grid, .peer-grid, .profile-columns { grid-template-columns:1fr; }
+      .card-grid, .peer-grid, .contact-grid, .profile-columns, .profile-details { grid-template-columns:1fr; }
+      .search-starters { grid-template-columns:1fr; }
       .user-card { min-height:0; }
       .filter-bar, .form-grid, .skill-editor-grid { grid-template-columns:1fr; }
       .filter-bar > :nth-child(n), .span-2 { grid-column:auto; grid-row:auto; }
       .profile-hero { grid-template-columns:auto 1fr; }
       .profile-hero > .button-row { grid-column:1/-1; }
-      .loop-flow { grid-template-columns:1fr; }
-      .loop-arrow { transform:rotate(90deg); min-height:56px; }
-      .loop-arrow small { display:none; }
       .auth-art { min-height:230px; } .auth-art::after { width:190px; height:190px; }
       .auth-card { min-height:500px; }
       .search-hero { grid-template-columns:1fr; }
@@ -250,13 +273,15 @@
       .bottom-link { min-height:54px; padding:6px 3px; border:0; border-radius:16px; background:transparent; color:var(--muted); display:grid; place-items:center; gap:1px; font-size:10px; font-weight:800; }
       .bottom-link span:first-child { font-size:18px; }
       .bottom-link.active { background:var(--ink); color:white; }
-      .marquee-track { animation-duration:38s; } .marquee.reverse .marquee-track { animation-duration:44s; }
       .modal-backdrop { padding:10px; align-items:end; }
       .modal { width:100%; max-height:88vh; border-radius:26px 26px 14px 14px; }
+      .avatar-picker .btn { min-height:44px; }
     }
     @media (max-width: 520px) {
       .hero-side { grid-template-columns:1fr; }
       .gallery-card { min-height:350px; } .black-card { min-height:130px; }
+      .community-stats { align-items:flex-start; flex-direction:column; }
+      .stat-row { width:100%; justify-content:space-between; text-align:left; }
       .landing-nav { margin-bottom:14px; }
       .hero-title span { margin-left:7%; }
       .button-row .btn { flex:1; }
@@ -337,7 +362,7 @@
         landingTitleB: "遇见同路人。",
         landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
         exploreDemo: "直接体验完整演示",
-        socialGallery: "技能社交画廊",
+        socialGallery: "流动技能标签",
         realPeople: "真实的人，清晰的交换理由",
         members: "位演示伙伴",
         welcomeBack: "欢迎回来",
@@ -389,9 +414,6 @@
         recommendedNote: "根据真实技能方向与共同语言排序",
         peerBuddies: "同水平学习搭子",
         peerNote: "用相近节奏一起练习",
-        skillLoop: "三人技能环",
-        demoMatch: "演示匹配",
-        sharedTime: "共同时间",
         filterLevel: "所有水平",
         filterCity: "所有城市",
         filterLanguage: "所有语言",
@@ -435,7 +457,8 @@
         notFoundBody: "这个链接可能已过期，或页面尚未加入演示。",
         userNotFoundBody: "该演示用户不存在或已被移除。",
         searchPlaceholder: "例如：摄影、Python、烹饪…",
-        resetFilters: "重置筛选"
+        resetFilters: "重置筛选",
+        settings:"设置",country:"国家",filterCountry:"所有国家",chooseCountryFirst:"请先选择国家",chooseCity:"请选择城市",sortNewest:"最近发布",sortLiked:"最受好评",viewFullProfile:"查看完整资料",communityOverview:"社区概览",demoCommunityData:"演示社区数据",onlineNow:"人在线",totalUsers:"位用户",swapsToday:"今日交换",trendingSkills:"本周热门技能",demoTrend:"演示趋势",peopleSearching:"{count} 人正在寻找",recentSearches:"最近搜索",noRecentSearches:"搜索后会显示在这里",skillCategories:"技能分类",popularSearches:"热门关键词",canTeachSkill:"可以教你：{skill}",matchesFilters:"符合你的筛选条件",likedBy:"{count} 人好评",published:"发布于 {date}",complementaryMatches:"互补匹配",favoritePeople:"收藏的人",swapRequests:"交换请求",interests:"兴趣",availability:"可约时间",meetingPreference:"见面方式",reliability:"可靠度",joined:"加入时间",profileAndAvatar:"个人资料与头像",skillsAndGoals:"技能与学习目标",availabilityAndPlaces:"可约时间与地点",notificationSettings:"通知设置",privacyAndSafety:"隐私与安全",helpAndFeedback:"帮助与反馈",logout:"退出登录",logoutConfirm:"退出当前账号？资料会保留在本机。",profileVisibility:"资料可见性",showOnlineStatus:"显示在线状态",publicPlacesOnly:"仅允许公共地点",publicPlacePolicy:"此请求将仅安排在公共地点。",communityOwnerPreview:"你正在查看社区公开资料",privateOwnerPreview:"你正在查看仅自己可见的资料预览",onlinePreview:"在线（演示）",settingsSaved:"已保存：{section}",primaryNavigation:"主导航",mobileNavigation:"移动端主导航",closeDialog:"关闭对话框",feedbackPlaceholder:"告诉我们哪里可以做得更好",feedbackSaved:"反馈已保存在本机演示中。",avatarTypeError:"请选择 JPEG、PNG 或 WebP 图片。",avatarSizeError:"图片不能超过 5 MB。",avatarProcessError:"无法处理这张图片，请换一张。",changeAvatar:"更换头像",category_technology:"技术",category_creative:"创作",category_academic:"学习",category_sports:"运动",category_lifestyle:"生活"
       }),
       en: Object.freeze({
         brand: "SkillSwap",
@@ -477,7 +500,7 @@
         landingTitleB: "meet your people.",
         landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
         exploreDemo: "Explore the full demo",
-        socialGallery: "Skill social gallery",
+        socialGallery: "Flowing skill tags",
         realPeople: "Real people, clear exchange reasons",
         members: "demo partners",
         welcomeBack: "Welcome back",
@@ -529,9 +552,6 @@
         recommendedNote: "Ranked by real skill direction and shared language",
         peerBuddies: "Same-level peer buddies",
         peerNote: "Practice together at a comfortable pace",
-        skillLoop: "Three-person SkillLoop",
-        demoMatch: "Demo match",
-        sharedTime: "Shared time",
         filterLevel: "All levels",
         filterCity: "All cities",
         filterLanguage: "All languages",
@@ -575,7 +595,8 @@
         notFoundBody: "This link may have expired, or the page is not part of the demo yet.",
         userNotFoundBody: "That demo user does not exist or has been removed.",
         searchPlaceholder: "Try Photography, Python, Cooking…",
-        resetFilters: "Reset filters"
+        resetFilters: "Reset filters",
+        settings:"Settings",country:"Country",filterCountry:"All countries",chooseCountryFirst:"Choose a country first",chooseCity:"Choose a city",sortNewest:"Newest",sortLiked:"Most liked",viewFullProfile:"View full profile",communityOverview:"Community overview",demoCommunityData:"Demo community data",onlineNow:"online",totalUsers:"users",swapsToday:"swaps today",trendingSkills:"Trending this week",demoTrend:"Demo trend",peopleSearching:"{count} people searching",recentSearches:"Recent searches",noRecentSearches:"Your searches will appear here",skillCategories:"Skill categories",popularSearches:"Popular searches",canTeachSkill:"Can teach you: {skill}",matchesFilters:"Matches your filters",likedBy:"Liked by {count}",published:"Published {date}",complementaryMatches:"Complementary matches",favoritePeople:"Saved people",swapRequests:"Swap requests",interests:"Interests",availability:"Availability",meetingPreference:"Meeting preference",reliability:"Reliability",joined:"Joined",profileAndAvatar:"Profile & avatar",skillsAndGoals:"Skills & learning goals",availabilityAndPlaces:"Availability & places",notificationSettings:"Notifications",privacyAndSafety:"Privacy & safety",helpAndFeedback:"Help & feedback",logout:"Log out",logoutConfirm:"Log out now? Your profile stays on this device.",profileVisibility:"Profile visibility",showOnlineStatus:"Show online status",publicPlacesOnly:"Public places only",publicPlacePolicy:"This request will use public meeting places only.",communityOwnerPreview:"You are viewing your community profile",privateOwnerPreview:"You are viewing your private owner preview",onlinePreview:"Online (demo)",settingsSaved:"Saved: {section}",primaryNavigation:"Primary navigation",mobileNavigation:"Mobile primary navigation",closeDialog:"Close dialog",feedbackPlaceholder:"Tell us what could be better",feedbackSaved:"Feedback saved in this local demo.",avatarTypeError:"Choose a JPEG, PNG, or WebP image.",avatarSizeError:"Images must be 5 MB or smaller.",avatarProcessError:"We could not process that image. Try another one.",changeAvatar:"Change avatar",category_technology:"Technology",category_creative:"Creative",category_academic:"Learning",category_sports:"Sports",category_lifestyle:"Lifestyle"
       })
     });
 
@@ -591,6 +612,33 @@
     /* 3. Mock / seed data */
     const SKILL_LEVELS = Object.freeze(["complete-beginner", "beginner", "intermediate", "advanced"]);
     const CATEGORIES = Object.freeze(["academic", "technology", "creative", "sports", "lifestyle"]);
+    const COUNTRIES = Object.freeze([
+      { id:"cn", zh:"中国", en:"China", cities:[
+        ["beijing","北京","Beijing"], ["shanghai","上海","Shanghai"], ["tianjin","天津","Tianjin"],
+        ["guangzhou","广州","Guangzhou"], ["shenzhen","深圳","Shenzhen"], ["hangzhou","杭州","Hangzhou"],
+        ["chengdu","成都","Chengdu"], ["nanjing","南京","Nanjing"], ["wuhan","武汉","Wuhan"], ["xian","西安","Xi'an"]
+      ]},
+      { id:"us", zh:"美国", en:"United States", cities:[["new-york","纽约","New York"],["san-francisco","旧金山","San Francisco"],["los-angeles","洛杉矶","Los Angeles"],["boston","波士顿","Boston"],["seattle","西雅图","Seattle"]] },
+      { id:"uk", zh:"英国", en:"United Kingdom", cities:[["london","伦敦","London"],["manchester","曼彻斯特","Manchester"],["edinburgh","爱丁堡","Edinburgh"]] },
+      { id:"ca", zh:"加拿大", en:"Canada", cities:[["toronto","多伦多","Toronto"],["vancouver","温哥华","Vancouver"],["montreal","蒙特利尔","Montreal"]] },
+      { id:"au", zh:"澳大利亚", en:"Australia", cities:[["sydney","悉尼","Sydney"],["melbourne","墨尔本","Melbourne"]] },
+      { id:"jp", zh:"日本", en:"Japan", cities:[["tokyo","东京","Tokyo"],["osaka","大阪","Osaka"]] },
+      { id:"kr", zh:"韩国", en:"South Korea", cities:[["seoul","首尔","Seoul"],["busan","釜山","Busan"]] },
+      { id:"sg", zh:"新加坡", en:"Singapore", cities:[["singapore","新加坡","Singapore"]] }
+    ].map(country => Object.freeze({...country, cities:Object.freeze(country.cities.map(([id,zh,en]) => Object.freeze({id,zh,en}))) })));
+
+    function getCountryById(id) { return COUNTRIES.find(country => country.id === id) || null; }
+    function getCitiesForCountry(countryId) { return getCountryById(countryId)?.cities || []; }
+
+    const EXTRA_SKILLS = [
+      ["ui-design","creative","UI 设计","UI Design"], ["product-design","creative","产品设计","Product Design"],
+      ["latte-art","lifestyle","咖啡拉花","Latte Art"], ["baking","lifestyle","烘焙","Baking"],
+      ["public-speaking","academic","公众演讲","Public Speaking"], ["tennis","sports","网球","Tennis"],
+      ["calligraphy","creative","书法","Calligraphy"], ["excel","technology","Excel","Excel"],
+      ["japanese","academic","日语","Japanese"], ["french","academic","法语","French"],
+      ["yoga","sports","瑜伽","Yoga"], ["illustration","creative","插画","Illustration"],
+      ["personal-finance","lifestyle","基础理财","Personal Finance"], ["pottery","creative","陶艺","Pottery"]
+    ];
     const SKILLS = Object.freeze([
       { id: "photography", category: "creative", zh: "摄影", en: "Photography" },
       { id: "chemistry", category: "academic", zh: "化学", en: "Chemistry" },
@@ -605,15 +653,38 @@
       { id: "arduino", category: "technology", zh: "Arduino", en: "Arduino" },
       { id: "writing", category: "academic", zh: "写作", en: "Writing" },
       { id: "basketball", category: "sports", zh: "篮球", en: "Basketball" },
-      { id: "planting", category: "lifestyle", zh: "植物养护", en: "Plant Care" }
+      { id: "planting", category: "lifestyle", zh: "植物养护", en: "Plant Care" },
+      ...EXTRA_SKILLS.map(([id,category,zh,en]) => ({id,category,zh,en}))
     ]);
+
+    const MARQUEE_ROWS=Object.freeze([
+      Object.freeze(["photography","python","cooking","guitar","chemistry","fitness","drawing","ui-design","latte-art","tennis","excel","japanese","yoga","personal-finance"]),
+      Object.freeze(["english","badminton","video-editing","arduino","writing","basketball","planting","product-design","baking","public-speaking","calligraphy","french","illustration","pottery"])
+    ]);
+    const COMMUNITY_STATS=Object.freeze({online:128,users:3842,swapsToday:46});
+
+    const PROFILE_LABELS=Object.freeze({
+      availability:{"weekday-evening":{zh:"工作日晚间",en:"Weekday evenings"},"sat-morning":{zh:"周六上午",en:"Saturday morning"},"sat-afternoon":{zh:"周六下午",en:"Saturday afternoon"},"sun-morning":{zh:"周日上午",en:"Sunday morning"},"sun-afternoon":{zh:"周日下午",en:"Sunday afternoon"},"sun-evening":{zh:"周日晚间",en:"Sunday evening"}},
+      meeting:{"public-place":{zh:"公共场所见面",en:"Meet in a public place"},online:{zh:"线上",en:"Online"}},
+      interests:{"street-photography":{zh:"街头摄影",en:"Street photography"},coffee:{zh:"咖啡",en:"Coffee"},"city-walks":{zh:"城市漫步",en:"City walks"},cooking:{zh:"烹饪",en:"Cooking"},basketball:{zh:"篮球",en:"Basketball"},markets:{zh:"市集",en:"Markets"},"indie-music":{zh:"独立音乐",en:"Indie music"},bands:{zh:"乐队",en:"Bands"},songwriting:{zh:"写歌",en:"Songwriting"},electronics:{zh:"电子制作",en:"Electronics"},coding:{zh:"编程",en:"Coding"},prototypes:{zh:"原型",en:"Prototypes"},plants:{zh:"植物",en:"Plants"},drawing:{zh:"绘画",en:"Drawing"},journaling:{zh:"手账",en:"Journaling"},debate:{zh:"辩论",en:"Debate"},languages:{zh:"语言",en:"Languages"},photography:{zh:"摄影",en:"Photography"},fitness:{zh:"健身",en:"Fitness"},science:{zh:"科学",en:"Science"},video:{zh:"视频",en:"Video"},"design-systems":{zh:"设计系统",en:"Design systems"},museums:{zh:"博物馆",en:"Museums"},tea:{zh:"茶",en:"Tea"},startups:{zh:"创业",en:"Startups"},food:{zh:"美食",en:"Food"},manga:{zh:"漫画",en:"Manga"},cafes:{zh:"咖啡馆",en:"Cafes"},travel:{zh:"旅行",en:"Travel"},wellness:{zh:"身心健康",en:"Wellness"},books:{zh:"阅读",en:"Books"},baking:{zh:"烘焙",en:"Baking"},data:{zh:"数据",en:"Data"},cycling:{zh:"骑行",en:"Cycling"},ceramics:{zh:"陶艺",en:"Ceramics"},chemistry:{zh:"化学",en:"Chemistry"},badminton:{zh:"羽毛球",en:"Badminton"}}
+    });
+    function profileLabel(group,id,language){return PROFILE_LABELS[group]?.[id]?.[language]||id;}
 
     const DEMO_USER = Object.freeze({
       id: "daniel",
       name: "Daniel Kim",
       age: 19,
       city: "Tianjin",
+      countryId: "cn",
+      cityId: "tianjin",
       languages: ["zh", "en"],
+      interests: ["chemistry", "fitness", "badminton"],
+      likes: 476,
+      publishedAt: "2026-08-10T08:00:00.000Z",
+      availability: ["weekday-evening", "sun-afternoon"],
+      meetingModes: ["public-place", "online"],
+      reliability: 99,
+      memberSince: "2025-10-12T00:00:00.000Z",
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&q=80",
       bio: {
         zh: "化学爱好者、健身常客，也一直在尝试学习新东西。",
@@ -631,7 +702,26 @@
       ]
     });
 
-    const MOCK_USERS = Object.freeze([
+    const EXISTING_USER_META=Object.freeze({
+      "alice-01":{countryId:"cn",cityId:"tianjin",interests:["street-photography","coffee","city-walks"],likes:328,publishedAt:"2026-08-14T09:30:00.000Z",availability:["sat-afternoon","sun-morning"],meetingModes:["public-place","online"],reliability:98,memberSince:"2026-03-18T00:00:00.000Z"},
+      "bob-01":{countryId:"cn",cityId:"beijing",interests:["cooking","basketball","markets"],likes:294,publishedAt:"2026-08-09T10:00:00.000Z",availability:["sat-morning","sun-afternoon"],meetingModes:["public-place"],reliability:95,memberSince:"2026-02-03T00:00:00.000Z"},
+      "mika-01":{countryId:"cn",cityId:"shanghai",interests:["indie-music","bands","songwriting"],likes:219,publishedAt:"2026-08-08T11:40:00.000Z",availability:["weekday-evening","sun-afternoon"],meetingModes:["online","public-place"],reliability:94,memberSince:"2026-05-12T00:00:00.000Z"},
+      "jun-01":{countryId:"kr",cityId:"seoul",interests:["electronics","coding","prototypes"],likes:451,publishedAt:"2026-08-15T13:15:00.000Z",availability:["weekday-evening","sat-afternoon"],meetingModes:["online"],reliability:99,memberSince:"2025-12-19T00:00:00.000Z"},
+      "lina-01":{countryId:"cn",cityId:"hangzhou",interests:["plants","drawing","journaling"],likes:187,publishedAt:"2026-08-06T08:50:00.000Z",availability:["sat-afternoon","sun-morning"],meetingModes:["public-place"],reliability:96,memberSince:"2026-06-01T00:00:00.000Z"},
+      "sarah-01":{countryId:"cn",cityId:"tianjin",interests:["debate","languages","photography"],likes:337,publishedAt:"2026-08-13T07:30:00.000Z",availability:["weekday-evening","sun-afternoon"],meetingModes:["public-place","online"],reliability:98,memberSince:"2026-01-08T00:00:00.000Z"},
+      "nora-01":{countryId:"cn",cityId:"tianjin",interests:["fitness","science","video"],likes:263,publishedAt:"2026-08-07T12:10:00.000Z",availability:["sat-morning","sun-morning"],meetingModes:["public-place","online"],reliability:97,memberSince:"2026-04-24T00:00:00.000Z"}
+    });
+
+    function seedSkill(owner,skillId,level,zh,en){return {id:`${owner}-${skillId}`,skillId,level,desc:{zh,en}};}
+    const EXTRA_USERS=Object.freeze([
+      {id:"leah-01",name:"Leah Xu",age:22,countryId:"cn",cityId:"hangzhou",languages:["zh","en"],interests:["design-systems","museums","tea"],likes:286,publishedAt:"2026-08-15T06:20:00.000Z",availability:["weekday-evening","sun-afternoon"],meetingModes:["public-place","online"],reliability:97,memberSince:"2026-02-11T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=500&q=80",bio:{zh:"产品设计师，喜欢把复杂流程整理得简单清楚。",en:"Product designer who enjoys making complex flows feel simple."},skillsOffered:[seedSkill("leah","ui-design","advanced","界面层级、组件和可用性。","Hierarchy, components, and usability."),seedSkill("leah","calligraphy","intermediate","硬笔基础和日常练习。","Pen calligraphy basics and daily practice."),seedSkill("leah","photography","intermediate","手机摄影和日常取景。","Mobile photography and everyday framing.")],skillsWanted:[seedSkill("leah-want","english","intermediate","练习更自然的工作表达。","Practice natural workplace conversation."),seedSkill("leah-want","tennis","complete-beginner","从握拍和正手开始。","Start with grip and forehand.")]},
+      {id:"omar-01",name:"Omar Khan",age:24,countryId:"uk",cityId:"london",languages:["en"],interests:["debate","startups","food"],likes:412,publishedAt:"2026-08-12T17:00:00.000Z",availability:["sat-morning","sun-evening"],meetingModes:["online","public-place"],reliability:99,memberSince:"2025-12-06T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=500&q=80",bio:{zh:"创业社群主持人，擅长把表达变得有结构。",en:"Startup community host who makes communication more structured."},skillsOffered:[seedSkill("omar","public-speaking","advanced","演讲结构和临场表达。","Speech structure and confident delivery."),seedSkill("omar","personal-finance","intermediate","个人预算和储蓄基础。","Personal budgeting and saving basics.")],skillsWanted:[seedSkill("omar-want","english","intermediate","希望练习更清晰的写作。","I want to sharpen my writing."),seedSkill("omar-want","cooking","beginner","想学三道简单中餐。","Learn three simple Chinese dishes.")]},
+      {id:"yuki-01",name:"Yuki Sato",age:20,countryId:"jp",cityId:"tokyo",languages:["ja","en"],interests:["manga","cafes","travel"],likes:365,publishedAt:"2026-08-16T03:10:00.000Z",availability:["weekday-evening","sat-afternoon"],meetingModes:["online","public-place"],reliability:96,memberSince:"2026-04-09T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=500&q=80",bio:{zh:"插画学生，也喜欢带朋友练习实用日语。",en:"Illustration student who enjoys helping friends practice useful Japanese."},skillsOffered:[seedSkill("yuki","japanese","advanced","旅行与日常会话。","Travel and everyday conversation."),seedSkill("yuki","illustration","advanced","角色造型和配色。","Character shapes and color choices.")],skillsWanted:[seedSkill("yuki-want","photography","beginner","想拍好夜间街景。","Learn better night street photos."),seedSkill("yuki-want","latte-art","complete-beginner","从牛奶打发开始。","Start with steaming milk.")]},
+      {id:"maya-01",name:"Maya Tremblay",age:23,countryId:"ca",cityId:"toronto",languages:["en","fr"],interests:["wellness","books","baking"],likes:244,publishedAt:"2026-08-11T14:45:00.000Z",availability:["sat-afternoon","sun-morning"],meetingModes:["online","public-place"],reliability:98,memberSince:"2026-01-22T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=500&q=80",bio:{zh:"双语编辑和瑜伽爱好者，喜欢温和但持续的学习。",en:"Bilingual editor and yoga enthusiast who values steady learning."},skillsOffered:[seedSkill("maya","french","advanced","法语发音和基础对话。","French pronunciation and basic conversation."),seedSkill("maya","yoga","intermediate","适合初学者的舒展练习。","Beginner-friendly mobility practice.")],skillsWanted:[seedSkill("maya-want","product-design","beginner","理解产品流程和原型。","Understand product flows and prototypes."),seedSkill("maya-want","baking","beginner","想掌握基础面包。","Learn a reliable basic loaf.")]},
+      {id:"ethan-01",name:"Ethan Brooks",age:25,countryId:"us",cityId:"san-francisco",languages:["en"],interests:["data","cycling","ceramics"],likes:521,publishedAt:"2026-08-13T20:00:00.000Z",availability:["weekday-evening","sat-morning"],meetingModes:["online","public-place"],reliability:99,memberSince:"2025-11-17T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=500&q=80",bio:{zh:"数据分析师，喜欢把实用工具教给第一次接触的人。",en:"Data analyst who enjoys teaching useful tools to first-time learners."},skillsOffered:[seedSkill("ethan","excel","advanced","公式、透视表和数据清理。","Formulas, pivots, and data cleanup."),seedSkill("ethan","python","intermediate","用 Python 自动化重复工作。","Automate repetitive work with Python.")],skillsWanted:[seedSkill("ethan-want","pottery","complete-beginner","想完成第一个小杯子。","Make my first small cup."),seedSkill("ethan-want","public-speaking","beginner","减少演示时的紧张。","Feel calmer during presentations.")]}
+    ]);
+
+    const BASE_MOCK_USERS = Object.freeze([
       {
         id: "alice-01", name: "Alice Chen", age: 18, city: "Tianjin", languages: ["zh", "en"],
         avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=500&q=80",
@@ -725,57 +815,67 @@
       }
     ]);
 
+    const MOCK_USERS = Object.freeze([
+      ...BASE_MOCK_USERS.map(user => Object.freeze({ ...user, ...EXISTING_USER_META[user.id] })),
+      ...EXTRA_USERS.map(user => Object.freeze({
+        ...user,
+        city: getCitiesForCountry(user.countryId).find(city => city.id === user.cityId)?.en || ""
+      }))
+    ]);
+
     const SEEDED_REQUESTS = Object.freeze([
       { id: "request-demo-01", targetUserId: "mika-01", offeredSkillId: "fitness", requestedSkillId: "guitar", status: "pending", createdAt: "2026-08-16T08:00:00.000Z" }
     ]);
     const SEEDED_CONNECTIONS = Object.freeze(["sarah-01"]);
-    const SKILL_LOOP = Object.freeze({
-      id: "loop-demo-01",
-      participantIds: ["daniel", "bob-01", "alice-01"],
-      sharedTime: { zh: "周日 15:00–17:00（UTC+8）", en: "Sunday 15:00–17:00 (UTC+8)" },
-      edges: [
-        { teacherId: "alice-01", learnerId: "daniel", skillId: "photography" },
-        { teacherId: "daniel", learnerId: "bob-01", skillId: "chemistry" },
-        { teacherId: "bob-01", learnerId: "alice-01", skillId: "cooking" }
-      ]
-    });
+    const TRENDING_SKILLS=Object.freeze([
+      {skillId:"photography",count:128}, {skillId:"english",count:96}, {skillId:"python",count:74},
+      {skillId:"ui-design",count:63}, {skillId:"video-editing",count:51}
+    ]);
 
     /* 4. State and helper functions */
     function cloneData(value) {
       return JSON.parse(JSON.stringify(value));
     }
 
-    function createInitialState() {
+    const DEFAULT_NOTIFICATIONS = Object.freeze({swapRequests:true,favoriteActivity:true,sessionReminders:true});
+    const DEFAULT_PRIVACY = Object.freeze({profileVisibility:"community",showOnlineStatus:true,publicPlacesOnly:true});
+
+    function legacyLocation(user={}) {
+      const legacy=(user.city||"").toLocaleLowerCase();
+      for (const country of COUNTRIES) {
+        const city=country.cities.find(item => item.en.toLocaleLowerCase()===legacy || item.zh===user.city);
+        if (city) return {countryId:country.id,cityId:city.id};
+      }
+      return {countryId:"cn",cityId:"tianjin"};
+    }
+
+    function normalizeUser(user={}) {
+      const fallback=legacyLocation(user);
       return {
-        version: STATE_VERSION,
-        language: DEFAULT_LANGUAGE,
-        isAuthenticated: false,
-        currentUser: null,
-        onboardingCompleted: false,
-        onboardingStep: "profile",
-        favorites: [],
-        sentRequests: [],
-        connections: [],
-        editedSkills: []
+        ...cloneData(user),
+        countryId:user.countryId||fallback.countryId,
+        cityId:user.cityId||fallback.cityId,
+        interests:Array.isArray(user.interests)?user.interests.filter(item=>typeof item==="string"):[],
+        likes:Number.isFinite(user.likes)?user.likes:0,
+        publishedAt:user.publishedAt||"2026-08-01T00:00:00.000Z",
+        availability:Array.isArray(user.availability)?user.availability:[],
+        meetingModes:Array.isArray(user.meetingModes)?user.meetingModes:["public-place"],
+        publicLocations:Array.isArray(user.publicLocations)?user.publicLocations:[],
+        reliability:Number.isFinite(user.reliability)?user.reliability:100,
+        memberSince:user.memberSince||"2026-08-01T00:00:00.000Z",
+        avatarDataUrl:typeof user.avatarDataUrl==="string"?user.avatarDataUrl:""
       };
     }
 
-    function normalizeState(value) {
-      const base = createInitialState();
-      if (!value || typeof value !== "object") return base;
-      return {
-        ...base,
-        version: STATE_VERSION,
-        language: ["zh", "en"].includes(value.language) ? value.language : base.language,
-        isAuthenticated: value.isAuthenticated === true,
-        currentUser: value.currentUser && typeof value.currentUser === "object" ? cloneData(value.currentUser) : null,
-        onboardingCompleted: value.onboardingCompleted === true,
-        onboardingStep: ["profile", "share", "learn", "complete"].includes(value.onboardingStep) ? value.onboardingStep : base.onboardingStep,
-        favorites: Array.isArray(value.favorites) ? value.favorites.filter(item => typeof item === "string") : [],
-        sentRequests: Array.isArray(value.sentRequests) ? value.sentRequests.filter(item => item && typeof item === "object") : [],
-        connections: Array.isArray(value.connections) ? value.connections.filter(item => typeof item === "string") : [],
-        editedSkills: Array.isArray(value.editedSkills) ? cloneData(value.editedSkills) : []
-      };
+    function createInitialState(){return {version:STATE_VERSION,language:DEFAULT_LANGUAGE,isAuthenticated:false,currentUser:null,onboardingCompleted:false,onboardingStep:"profile",favorites:[],sentRequests:[],connections:[],editedSkills:[],recentSearches:[],notificationSettings:cloneData(DEFAULT_NOTIFICATIONS),privacySettings:cloneData(DEFAULT_PRIVACY),feedbackEntries:[],session:{loggedIn:false}};}
+    function normalizeState(value){
+      const base=createInitialState(); if(!value||typeof value!=="object")return base;
+      const loggedIn=value.session?.loggedIn===true||value.isAuthenticated===true;
+      const currentUser=value.currentUser&&typeof value.currentUser==="object"?normalizeUser(value.currentUser):null;
+      const currentUserId=currentUser?.id||"";
+      const favorites=Array.isArray(value.favorites)?value.favorites.filter(item=>typeof item==="string"&&item!==currentUserId):[];
+      const sentRequests=Array.isArray(value.sentRequests)?value.sentRequests.filter(item=>item&&typeof item==="object"&&item.targetUserId!==currentUserId):[];
+      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,sentRequests,connections:Array.isArray(value.connections)?value.connections.filter(item=>typeof item==="string"):[],editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn}};
     }
 
     function loadState(storage = window.localStorage) {
@@ -806,15 +906,51 @@
         ...baseState,
         version: STATE_VERSION,
         isAuthenticated: true,
-        currentUser: cloneData(DEMO_USER),
+        currentUser: baseState.currentUser?.id===DEMO_USER.id ? cloneData(baseState.currentUser) : cloneData(DEMO_USER),
         onboardingCompleted: true,
         onboardingStep: "complete",
-        favorites: ["alice-01", "jun-01"],
-        sentRequests: cloneData(SEEDED_REQUESTS),
-        connections: [...SEEDED_CONNECTIONS],
-        editedSkills: cloneData(DEMO_USER.skillsOffered)
+        favorites: baseState.currentUser?.id===DEMO_USER.id ? baseState.favorites : ["alice-01", "jun-01"],
+        sentRequests: baseState.currentUser?.id===DEMO_USER.id ? baseState.sentRequests : cloneData(SEEDED_REQUESTS),
+        connections: baseState.currentUser?.id===DEMO_USER.id ? baseState.connections : [...SEEDED_CONNECTIONS],
+        editedSkills: baseState.currentUser?.id===DEMO_USER.id ? baseState.editedSkills : cloneData(DEMO_USER.skillsOffered)
       });
     }
+
+    function updateSettingsState(state,section,value){
+      if(section==="notifications")return normalizeState({...state,notificationSettings:{...state.notificationSettings,...value}});
+      if(section==="privacy")return normalizeState({...state,privacySettings:{...state.privacySettings,...value}});
+      if(section==="profile"||section==="skills"||section==="availability")return normalizeState({...state,currentUser:{...state.currentUser,...value}});
+      if(section==="feedback")return normalizeState({...state,feedbackEntries:[...state.feedbackEntries,value]});
+      return normalizeState(state);
+    }
+
+    const AVATAR_TYPES=Object.freeze(["image/jpeg","image/png","image/webp"]);
+    const AVATAR_MAX_BYTES=5*1024*1024;
+    function validateAvatarFile(file){
+      if(!file||!AVATAR_TYPES.includes(file.type))return "type";
+      if(file.size>AVATAR_MAX_BYTES)return "size";
+      return "";
+    }
+    function resizeAvatar(file,documentRef=document){
+      return new Promise((resolve,reject)=>{
+        let reader; try{reader=new FileReader();}catch(error){reject(error);return;}
+        reader.onerror=()=>reject(new Error("read"));
+        reader.onload=()=>{
+          let image; try{image=new Image();}catch(error){reject(error);return;}
+          image.onerror=()=>reject(new Error("decode"));
+          image.onload=()=>{
+            try{const canvas=documentRef.createElement("canvas"); canvas.width=256; canvas.height=256;
+            const context=canvas.getContext("2d"); const side=Math.min(image.width,image.height); if(!context||!side)throw new Error("canvas");
+            context.drawImage(image,(image.width-side)/2,(image.height-side)/2,side,side,0,0,256,256);
+            resolve(canvas.toDataURL("image/jpeg",.86));}catch(error){reject(error);}
+          };
+          try{image.src=reader.result;}catch(error){reject(error);}
+        };
+        try{reader.readAsDataURL(file);}catch(error){reject(error);}
+      });
+    }
+
+    function logoutState(state){return normalizeState({...state,isAuthenticated:false,session:{...state.session,loggedIn:false}});}
 
     function clearDemoStorage(storage = window.localStorage) {
       try {
@@ -845,7 +981,8 @@
       "#/discover": "discover",
       "#/search": "search",
       "#/matches": "matches",
-      "#/profile": "profile"
+      "#/settings": "settings",
+      "#/profile": "legacy-profile"
     });
 
     function parseHash(hash = window.location.hash || "#/") {
@@ -863,6 +1000,8 @@
           isKnown: true
         };
       }
+      const settingsMatch = path.match(/^#\/settings\/([^/?#]+)$/);
+      if (settingsMatch) return { name:"settings-section", path, params:{section:decodeURIComponent(settingsMatch[1])}, query, isKnown:true };
       const name = ROUTES[path] || "not-found";
       return { name, path, params: {}, query, isKnown: name !== "not-found" };
     }
@@ -888,7 +1027,7 @@
       const onboardingRoutes = new Set([
         "onboarding-profile", "onboarding-share", "onboarding-learn", "onboarding-complete"
       ]);
-      const appRoutes = new Set(["discover", "search", "matches", "profile", "person"]);
+      const appRoutes = new Set(["discover", "search", "matches", "settings", "settings-section", "legacy-profile", "person"]);
 
       if (publicRoutes.has(route.name)) {
         if (state.isAuthenticated && state.onboardingCompleted && ["login", "signup"].includes(route.name)) {
@@ -928,7 +1067,8 @@
       return SKILLS.find(skill => skill.id === skillId) || null;
     }
 
-    function getUserById(userId) {
+    function getUserById(userId, currentUser = null) {
+      if (currentUser?.id === userId) return currentUser;
       if (userId === DEMO_USER.id) return DEMO_USER;
       return MOCK_USERS.find(user => user.id === userId) || null;
     }
@@ -1017,6 +1157,60 @@
         .sort((a, b) => b.score - a.score || a.user.id.localeCompare(b.user.id));
     }
 
+    function locationLabel(user, language) {
+      const country=getCountryById(user?.countryId);
+      const city=country?.cities.find(item=>item.id===user?.cityId);
+      return [country?.[language],city?.[language]].filter(Boolean).join(" · ");
+    }
+
+    function sortUsers(users, sort="newest") {
+      return [...users].sort((a,b) => sort==="liked"
+        ? (b.likes-a.likes)||Date.parse(b.publishedAt)-Date.parse(a.publishedAt)||a.id.localeCompare(b.id)
+        : Date.parse(b.publishedAt)-Date.parse(a.publishedAt)||a.id.localeCompare(b.id));
+    }
+
+    function formatPublishedAt(iso, language, now=new Date("2026-08-16T12:00:00.000Z")) {
+      const days=Math.max(0,Math.floor((now-Date.parse(iso))/86400000));
+      if(days===0)return language==="zh"?"今天":"Today";
+      if(days<7)return language==="zh"?`${days} 天前`:`${days} days ago`;
+      return new Intl.DateTimeFormat(language==="zh"?"zh-CN":"en-US",{year:"numeric",month:"short",day:"numeric"}).format(new Date(iso));
+    }
+
+    function hasActiveSearchFilters(filters={}) {
+      return [filters.q,filters.level,filters.country,filters.city,filters.lang].some(value=>String(value||"").trim());
+    }
+
+    function normalizeSearchFilters(query={}) {
+      const country=getCountryById(query.country)?.id || "";
+      const requestedCity=country ? String(query.city||"") : "";
+      const city=getCitiesForCountry(country).some(item=>item.id===requestedCity) ? requestedCity : "";
+      return {q:query.q||"",level:query.level||"",country,city,lang:query.lang||"",sort:["newest","liked"].includes(query.sort)?query.sort:"newest"};
+    }
+
+    function rememberSearch(list,value){
+      const clean=String(value||"").trim();
+      if(!clean)return list.slice(0,5);
+      return [clean,...list.filter(item=>item.toLocaleLowerCase()!==clean.toLocaleLowerCase())].slice(0,5);
+    }
+
+    function relationshipSummary(currentUser,user,language){
+      const match=scoreComplementaryMatch(currentUser,user);
+      if(match.reciprocal)return {type:"reciprocal",label:`${t(language,"twoWay")} · ${match.score}%`};
+      const offered=user.skillsOffered.find(item=>currentUser.skillsWanted.some(wanted=>wanted.skillId===item.skillId));
+      if(offered)return {type:"teaches",label:t(language,"canTeachSkill",{skill:getSkillName(offered.skillId,language)})};
+      return {type:"filtered",label:t(language,"matchesFilters")};
+    }
+
+    function uniqueUsers(users){return [...new Map(users.filter(Boolean).map(user=>[user.id,user])).values()];}
+    function buildMatchGroups(state){
+      const selfId=state.currentUser?.id;
+      return {
+        complementary:uniqueUsers(findComplementaryMatches(state.currentUser).map(match=>match.user)).filter(user=>user.id!==selfId),
+        favorites:uniqueUsers(state.favorites.map(getUserById)).filter(user=>user.id!==selfId),
+        requests:uniqueUsers(state.sentRequests.map(request=>getUserById(request.targetUserId))).filter(user=>user.id!==selfId)
+      };
+    }
+
     function filterUsers(users, filters = {}, language = DEFAULT_LANGUAGE) {
       const query = (filters.q || "").trim().toLocaleLowerCase();
       const matchingSkillIds = query ? SKILLS.filter(skill =>
@@ -1031,9 +1225,11 @@
         const haystack = [
           user.name,
           user.city,
+          locationLabel(user,language),
           user.bio?.[language],
           user.bio?.zh,
           user.bio?.en,
+          ...(user.interests||[]).map(interest=>profileLabel("interests",interest,language)),
           ...searchableSkills
         ].filter(Boolean).join(" ").toLocaleLowerCase();
         const allSkills = [...user.skillsOffered, ...user.skillsWanted];
@@ -1041,10 +1237,11 @@
           ? user.skillsOffered.some(item => matchingSkillIds.includes(item.skillId))
           : haystack.includes(query));
         const levelMatches = !filters.level || allSkills.some(item => item.level === filters.level);
-        const cityMatches = !filters.city || user.city.toLocaleLowerCase() === filters.city.toLocaleLowerCase();
+        const countryMatches = !filters.country || user.countryId === filters.country;
+        const cityMatches = !filters.city || user.cityId === filters.city;
         const languageMatches = !filters.lang || user.languages.includes(filters.lang);
-        return queryMatches && levelMatches && cityMatches && languageMatches;
-      }).sort((a, b) => a.name.localeCompare(b.name));
+        return queryMatches && levelMatches && countryMatches && cityMatches && languageMatches;
+      });
     }
 
     /* 7. Utilities */
@@ -1078,7 +1275,11 @@
         : [...favorites, userId];
     }
 
-    function createSwapRequest(requests, targetUserId, offeredSkillId, requestedSkillId, now = new Date()) {
+    function isSelfProfile(currentUser, profile) {
+      return Boolean(currentUser?.id && profile?.id && currentUser.id === profile.id);
+    }
+
+    function createSwapRequest(requests, targetUserId, offeredSkillId, requestedSkillId, now = new Date(), meetingPolicy = "flexible") {
       const duplicate = requests.find(request =>
         request.targetUserId === targetUserId &&
         request.offeredSkillId === offeredSkillId &&
@@ -1092,7 +1293,7 @@
         offeredSkillId,
         requestedSkillId,
         status: "pending",
-        createdAt: now.toISOString()
+        createdAt: now.toISOString(), meetingPolicy
       };
       return { requests: [...requests, request], request, created: true };
     }
@@ -1136,6 +1337,18 @@
       assert(loadState(storage).isAuthenticated === false, "Old version must reset");
     });
 
+    test("persisted self targets are removed from state and match groups", () => {
+      const state = normalizeState({
+        ...createInitialState(), version: STATE_VERSION, isAuthenticated: true, currentUser: cloneData(DEMO_USER),
+        favorites: [DEMO_USER.id, "alice-01"],
+        sentRequests: [{ targetUserId: DEMO_USER.id }, { targetUserId: "alice-01" }]
+      });
+      const groups = buildMatchGroups(state);
+      assert(!state.favorites.includes(DEMO_USER.id), "Normalized favorites retained the current user");
+      assert(!state.sentRequests.some(request => request.targetUserId === DEMO_USER.id), "Normalized requests retained the current user");
+      assert(!Object.values(groups).flat().some(user => user.id === DEMO_USER.id), "A match group retained the current user");
+    });
+
     test("storage access exceptions do not crash", () => {
       const storage = { getItem() { throw new Error("denied"); } };
       assert(loadState(storage).version === 1, "Denied storage must recover");
@@ -1145,6 +1358,148 @@
       const zh = Object.keys(TRANSLATIONS.zh).sort().join("|");
       const en = Object.keys(TRANSLATIONS.en).sort().join("|");
       assert(zh === en, "Translation dictionaries diverged");
+    });
+
+    test("first-round translations stay in parity", () => {
+      const zhKeys = Object.keys(TRANSLATIONS.zh).sort().join("|");
+      const enKeys = Object.keys(TRANSLATIONS.en).sort().join("|");
+      assert(zhKeys === enKeys, "Translation keys diverged");
+      ["settings", "country", "filterCountry", "sortNewest", "sortLiked", "viewFullProfile", "communityOverview", "trendingSkills"].forEach(key => {
+        assert(TRANSLATIONS.zh[key] && TRANSLATIONS.en[key], `Missing translation: ${key}`);
+      });
+    });
+
+    test("expanded seed catalog is complete and deterministic", () => {
+      assert(SKILLS.length === 28, `Expected 28 skills, received ${SKILLS.length}`);
+      assert(MOCK_USERS.length === 12, `Expected 12 users, received ${MOCK_USERS.length}`);
+      assert(new Set(SKILLS.map(skill => skill.id)).size === 28, "Skill ids must be unique");
+      assert(new Set(MOCK_USERS.map(user => user.id)).size === 12, "User ids must be unique");
+      MOCK_USERS.forEach(user => {
+        ["countryId", "cityId", "interests", "likes", "publishedAt", "availability", "meetingModes", "reliability", "memberSince"].forEach(key => {
+          assert(user[key] !== undefined, `${user.id} missing ${key}`);
+        });
+      });
+    });
+
+    test("country catalog puts China first and resolves dependent cities", () => {
+      assert(COUNTRIES[0].id === "cn", "China must be first");
+      assert(getCitiesForCountry("cn").some(city => city.id === "tianjin"), "Tianjin missing");
+      assert(getCitiesForCountry("us").some(city => city.id === "san-francisco"), "San Francisco missing");
+      assert(getCitiesForCountry("missing").length === 0, "Unknown country should return no cities");
+    });
+
+    test("landing visual data matches the approved direction", () => {
+      assert(MARQUEE_ROWS.length===2 && MARQUEE_ROWS.every(row=>row.length===14), "Marquee must show two rows of 14 skills");
+      assert(new Set(MARQUEE_ROWS.flat()).size===28, "Every skill should appear once before duplication");
+      assert(COMMUNITY_STATS.online===128 && COMMUNITY_STATS.users===3842 && COMMUNITY_STATS.swapsToday===46, "Community demo stats changed");
+    });
+
+    test("community stat labels remain available in both languages", () => {
+      ["onlineNow", "totalUsers", "swapsToday"].forEach(key => {
+        assert(TRANSLATIONS.zh[key] && TRANSLATIONS.en[key], `Missing community stat label: ${key}`);
+      });
+    });
+
+    test("trending skill demo data is fixed and searchable", () => {
+      assert(TRENDING_SKILLS.map(item=>`${item.skillId}:${item.count}`).join("|")==="photography:128|english:96|python:74|ui-design:63|video-editing:51", "Trending data changed");
+      TRENDING_SKILLS.forEach(item=>assert(getSkillById(item.skillId),`Missing trending skill ${item.skillId}`));
+    });
+
+    test("old state receives safe first-round defaults", () => {
+      const old = normalizeState({version:1,language:"zh",isAuthenticated:true,currentUser:{id:"legacy",name:"Legacy",city:"Tianjin",skillsOffered:[],skillsWanted:[]}});
+      assert(old.currentUser.countryId === "cn" && old.currentUser.cityId === "tianjin", "Legacy location not migrated");
+      assert(old.recentSearches.length === 0, "Recent searches default missing");
+      assert(old.notificationSettings.swapRequests === true, "Notification default missing");
+      assert(old.privacySettings.publicPlacesOnly === true, "Safety default missing");
+      assert(old.session.loggedIn === true, "Session migration failed");
+    });
+
+    test("location and sorting helpers are deterministic", () => {
+      assert(locationLabel({countryId:"cn",cityId:"tianjin"},"zh") === "中国 · 天津", "Chinese location wrong");
+      const sample=[{id:"a",likes:10,publishedAt:"2026-08-10T00:00:00Z"},{id:"b",likes:20,publishedAt:"2026-08-09T00:00:00Z"}];
+      assert(sortUsers(sample,"liked")[0].id === "b", "Liked sort failed");
+      assert(sortUsers(sample,"newest")[0].id === "a", "Newest sort failed");
+      assert(sample[0].id === "a", "sortUsers mutated input");
+    });
+
+    test("active search filter detection ignores sort alone", () => {
+      assert(hasActiveSearchFilters({q:"",level:"",country:"",city:"",lang:"",sort:"newest"}) === false, "Sort should not activate results");
+      assert(hasActiveSearchFilters({q:"摄影",level:"",country:"",city:"",lang:"",sort:"newest"}) === true, "Query should activate results");
+    });
+
+    test("search filters country before city and exposes only two sorts", () => {
+      const china=filterUsers(MOCK_USERS,{country:"cn",city:"tianjin"},"zh");
+      assert(china.length>0 && china.every(user=>user.countryId==="cn"&&user.cityId==="tianjin"), "Country/city filter leaked");
+      assert(sortUsers(MOCK_USERS,"newest")[0].publishedAt>=sortUsers(MOCK_USERS,"newest")[1].publishedAt, "Newest order wrong");
+      assert(sortUsers(MOCK_USERS,"liked")[0].likes>=sortUsers(MOCK_USERS,"liked")[1].likes, "Liked order wrong");
+    });
+
+    test("city hash state requires a matching country", () => {
+      const cityOnly=normalizeSearchFilters({city:"tianjin"});
+      const switchedCountry=normalizeSearchFilters({country:"jp",city:"tianjin"});
+      assert(cityOnly.city==="" && !hasActiveSearchFilters(cityOnly), "City-only hash must not activate search");
+      assert(switchedCountry.country==="jp" && switchedCountry.city==="", "Country change must clear an invalid city");
+    });
+
+    test("settings routes parse and old profile route redirects", () => {
+      assert(parseHash("#/settings").name==="settings", "Settings home route missing");
+      const privacy=parseHash("#/settings/privacy");
+      assert(privacy.name==="settings-section"&&privacy.params.section==="privacy", "Settings section route missing");
+      assert(parseHash("#/profile").name==="legacy-profile", "Legacy profile route missing");
+    });
+
+    test("logout ends only the session", () => {
+      const before=loginAsDemoUser(); const after=logoutState(before);
+      assert(after.isAuthenticated===false&&after.session.loggedIn===false, "Session still active");
+      assert(after.currentUser.id===before.currentUser.id, "Logout deleted profile");
+      assert(after.favorites.length===before.favorites.length, "Logout deleted favorites");
+    });
+
+    test("settings updates preserve unrelated state", () => {
+      const before=loginAsDemoUser(); const after=updateSettingsState(before,"notifications",{swapRequests:false});
+      assert(after.notificationSettings.swapRequests===false, "Notification not updated");
+      assert(after.currentUser.id===before.currentUser.id&&after.favorites.length===before.favorites.length, "Unrelated state changed");
+    });
+
+    test("demo relogin preserves saved Daniel data and public locations", () => {
+      const saved=updateSettingsState(loginAsDemoUser(),"availability",{publicLocations:["library"]});
+      const relogin=loginAsDemoUser(logoutState(saved));
+      assert(relogin.currentUser.publicLocations[0]==="library", "Relogin replaced Daniel profile");
+      assert(getUserById("daniel",relogin.currentUser)===relogin.currentUser, "Current user lookup ignored saved state");
+    });
+
+    test("avatar validation accepts only supported images up to 5 MB", () => {
+      assert(validateAvatarFile({type:"image/jpeg",size:1024})==="", "JPEG rejected");
+      assert(validateAvatarFile({type:"image/png",size:5*1024*1024})==="", "5 MB PNG rejected");
+      assert(validateAvatarFile({type:"image/gif",size:1024})==="type", "GIF should fail type");
+      assert(validateAvatarFile({type:"image/webp",size:5*1024*1024+1})==="size", "Oversize file should fail");
+    });
+
+    test("recent search history is unique and capped", () => {
+      const history=["Python","摄影","烹饪","网球","吉他"];
+      assert(rememberSearch(history,"Python").join("|")==="Python|摄影|烹饪|网球|吉他", "Duplicate search not moved cleanly");
+      assert(rememberSearch(history,"Excel").join("|")==="Excel|Python|摄影|烹饪|网球", "Search cap failed");
+    });
+
+    test("every search user receives a visible relationship summary", () => {
+      MOCK_USERS.forEach(user=>assert(relationshipSummary(DEMO_USER,user,"zh").label.length>0,`${user.id} lacks relationship copy`));
+    });
+
+    test("match directory groups are stable and deduplicated", () => {
+      const state=loginAsDemoUser();
+      const groups=buildMatchGroups(state);
+      assert(groups.complementary.length>=6, "Need six or more complementary contacts");
+      assert(groups.favorites.map(user=>user.id).join("|")==="alice-01|jun-01", "Favorites group wrong");
+      assert(groups.requests.every(user=>user), "Request target missing");
+    });
+
+    test("every partner supports a complete profile", () => {
+      MOCK_USERS.forEach(user=>{
+        assert(user.bio.zh&&user.bio.en,`${user.id} missing bilingual bio`);
+        assert(user.interests.length>=2,`${user.id} missing interests`);
+        assert(user.availability.length>=1,`${user.id} missing availability`);
+        assert(user.meetingModes.length>=1,`${user.id} missing meeting mode`);
+      });
     });
 
     test("demo login restores Daniel", () => {
@@ -1218,7 +1573,7 @@
     });
 
     test("search filters compose", () => {
-      const results = filterUsers(MOCK_USERS, { q: "", level: "advanced", city: "Tianjin", lang: "en" }, "en");
+      const results = filterUsers(MOCK_USERS, { q: "", level: "advanced", country: "cn", city: "tianjin", lang: "en" }, "en");
       assert(results.some(user => user.id === "alice-01"), "Composed filters lost Alice");
       assert(!results.some(user => user.id === "mika-01"), "City filter failed");
     });
@@ -1241,12 +1596,24 @@
       assert(removed.join("|") === "bob-01", "Favorite remove failed");
     });
 
+    test("self profile is not an interaction target", () => {
+      const currentUser = { id: "daniel" };
+      assert(isSelfProfile(currentUser, { id: "daniel" }), "Self profile was not detected");
+      assert(!isSelfProfile(currentUser, { id: "alice" }), "Other profile was treated as self");
+    });
+
     test("swap requests normalize and deduplicate", () => {
       const first = createSwapRequest([], "alice-01", "chemistry", "photography", new Date("2026-08-16T10:00:00Z"));
       const second = createSwapRequest(first.requests, "alice-01", "chemistry", "photography", new Date("2026-08-16T11:00:00Z"));
       assert(first.created === true && first.requests.length === 1, "Request was not created");
       assert(first.requests[0].status === "pending", "Request status is wrong");
+      assert(first.requests[0].meetingPolicy === "flexible", "Default meeting policy is wrong");
       assert(second.created === false && second.requests.length === 1, "Duplicate request was added");
+    });
+
+    test("swap requests preserve public-place policy", () => {
+      const result = createSwapRequest([], "alice-01", "chemistry", "photography", new Date("2026-08-16T10:00:00Z"), "public-place");
+      assert(result.request.meetingPolicy === "public-place", "Public-place policy was not persisted");
     });
 
     function runSelfTests() {
@@ -1268,32 +1635,48 @@
     function Avatar({ user, size = "normal" }) {
       const [failed, setFailed] = React.useState(false);
       const label = user?.name || "SkillSwap";
+      const source = user?.avatarDataUrl || user?.avatar;
+      React.useEffect(() => setFailed(false), [source]);
       return (
         <div className={`avatar ${size === "large" ? "large" : ""}`} aria-label={label}>
-          {!failed && user?.avatar
-            ? <img src={user.avatar} alt="" onError={() => setFailed(true)} />
+          {!failed && source
+            ? <img src={source} alt="" onError={() => setFailed(true)} />
             : <span aria-hidden="true">{getInitials(label) || "SS"}</span>}
         </div>
       );
     }
 
-    function SkillTag({ skillId, language, onClick, duplicate = false }) {
+    function AvatarPicker({user,language,onSave}){
+      const inputRef=React.useRef(null); const token=React.useRef(0); const [pendingDataUrl,setPendingDataUrl]=React.useState(""); const [error,setError]=React.useState(""); const [processing,setProcessing]=React.useState(false);
+      const clear=()=>{token.current++;setPendingDataUrl("");setError("");setProcessing(false);if(inputRef.current)inputRef.current.value="";}; React.useEffect(()=>()=>{token.current++;},[]);
+      const choose=async event=>{
+        const file=event.target.files?.[0]; if(!file)return;
+        const request=++token.current;
+        const validation=validateAvatarFile(file);
+        if(validation){setError(t(language,validation==="type"?"avatarTypeError":"avatarSizeError"));setPendingDataUrl("");setProcessing(false);return;}
+        setError("");setProcessing(true);
+        try{const data=await resizeAvatar(file);if(request===token.current)setPendingDataUrl(data);}
+        catch(error){if(request===token.current){setPendingDataUrl("");setError(t(language,"avatarProcessError"));}}
+        finally{if(request===token.current)setProcessing(false);}
+      };
+      const save=()=>{if(!pendingDataUrl)return;onSave(pendingDataUrl);clear();};
+      const preview=pendingDataUrl?{...user,avatarDataUrl:pendingDataUrl}:user;
+      return <section className="avatar-picker" aria-busy={processing}><Avatar user={preview} size="large"/><label className="field"><span>{t(language,"changeAvatar")}</span><input ref={inputRef} className="input" type="file" accept={AVATAR_TYPES.join(",")} onChange={choose}/></label>{error&&<p className="form-error" role="alert">{error}</p>}{processing&&<p className="muted" role="status" aria-live="polite">{language==="zh"?"正在处理头像…":"Processing avatar…"}</p>}<div className="button-row"><Button type="button" small variant="light" disabled={!pendingDataUrl||processing} onClick={save}>{t(language,"saveChanges")}</Button><Button type="button" small variant="ghost" onClick={clear}>{t(language,"cancel")}</Button></div></section>;
+    }
+
+    function SkillTag({ skillId, language, onClick, duplicate = false, tone }) {
       const skill = getSkillById(skillId);
       const className = `skill-tag ${skill?.category === "technology" ? "tech" : skill?.category || ""}`;
       const content = getSkillName(skillId, language);
       return onClick
-        ? <button type="button" className={className} onClick={onClick} data-duplicate={duplicate || undefined} tabIndex={duplicate ? -1 : 0} aria-hidden={duplicate || undefined}>{content}</button>
-        : <span className={className} data-duplicate={duplicate || undefined} aria-hidden={duplicate || undefined}>{content}</span>;
+        ? <button type="button" className={className} onClick={onClick} data-duplicate={duplicate || undefined} data-tone={tone} tabIndex={duplicate ? -1 : 0} aria-hidden={duplicate || undefined}>{content}</button>
+        : <span className={className} data-duplicate={duplicate || undefined} data-tone={tone} aria-hidden={duplicate || undefined}>{content}</span>;
     }
 
     function SkillMarquee({ language, interactive = false }) {
-      const rows = [
-        ["photography", "python", "cooking", "guitar", "chemistry", "fitness", "drawing"],
-        ["english", "badminton", "video-editing", "arduino", "writing", "basketball", "planting"]
-      ];
       return (
         <div className="marquee-zone" aria-label={t(language, "socialGallery")}>
-          {rows.map((row, rowIndex) => (
+          {MARQUEE_ROWS.map((row, rowIndex) => (
             <div className={`marquee ${rowIndex ? "reverse" : ""}`} key={rowIndex}>
               <div className="marquee-track">
                 {[...row, ...row].map((skillId, index) => (
@@ -1302,6 +1685,7 @@
                     skillId={skillId}
                     language={language}
                     duplicate={index >= row.length}
+                    tone={(index%4)+1}
                     onClick={interactive && index < row.length ? () => navigate("#/search", { q: skillId }) : null}
                   />
                 ))}
@@ -1312,21 +1696,25 @@
       );
     }
 
+    function CommunityStats({language}){
+      return <section className="black-card community-stats"><div><p className="eyebrow">LIVE DEMO</p><h2>{t(language,"communityOverview")}</h2><p>{t(language,"demoCommunityData")}</p></div><div className="stat-row"><div className="stat-item"><strong>{COMMUNITY_STATS.online}</strong><span>{t(language,"onlineNow")}</span></div><div className="stat-item"><strong>{COMMUNITY_STATS.users.toLocaleString()}</strong><span>{t(language,"totalUsers")}</span></div><div className="stat-item"><strong>{COMMUNITY_STATS.swapsToday}</strong><span>{t(language,"swapsToday")}</span></div></div></section>;
+    }
+
     function navItems(language) {
       return [
         { route: "discover", hash: "#/discover", icon: "◉", label: t(language, "discover") },
         { route: "search", hash: "#/search", icon: "⌕", label: t(language, "search") },
         { route: "matches", hash: "#/matches", icon: "↔", label: t(language, "matches") },
-        { route: "profile", hash: "#/profile", icon: "☺", label: t(language, "profile") }
+        { route: "settings", hash: "#/settings", icon: "⚙", label: t(language, "settings") }
       ];
     }
 
     function Navigation({ language, routeName }) {
-      return <nav className="top-nav" aria-label="Primary">{navItems(language).map(item => <button key={item.route} type="button" className={`nav-link ${routeName === item.route ? "active" : ""}`} onClick={() => navigate(item.hash)}>{item.label}</button>)}</nav>;
+      return <nav className="top-nav" aria-label={t(language,"primaryNavigation")}>{navItems(language).map(item => <button key={item.route} type="button" className={`nav-link ${(routeName === item.route || item.route==="settings"&&routeName==="settings-section") ? "active" : ""}`} onClick={() => navigate(item.hash)}>{item.label}</button>)}</nav>;
     }
 
     function MobileNavigation({ language, routeName }) {
-      return <nav className="bottom-nav glass" aria-label="Mobile primary">{navItems(language).map(item => <button key={item.route} type="button" className={`bottom-link ${routeName === item.route ? "active" : ""}`} onClick={() => navigate(item.hash)}><span aria-hidden="true">{item.icon}</span><span>{item.label}</span></button>)}</nav>;
+      return <nav className="bottom-nav glass" aria-label={t(language,"mobileNavigation")}>{navItems(language).map(item => <button key={item.route} type="button" className={`bottom-link ${(routeName === item.route || item.route==="settings"&&routeName==="settings-section") ? "active" : ""}`} onClick={() => navigate(item.hash)}><span aria-hidden="true">{item.icon}</span><span>{item.label}</span></button>)}</nav>;
     }
 
     function AppShell({ children, language, routeName, onLanguage, showNavigation = true }) {
@@ -1373,7 +1761,7 @@
       );
     }
 
-    function Modal({ title, children, onClose }) {
+    function Modal({ title, children, onClose, language=DEFAULT_LANGUAGE }) {
       const dialogRef = React.useRef(null);
       const previousFocus = React.useRef(document.activeElement);
       React.useEffect(() => {
@@ -1392,7 +1780,7 @@
         document.addEventListener("keydown",handleKey);
         return () => { document.removeEventListener("keydown",handleKey); previousFocus.current?.focus?.(); };
       }, [onClose]);
-      return <div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex="-1" ref={dialogRef}><div className="modal-head"><h2 id="modal-title">{title}</h2><button type="button" className="icon-btn" onClick={onClose} aria-label="Close">×</button></div>{children}</section></div>;
+      return <div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex="-1" ref={dialogRef}><div className="modal-head"><h2 id="modal-title">{title}</h2><button type="button" className="icon-btn" onClick={onClose} aria-label={t(language,"closeDialog")}>×</button></div>{children}</section></div>;
     }
 
     function SkillEditor({ items, onChange, language, wanted = false }) {
@@ -1409,6 +1797,18 @@
 
     function ProfileSkillSection({ title, items, language }) {
       return <section className="profile-section glass"><h2>{title}</h2>{items.map(item=><div className="profile-skill" key={item.id}><h3>{getSkillName(item.skillId,language)}</h3><p className="user-meta">{levelLabel(item.level,language)}</p><p className="muted">{localized(item.desc,language)}</p></div>)}</section>;
+    }
+
+    function ProfileDetails({user,language}){
+      const facts=[
+        [t(language,"city"),locationLabel(user,language)],
+        [t(language,"languageLabel"),user.languages.map(item=>item.toUpperCase()).join(" / ")],
+        [t(language,"availability"),user.availability.map(item=>profileLabel("availability",item,language)).join(" · ")],
+        [t(language,"meetingPreference"),user.meetingModes.map(item=>profileLabel("meeting",item,language)).join(" · ")],
+        [t(language,"reliability"),`${user.reliability}%`],
+        [t(language,"joined"),new Intl.DateTimeFormat(language==="zh"?"zh-CN":"en-US",{year:"numeric",month:"short"}).format(new Date(user.memberSince))]
+      ];
+      return <section className="profile-details glass"><div><h2>{t(language,"interests")}</h2><div className="skill-pills">{user.interests.map(item=><span className="mini-pill" key={item}>{profileLabel("interests",item,language)}</span>)}</div></div><dl>{facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p className="rating-line">♥ {t(language,"likedBy",{count:user.likes})}</p></section>;
     }
 
     function RecoveryScreen({ onReload, onReset }) {
@@ -1440,7 +1840,7 @@
     /* 10. Page components */
     function LandingPage({ language, onLanguage, onDemo }) {
       const previewUsers=[MOCK_USERS[0],MOCK_USERS[1],MOCK_USERS[2]];
-      return <div className="landing-shell"><header className="landing-nav"><button className="brand" type="button" onClick={()=>navigate("#/")}>SkillSwap<span className="brand-dot">.</span></button><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" className="desktop-only" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small className="desktop-only" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p><div className="button-row"><Button onClick={onDemo}>{t(language,"exploreDemo")} <span aria-hidden="true">→</span></Button><Button variant="light" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button><Button variant="ghost" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button></div></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{previewUsers.map(user=><Avatar user={user} key={user.id}/>)}</div></section><section className="black-card"><div><h2>{t(language,"socialGallery")}</h2><p>{t(language,"realPeople")}</p></div><span>{MOCK_USERS.length} {t(language,"members")}</span></section></aside></div><SkillMarquee language={language}/></main></div>;
+      return <div className="landing-shell"><header className="landing-nav"><button className="brand" type="button" onClick={()=>navigate("#/")}>SkillSwap<span className="brand-dot">.</span></button><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{previewUsers.map(user=><Avatar user={user} key={user.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
     }
 
     function AuthArt({ language }) {
@@ -1480,47 +1880,88 @@
     function DiscoverPage({ state, language, updateState }) {
       const user=state.currentUser; const matches=findComplementaryMatches(user); const peers=findPeerBuddies(user).slice(0,3); const [query,setQuery]=React.useState("");
       const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP DISCOVER</p><h1 className="page-title">{t(language,"hello",{name:user.name.split(" ")[0]})}</h1><p className="page-subtitle">{t(language,"discoverLead")}</p></div></header><form className="search-hero glass" onSubmit={event=>{event.preventDefault();navigate("#/search",query?{q:query}:{})}}><label className="sr-only" htmlFor="discover-search">{t(language,"searchPeople")}</label><input id="discover-search" className="search-input" value={query} onChange={event=>setQuery(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} →</Button></form><div className="goal-row"><strong>{t(language,"yourGoals")}:</strong>{user.skillsWanted.map(item=><SkillTag key={item.id} skillId={item.skillId} language={language} onClick={()=>navigate("#/search",{q:item.skillId})}/>)}</div><SkillMarquee language={language} interactive/><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"recommended")}</h2><p className="section-note">{t(language,"recommendedNote")}</p></div><div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div></section><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"peerBuddies")}</h2><p className="section-note">{t(language,"peerNote")}</p></div><div className="peer-grid">{peers.map(peer=><article className="peer-card glass" key={peer.user.id}><Avatar user={peer.user}/><div><h3 className="user-name">{peer.user.name}</h3><p>{t(language,"sameLevel",{skill:getSkillName(peer.sharedSkillIds[0],language)})}</p><button className="brand" type="button" onClick={()=>navigate(`#/people/${peer.user.id}`)}>{t(language,"viewProfile")} →</button></div></article>)}</div></section><SkillLoopCard language={language}/></main>;
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP DISCOVER</p><h1 className="page-title">{t(language,"hello",{name:user.name.split(" ")[0]})}</h1><p className="page-subtitle">{t(language,"discoverLead")}</p></div></header><form className="search-hero glass" onSubmit={event=>{event.preventDefault();navigate("#/search",query?{q:query}:{})}}><label className="sr-only" htmlFor="discover-search">{t(language,"searchPeople")}</label><input id="discover-search" className="search-input" value={query} onChange={event=>setQuery(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} →</Button></form><div className="goal-row"><strong>{t(language,"yourGoals")}:</strong>{user.skillsWanted.map(item=><SkillTag key={item.id} skillId={item.skillId} language={language} onClick={()=>navigate("#/search",{q:item.skillId})}/>)}</div><SkillMarquee language={language} interactive/><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"recommended")}</h2><p className="section-note">{t(language,"recommendedNote")}</p></div><div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div></section><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"peerBuddies")}</h2><p className="section-note">{t(language,"peerNote")}</p></div><div className="peer-grid">{peers.map(peer=><article className="peer-card glass" key={peer.user.id}><Avatar user={peer.user}/><div><h3 className="user-name">{peer.user.name}</h3><p>{t(language,"sameLevel",{skill:getSkillName(peer.sharedSkillIds[0],language)})}</p><button className="brand" type="button" onClick={()=>navigate(`#/people/${peer.user.id}`)}>{t(language,"viewProfile")} →</button></div></article>)}</div></section><TrendingSkills language={language}/></main>;
     }
 
-    function SkillLoopCard({ language }) {
-      const edges=SKILL_LOOP.edges;
-      const people=[getUserById(edges[0].teacherId),getUserById(edges[0].learnerId),getUserById(edges[1].learnerId)];
-      return <section className="section loop-card"><div className="loop-head"><div><p className="eyebrow">SKILLLOOP</p><h2 className="section-title">{t(language,"skillLoop")}</h2></div><span className="demo-chip">{t(language,"demoMatch")}</span></div><div className="loop-flow">{people.map((person,index)=><React.Fragment key={person.id}><div className="loop-person"><Avatar user={person}/><strong>{person.name}</strong></div>{index<2&&<div className="loop-arrow">→<small>{getSkillName(edges[index].skillId,language)}</small></div>}</React.Fragment>)}</div><p className="loop-return">↩ {getUserById(edges[2].teacherId).name} → {getUserById(edges[2].learnerId).name} · {getSkillName(edges[2].skillId,language)}</p><p><strong>{t(language,"sharedTime")}:</strong> {localized(SKILL_LOOP.sharedTime,language)}</p></section>;
+    function TrendingSkills({language}){
+      const max=TRENDING_SKILLS[0].count;
+      return <section className="section trending-card glass"><div className="section-head"><div><p className="eyebrow">TRENDING</p><h2 className="section-title">{t(language,"trendingSkills")}</h2></div><span className="demo-chip">{t(language,"demoTrend")}</span></div><div className="trend-list">{TRENDING_SKILLS.map(item=><button className="trend-row" type="button" key={item.skillId} onClick={()=>navigate("#/search",{q:item.skillId})}><span>{getSkillName(item.skillId,language)}</span><span>{t(language,"peopleSearching",{count:item.count})}</span><i style={{width:`${Math.round(item.count/max*100)}%`}}/></button>)}</div></section>;
+    }
+
+    function SearchEmptyState({state,language,onSearch}){
+      const categories=["technology","creative","academic","sports","lifestyle"];
+      const popular=["photography","python","ui-design","english","cooking","tennis"];
+      return <section className="search-starters"><div className="starter-card glass"><h2>{t(language,"recentSearches")}</h2><div className="skill-pills">{state.recentSearches.length?state.recentSearches.map(item=><button type="button" className="mini-pill" key={item} onClick={()=>onSearch(item)}>{item}</button>):<p className="muted">{t(language,"noRecentSearches")}</p>}</div></div><div className="starter-card glass"><h2>{t(language,"skillCategories")}</h2><div className="skill-pills">{categories.map(category=><span className="mini-pill" key={category}>{t(language,`category_${category}`)}</span>)}</div></div><div className="starter-card glass"><h2>{t(language,"popularSearches")}</h2><div className="skill-pills">{popular.map(skillId=><button type="button" className="mini-pill" key={skillId} onClick={()=>onSearch(skillId)}>{getSkillName(skillId,language)}</button>)}</div></div></section>;
+    }
+
+    function SearchResultCard({user,currentUser,language,saved,onSave,fromHash}){
+      const relationship=relationshipSummary(currentUser,user,language);
+      return <article className="user-card search-result-card"><div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user.name}</h3><p className="user-meta">{locationLabel(user,language)}</p></div></div><p className="user-bio">{localized(user.bio,language)}</p><div className="skill-pills">{user.skillsOffered.slice(0,2).map(item=><span className="mini-pill" key={item.id}>{getSkillName(item.skillId,language)}</span>)}</div><div className="result-card-footer"><span className={`match-badge ${relationship.type}`}>{relationship.label}</span><p className="rating-line">♥ {t(language,"likedBy",{count:user.likes})} · {t(language,"published",{date:formatPublishedAt(user.publishedAt,language)})}</p><div className="card-actions"><button className="icon-btn" type="button" onClick={()=>onSave(user.id)} aria-label={saved?t(language,"saved"):t(language,"save")}>{saved?"♥":"♡"}</button><Button small onClick={()=>navigate(`#/people/${user.id}`,{from:fromHash})}>{t(language,"viewProfile")} →</Button></div></div></article>;
     }
 
     function SearchPage({ route, state, language, updateState }) {
-      const filters={q:route.query.q||"",level:route.query.level||"",city:route.query.city||"",lang:route.query.lang||"",sort:route.query.sort||"best"};
-      let users=filterUsers(MOCK_USERS,filters,language); if(filters.sort==="best") users=users.map(user=>({user,match:scoreComplementaryMatch(state.currentUser,user)})).sort((a,b)=>b.match.score-a.match.score||a.user.id.localeCompare(b.user.id)).map(item=>item.user);
-      const setFilter=(key,value)=>navigate("#/search",{...filters,[key]:value}); const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header><section className="filter-bar glass"><label className="field"><span className="sr-only">{t(language,"search")}</span><input className="input" value={filters.q} onChange={event=>setFilter("q",event.target.value)} placeholder={t(language,"searchPlaceholder")}/></label><select className="select" aria-label={t(language,"filterLevel")} value={filters.level} onChange={event=>setFilter("level",event.target.value)}><option value="">{t(language,"filterLevel")}</option>{SKILL_LEVELS.map(level=><option value={level} key={level}>{levelLabel(level,language)}</option>)}</select><select className="select" aria-label={t(language,"filterCity")} value={filters.city} onChange={event=>setFilter("city",event.target.value)}><option value="">{t(language,"filterCity")}</option>{[...new Set(MOCK_USERS.map(user=>user.city))].map(city=><option key={city}>{city}</option>)}</select><select className="select" aria-label={t(language,"filterLanguage")} value={filters.lang} onChange={event=>setFilter("lang",event.target.value)}><option value="">{t(language,"filterLanguage")}</option><option value="zh">中文</option><option value="en">English</option></select><select className="select" aria-label={t(language,"sortBest")} value={filters.sort} onChange={event=>setFilter("sort",event.target.value)}><option value="best">{t(language,"sortBest")}</option><option value="name">{t(language,"sortName")}</option></select><Button small variant="light" onClick={()=>navigate("#/search")}>{t(language,"resetFilters")}</Button></section><p className="result-count" aria-live="polite">{t(language,"results",{count:users.length})}</p>{users.length?<div className="card-grid">{users.map(user=>{const match=scoreComplementaryMatch(state.currentUser,user);return <UserCard key={user.id} user={user} match={match.score?match:null} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>})}</div>:<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</main>;
+      const filters=normalizeSearchFilters(route.query);
+      const active=hasActiveSearchFilters(filters); const users=sortUsers(filterUsers(MOCK_USERS,filters,language),filters.sort);
+      const setFilter=(key,value)=>navigate("#/search",key==="country"?{...filters,country:value,city:""}:{...filters,[key]:value});
+      const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
+      const commitSearch=value=>{const clean=String(value||"").trim();if(!clean)return;navigate("#/search",{...filters,q:clean});updateState({...state,recentSearches:rememberSearch(state.recentSearches,clean)});};
+      const submit=event=>{event.preventDefault();commitSearch(filters.q);};
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header><form className="filter-bar glass" onSubmit={submit}><label className="field"><span className="sr-only">{t(language,"search")}</span><input className="input" value={filters.q} onChange={event=>setFilter("q",event.target.value)} placeholder={t(language,"searchPlaceholder")}/></label><select className="select" aria-label={t(language,"filterLevel")} value={filters.level} onChange={event=>setFilter("level",event.target.value)}><option value="">{t(language,"filterLevel")}</option>{SKILL_LEVELS.map(level=><option value={level} key={level}>{levelLabel(level,language)}</option>)}</select><select className="select" aria-label={t(language,"country")} value={filters.country} onChange={event=>setFilter("country",event.target.value)}><option value="">{t(language,"filterCountry")}</option>{COUNTRIES.map(country=><option value={country.id} key={country.id}>{country[language]}</option>)}</select><select className="select" aria-label={t(language,"filterCity")} value={filters.city} disabled={!filters.country} onChange={event=>setFilter("city",event.target.value)}><option value="">{filters.country?t(language,"filterCity"):t(language,"chooseCountryFirst")}</option>{getCitiesForCountry(filters.country).map(city=><option value={city.id} key={city.id}>{city[language]}</option>)}</select><select className="select" aria-label={t(language,"filterLanguage")} value={filters.lang} onChange={event=>setFilter("lang",event.target.value)}><option value="">{t(language,"filterLanguage")}</option><option value="zh">中文</option><option value="en">English</option></select><select className="select" aria-label={t(language,"sortNewest")} value={filters.sort} onChange={event=>setFilter("sort",event.target.value)}><option value="newest">{t(language,"sortNewest")}</option><option value="liked">{t(language,"sortLiked")}</option></select><Button small variant="light" type="button" onClick={()=>navigate("#/search")}>{t(language,"resetFilters")}</Button></form>{!active?<SearchEmptyState state={state} language={language} onSearch={commitSearch}/>:users.length?<><p className="result-count" aria-live="polite">{t(language,"results",{count:users.length})}</p><div className="card-grid">{users.map(user=><SearchResultCard key={user.id} user={user} currentUser={state.currentUser} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>)}</div></>:<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</main>;
     }
 
     function SwapRequestModal({ target, state, language, updateState, onClose }) {
       const compatibleWanted=target.skillsOffered.find(item=>state.currentUser.skillsWanted.some(wanted=>wanted.skillId===item.skillId))||target.skillsOffered[0];
       const compatibleOffer=state.currentUser.skillsOffered.find(item=>target.skillsWanted.some(wanted=>wanted.skillId===item.skillId))||state.currentUser.skillsOffered[0];
       const [offered,setOffered]=React.useState(compatibleOffer?.skillId||""); const [wanted,setWanted]=React.useState(compatibleWanted?.skillId||""); const [message,setMessage]=React.useState(""); const [result,setResult]=React.useState(null);
-      const submit=event=>{event.preventDefault();const next=createSwapRequest(state.sentRequests,target.id,offered,wanted);updateState({...state,sentRequests:next.requests});setResult(next.created?"success":"exists");};
-      return <Modal title={t(language,"requestTitle")} onClose={onClose}>{result&&<div className="notice" role="status">{t(language,result==="success"?"requestSuccess":"requestExists")}</div>}<form className="modal-form" onSubmit={submit}><label className="field"><span>{t(language,"iCanOffer")}</span><select className="select" value={offered} onChange={event=>setOffered(event.target.value)}>{state.currentUser.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"iWantLearn")}</span><select className="select" value={wanted} onChange={event=>setWanted(event.target.value)}>{target.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"optionalMessage")}</span><textarea className="textarea" value={message} onChange={event=>setMessage(event.target.value)}/></label><div className="button-row"><Button type="button" variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"send")}</Button>{result&&<Button type="button" variant="light" onClick={()=>{onClose();navigate("#/matches")}}>{t(language,"viewMatches")}</Button>}</div></form></Modal>;
+      const policy=state.privacySettings.publicPlacesOnly?"public-place":"flexible";
+      const submit=event=>{event.preventDefault();if(isSelfProfile(state.currentUser,target))return;const next=createSwapRequest(state.sentRequests,target.id,offered,wanted,new Date(),policy);updateState({...state,sentRequests:next.requests});setResult(next.created?"success":"exists");};
+      return <Modal title={t(language,"requestTitle")} onClose={onClose} language={language}>{result&&<div className="notice" role="status">{t(language,result==="success"?"requestSuccess":"requestExists")}</div>}<form className="modal-form" onSubmit={submit}>{policy==="public-place"&&<p className="notice" role="status">{t(language,"publicPlacePolicy")}</p>}<label className="field"><span>{t(language,"iCanOffer")}</span><select className="select" value={offered} onChange={event=>setOffered(event.target.value)}>{state.currentUser.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"iWantLearn")}</span><select className="select" value={wanted} onChange={event=>setWanted(event.target.value)}>{target.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"optionalMessage")}</span><textarea className="textarea" value={message} onChange={event=>setMessage(event.target.value)}/></label><div className="button-row"><Button type="button" variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"send")}</Button>{result&&<Button type="button" variant="light" onClick={()=>{onClose();navigate("#/matches")}}>{t(language,"viewMatches")}</Button>}</div></form></Modal>;
     }
 
     function PersonProfilePage({ route, state, language, updateState }) {
-      const user=getUserById(route.params.id); const [open,setOpen]=React.useState(false); if(!user)return <EmptyState title={t(language,"userNotFound")} body={t(language,"userNotFoundBody")} actionLabel={t(language,"backDiscover")} onAction={()=>navigate("#/discover")}/>;
-      const match=scoreComplementaryMatch(state.currentUser,user); const backHash=route.query.from||"#/discover"; const save=()=>updateState({...state,favorites:toggleFavorite(state.favorites,user.id)});
-      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p></div><div className="button-row"><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button><Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button></div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>{open&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
+      const resolvedUser=getUserById(route.params.id,state.currentUser); const user=resolvedUser?{...resolvedUser,city:locationLabel(resolvedUser,language)}:null; const [open,setOpen]=React.useState(false); if(!user)return <EmptyState title={t(language,"userNotFound")} body={t(language,"userNotFoundBody")} actionLabel={t(language,"backDiscover")} onAction={()=>navigate("#/discover")}/>;
+      const isSelf=isSelfProfile(state.currentUser,user); const match=scoreComplementaryMatch(state.currentUser,user); const backHash=isSelf?"#/settings":route.query.from||"#/discover"; const save=()=>{if(!isSelf)updateState({...state,favorites:toggleFavorite(state.favorites,user.id)});};
+      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p>{isSelf&&<p className="notice" role="status">{state.privacySettings.profileVisibility==="private"?t(language,"privateOwnerPreview"):t(language,"communityOwnerPreview")}{state.privacySettings.showOnlineStatus&&` · ${t(language,"onlinePreview")}`}</p>}</div><div className="button-row">{isSelf?<Button onClick={()=>navigate("#/settings/profile")}>{t(language,"editProfile")}</Button>:<><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button><Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button></>}</div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><ProfileDetails user={user} language={language}/>{!isSelf&&<section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>}{open&&!isSelf&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
     }
 
-    function MatchesPage({ state, language, updateState }) {
-      const [tab,setTab]=React.useState("suggested"); const matches=findComplementaryMatches(state.currentUser); const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header><div className="tabs" role="tablist">{[["suggested","suggested"],["requests","requests"],["connections","connections"]].map(([id,key])=><button role="tab" aria-selected={tab===id} className={`tab ${tab===id?"active":""}`} key={id} onClick={()=>setTab(id)}>{t(language,key)}</button>)}</div>{tab==="suggested"&&<div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div>}{tab==="requests"&&<section><h2>{t(language,"incomingRequests")}</h2><EmptyState title={t(language,"noRequests")} body={t(language,"peerNote")}/><h2 style={{marginTop:28}}>{t(language,"sentRequests")}</h2>{state.sentRequests.length?<div className="request-list">{state.sentRequests.map(request=>{const user=getUserById(request.targetUserId);return <article className="request-row glass" key={request.id}><div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user?.name}</h3><p className="user-meta">{getSkillName(request.offeredSkillId,language)} ↔ {getSkillName(request.requestedSkillId,language)}</p></div></div><span className="match-badge">● {t(language,"pending")}</span></article>})}</div>:<EmptyState title={t(language,"noRequests")} body={t(language,"recommendedNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>}{tab==="connections"&&<section>{state.connections.length?<div className="request-list">{state.connections.map(id=>{const user=getUserById(id);return <article className="request-row glass" key={id}><div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user?.name}</h3><p className="user-meta">{t(language,"connected")}</p></div></div><Button disabled variant="light">{t(language,"startChat")} · {t(language,"messagingSoon")}</Button></article>})}</div>:<EmptyState title={t(language,"noConnections")} body={t(language,"peerNote")}/>}</section>}</main>;
+    function ContactMatchCard({user,currentUser,language,status}){
+      const relationship=relationshipSummary(currentUser,user,language);
+      return <article className="contact-card glass"><div className="contact-main"><Avatar user={user}/><div><h3>{user.name}</h3><p>{locationLabel(user,language)}</p></div><span className="contact-status">{status||relationship.label}</span></div><div className="contact-skills"><span>{t(language,"canTeach")}: {getSkillName(user.skillsOffered[0].skillId,language)}</span><span>{t(language,"wantsLearn")}: {getSkillName(user.skillsWanted[0].skillId,language)}</span></div><Button small className="contact-details" onClick={()=>navigate(`#/people/${user.id}`,{from:window.location.hash})}>{t(language,"viewFullProfile")} →</Button></article>;
     }
 
-    function CurrentProfilePage({ state, language, updateState }) {
-      const [editing,setEditing]=React.useState(false); const [form,setForm]=React.useState(()=>cloneData(state.currentUser)); const [notice,setNotice]=React.useState(false);
-      const cancel=()=>{setForm(cloneData(state.currentUser));setEditing(false);}; const save=event=>{event.preventDefault();updateState({...state,currentUser:form,editedSkills:form.skillsOffered});setNotice(true);setEditing(false);};
-      if(editing)return <main className="page"><section className="onboarding-card glass"><h1 className="section-title">{t(language,"editProfile")}</h1><form className="form-grid" onSubmit={save}><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>{t(language,"city")}</span><input className="input" value={form.city} onChange={event=>setForm({...form,city:event.target.value})}/></label><label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(form.bio,language)} onChange={event=>setForm({...form,bio:{...form.bio,[language]:event.target.value}})}/></label><div className="span-2"><h2>{t(language,"teachSection")}</h2><SkillEditor items={form.skillsOffered} onChange={items=>setForm({...form,skillsOffered:items})} language={language}/></div><div className="span-2"><h2>{t(language,"learnSection")}</h2><SkillEditor items={form.skillsWanted} onChange={items=>setForm({...form,skillsWanted:items})} language={language} wanted/></div><div className="button-row span-2"><Button type="button" variant="ghost" onClick={cancel}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"saveChanges")}</Button></div></form></section></main>;
-      const user=state.currentUser; return <main className="page">{notice&&<p className="notice" role="status">{t(language,"profileSaved")}</p>}<section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})}</p><p>{localized(user.bio,language)}</p></div><div className="button-row"><Button onClick={()=>{setNotice(false);setEditing(true)}}>{t(language,"editProfile")}</Button><Button variant="ghost" onClick={resetDemo}>{t(language,"resetDemo")}</Button></div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><p className="section-note" style={{marginTop:18}}>{t(language,"demoSafety")}</p></main>;
+    function MatchContactGroup({title,users,status,state,language}){
+      return <section className="section"><div className="section-head"><h2 className="section-title">{title}</h2></div>{users.length?<div className="contact-grid">{users.map(user=><ContactMatchCard key={user.id} user={user} currentUser={state.currentUser} language={language} status={status}/>)}</div>:<EmptyState title={t(language,"noResults")} body={t(language,"peerNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>;
     }
+
+    function MatchesPage({ state, language }) {
+      const groups=buildMatchGroups(state);
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header><MatchContactGroup title={t(language,"complementaryMatches")} users={groups.complementary} state={state} language={language}/><MatchContactGroup title={t(language,"favoritePeople")} users={groups.favorites} status={t(language,"saved")} state={state} language={language}/><MatchContactGroup title={t(language,"swapRequests")} users={groups.requests} status={t(language,"pending")} state={state} language={language}/></main>;
+    }
+
+    const SETTINGS_ROWS=Object.freeze([
+      ["profile","◉","profileAndAvatar",{zh:"编辑公开资料",en:"Edit your public details"}],["skills","✦","skillsAndGoals",{zh:"管理分享与学习目标",en:"Manage what you share and learn"}],["availability","◷","availabilityAndPlaces",{zh:"选择时间与见面偏好",en:"Choose times and meeting preferences"}],["notifications","◌","notificationSettings",{zh:"管理本地提醒",en:"Control local reminders"}],["privacy","▣","privacyAndSafety",{zh:"管理资料可见性",en:"Manage profile visibility"}],["favorites","♥","favoritePeople",{zh:"查看收藏的人",en:"Review saved people"}],["help","?","helpAndFeedback",{zh:"阅读帮助或留下反馈",en:"Read answers or leave feedback"}],["logout","↗","logout",{zh:"结束本地会话",en:"End this local session"}]
+    ]);
+    function SettingsHome({route,state,language,updateState}){
+      const logout=()=>{if(window.confirm(t(language,"logoutConfirm"))){updateState(logoutState(state));navigate("#/");}};
+      const savedRow=SETTINGS_ROWS.find(([id])=>id===route.query.saved);
+      return <main className="page">{savedRow&&<p className="notice" role="status" aria-live="polite">{t(language,"settingsSaved",{section:t(language,savedRow[2])})}</p>}<section className="profile-hero glass"><Avatar user={state.currentUser} size="large"/><div><p className="eyebrow">SETTINGS</p><h1>{state.currentUser.name}</h1><p className="muted">{locationLabel(state.currentUser,language)}</p></div><Button onClick={()=>navigate(`#/people/${state.currentUser.id}`)}>{t(language,"viewProfile")}</Button></section><section className="section request-list">{SETTINGS_ROWS.map(([id,icon,title,description])=><button className="request-row glass" type="button" key={id} onClick={()=>id==="logout"?logout():navigate(`#/settings/${id}`)}><span><strong>{icon} {t(language,title)}</strong><small className="muted">{localized(description,language)}</small></span><span aria-hidden="true">→</span></button>)}</section></main>;
+    }
+    function SettingsSectionPage({route,state,language,updateState}){
+      const section=route.params.section; const user=state.currentUser; const back=()=>navigate("#/settings"); const saved=()=>navigate("#/settings",{saved:section});
+      if(!["profile","skills","availability","notifications","privacy","favorites","help"].includes(section))return <EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"settings")} onAction={back}/>;
+      if(section==="favorites")return <main className="page"><Button small variant="light" onClick={back}>← {t(language,"settings")}</Button><section className="section contact-grid">{state.favorites.map(id=>getUserById(id,user)).filter(Boolean).map(person=><ContactMatchCard key={person.id} user={person} currentUser={user} language={language}/>)}</section></main>;
+      if(section==="help")return <HelpSettings state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
+      if(section==="notifications"||section==="privacy")return <ToggleSettings section={section} state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
+      if(section==="skills")return <SkillsSettings state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
+      if(section==="availability")return <AvailabilitySettings state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
+      return <ProfileSettings state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
+    }
+    function FormActions({onCancel,language}){return <div className="button-row"><Button type="button" variant="ghost" onClick={onCancel}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"saveChanges")}</Button></div>;}
+    function ProfileSettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const [draft,setDraft]=React.useState(()=>cloneData(persisted));const [error,setError]=React.useState(false);const valid=getCitiesForCountry(draft.countryId).some(city=>city.id===draft.cityId);const save=e=>{e.preventDefault();if(!valid){setError(true);return;}updateState(updateSettingsState(state,"profile",draft));onSaved();};return <main className="page"><form className="onboarding-card glass form-grid" onSubmit={save}><h1 className="span-2">{t(language,"profileAndAvatar")}</h1><AvatarPicker user={draft} language={language} onSave={avatarDataUrl=>setDraft({...draft,avatarDataUrl})}/><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label><label className="field"><span>{t(language,"country")}</span><select className="select" value={draft.countryId} onChange={e=>{setError(false);setDraft({...draft,countryId:e.target.value,cityId:""});}}>{COUNTRIES.map(c=><option key={c.id} value={c.id}>{c[language]}</option>)}</select></label><label className="field"><span>{t(language,"city")}</span><select className="select" value={draft.cityId} onChange={e=>{setError(false);setDraft({...draft,cityId:e.target.value});}}><option value="">{t(language,"chooseCity")}</option>{getCitiesForCountry(draft.countryId).map(c=><option key={c.id} value={c.id}>{c[language]}</option>)}</select></label>{error&&<p className="form-error" role="alert">{t(language,"requiredFields")}</p>}<label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(draft.bio,language)} onChange={e=>setDraft({...draft,bio:{...draft.bio,[language]:e.target.value}})}/></label><FormActions language={language} onCancel={()=>{setDraft(cloneData(persisted));back();}}/></form></main>;}
+    function SkillsSettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const [draft,setDraft]=React.useState(()=>cloneData({skillsOffered:persisted.skillsOffered,skillsWanted:persisted.skillsWanted}));const [errors,setErrors]=React.useState([]);const save=e=>{e.preventDefault();const next=[...validateSkillList(draft.skillsOffered),...validateSkillList(draft.skillsWanted)];setErrors(next);if(next.length)return;updateState(updateSettingsState(state,"skills",draft));onSaved();};return <main className="page"><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,"skillsAndGoals")}</h1><SkillEditor items={draft.skillsOffered} onChange={items=>setDraft({...draft,skillsOffered:items})} language={language}/><SkillEditor items={draft.skillsWanted} onChange={items=>setDraft({...draft,skillsWanted:items})} language={language} wanted/>{errors.length>0&&<p className="form-error" role="alert">{t(language,errors.includes("duplicate")?"skillDuplicate":"skillRequired")}</p>}<FormActions language={language} onCancel={()=>{setDraft(cloneData({skillsOffered:persisted.skillsOffered,skillsWanted:persisted.skillsWanted}));back();}}/></form></main>;}
+    function AvailabilitySettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const initial={availability:persisted.availability,meetingModes:persisted.meetingModes,publicLocations:persisted.publicLocations||[]};const [draft,setDraft]=React.useState(()=>cloneData(initial));const toggle=(key,value)=>setDraft({...draft,[key]:draft[key].includes(value)?draft[key].filter(item=>item!==value):[...draft[key],value]});const save=e=>{e.preventDefault();updateState(updateSettingsState(state,"availability",draft));onSaved();};return <main className="page"><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,"availabilityAndPlaces")}</h1>{["weekday-evening","sat-morning","sat-afternoon","sun-morning","sun-afternoon","sun-evening"].map(id=><label key={id}><input type="checkbox" checked={draft.availability.includes(id)} onChange={()=>toggle("availability",id)}/> {profileLabel("availability",id,language)}</label>)}<h2>{t(language,"meetingPreference")}</h2>{["online","public-place"].map(id=><label key={id}><input type="checkbox" checked={draft.meetingModes.includes(id)} onChange={()=>toggle("meetingModes",id)}/> {profileLabel("meeting",id,language)}</label>)}<h2>{language==="zh"?"公共见面地点":"Public meeting locations"}</h2>{["library","cafe","community-center"].map(id=><label key={id}><input type="checkbox" checked={draft.publicLocations.includes(id)} onChange={()=>toggle("publicLocations",id)}/> {{zh:{library:"图书馆",cafe:"咖啡馆",'community-center':"社区中心"},en:{library:"Library",cafe:"Café",'community-center':"Community center"}}[language][id]}</label>)}<FormActions language={language} onCancel={()=>{setDraft(cloneData(initial));back();}}/></form></main>;}
+    function ToggleSettings({section,state,language,updateState,back,onSaved}){const persisted=section==="notifications"?state.notificationSettings:state.privacySettings;const [draft,setDraft]=React.useState(()=>cloneData(persisted));const labels={swapRequests:{zh:"交换请求",en:"Swap requests"},favoriteActivity:{zh:"收藏动态",en:"Favorite activity"},sessionReminders:{zh:"学习提醒",en:"Session reminders"},community:{zh:"社区可见",en:"Community"},private:{zh:"仅自己可见",en:"Private"}};const save=e=>{e.preventDefault();updateState(updateSettingsState(state,section,draft));onSaved();};return <main className="page"><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,section==="notifications"?"notificationSettings":"privacyAndSafety")}</h1>{Object.keys(draft).map(key=>key==="profileVisibility"?<label className="field" key={key}>{t(language,"profileVisibility")}<select className="select" value={draft[key]} onChange={e=>setDraft({...draft,[key]:e.target.value})}><option value="community">{labels.community[language]}</option><option value="private">{labels.private[language]}</option></select></label>:<label key={key}><input type="checkbox" checked={draft[key]} onChange={e=>setDraft({...draft,[key]:e.target.checked})}/> {(labels[key]?.[language])||(key==="showOnlineStatus"?t(language,"showOnlineStatus"):t(language,"publicPlacesOnly"))}</label>)}<FormActions language={language} onCancel={()=>{setDraft(cloneData(persisted));back();}}/></form></main>;}
+    function HelpSettings({state,language,updateState,back,onSaved}){const initial="";const [draft,setDraft]=React.useState(()=>cloneData(initial));const submit=e=>{e.preventDefault();if(!draft.trim())return;updateState(updateSettingsState(state,"feedback",{id:`feedback-${state.feedbackEntries.length+1}`,body:draft.trim(),createdAt:"2026-08-16T12:00:00.000Z"}));onSaved();};return <main className="page"><section className="onboarding-card glass"><h1>{t(language,"helpAndFeedback")}</h1><p>{language==="zh"?"常见问题：这是一个本地演示，资料仅保存在此设备。":"FAQ: this is a local demo and data stays on this device."}</p><form onSubmit={submit}><label className="field"><span>{t(language,"helpAndFeedback")}</span><textarea className="textarea" value={draft} placeholder={t(language,"feedbackPlaceholder")} onChange={e=>setDraft(e.target.value)}/></label><FormActions language={language} onCancel={()=>{setDraft(cloneData(initial));back();}}/></form></section></main>;}
 
     function NotFoundPage({ language }) { return <main className="page"><EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"backHome")} onAction={()=>navigate("#/")}/></main>; }
 
@@ -1554,6 +1995,7 @@
       }, [state, language]);
 
       React.useEffect(() => {
+        if (route.name === "legacy-profile") { window.location.hash = "#/settings"; return; }
         const redirect = guardRoute(route, state);
         if (redirect && window.location.hash !== redirect) window.location.hash = redirect;
       }, [route, state]);
@@ -1586,7 +2028,8 @@
       else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState}/>;
       else if (route.name === "search") page = <SearchPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "matches") page = <MatchesPage state={state} language={language} updateState={updateState}/>;
-      else if (route.name === "profile") page = <CurrentProfilePage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "settings") page = <SettingsHome route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "settings-section") page = <SettingsSectionPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "person") page = <PersonProfilePage route={route} state={state} language={language} updateState={updateState}/>;
       else page = <NotFoundPage language={language}/>;
 
