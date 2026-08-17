@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e89bb1">
   <meta name="description" content="SkillSwap — 学你所爱，分享你所会。">
-  <title>SkillSwap</title>
+  <meta name="application-version" content="3.0.0">
+  <title>SkillSwap v3.0</title>
   <style>
     /* 1. Design tokens */
     :root {
@@ -94,6 +95,35 @@
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
     .span-2 { grid-column: 1 / -1; }
     .auth-form { display: grid; gap: 15px; }
+    .select-menu { position: relative; min-width: 0; }
+    .select-trigger {
+      width: 100%; min-height: 58px; padding: 9px 13px; display: grid; grid-template-columns: 1fr auto;
+      align-items: center; gap: 10px; border: 1px solid rgba(24,24,24,.12); border-radius: 17px;
+      background: rgba(255,255,255,.84); color: var(--ink); text-align: left; box-shadow: 0 10px 28px rgba(77,28,48,.08);
+    }
+    .select-trigger:hover { border-color: rgba(24,24,24,.24); background: rgba(255,255,255,.94); }
+    .select-trigger[aria-expanded="true"] { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(111,34,67,.12); }
+    .select-trigger:disabled { opacity: .52; cursor: not-allowed; box-shadow: none; }
+    .select-trigger-copy { min-width: 0; display: grid; gap: 2px; }
+    .select-trigger-label { color: var(--muted); font-size: 10px; font-weight: 850; text-transform: uppercase; }
+    .select-trigger-value { overflow: hidden; font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .select-chevron { font-size: 13px; transition: transform .18s ease; }
+    .select-trigger[aria-expanded="true"] .select-chevron { transform: rotate(180deg); }
+    .select-popover {
+      position: absolute; z-index: 42; inset: calc(100% + 8px) auto auto 0; width: max(100%, 220px); max-width: min(320px, calc(100vw - 28px));
+      padding: 8px; border: 1px solid rgba(24,24,24,.12); border-radius: 18px; background: var(--paper);
+      box-shadow: 0 24px 70px rgba(45,20,31,.24);
+    }
+    .select-menu.align-end .select-popover { inset-inline: auto 0; }
+    .select-search { min-height: 42px; margin-bottom: 7px; border-radius: 12px; }
+    .select-options { max-height: 250px; overflow: auto; display: grid; gap: 3px; }
+    .select-option {
+      width: 100%; min-height: 42px; padding: 9px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center;
+      gap: 12px; border: 0; border-radius: 11px; background: transparent; color: var(--ink); text-align: left;
+    }
+    .select-option:hover, .select-option:focus-visible { background: var(--blush); }
+    .select-option[aria-selected="true"] { background: var(--ink); color: white; font-weight: 800; }
+    .select-empty { margin: 0; padding: 12px; color: var(--muted); font-size: 13px; }
 
     /* 6. Landing */
     .landing-shell { min-height: 100vh; padding: 18px 24px 48px; overflow: hidden; }
@@ -185,8 +215,12 @@
     .trend-row i { position:absolute; inset:0 auto 0 0; background:rgba(242,166,186,.28); }
 
     /* 9. Search / profile / matches */
-    .filter-bar { padding:16px; border-radius:24px; display:grid; grid-template-columns:2fr repeat(5,1fr) auto; gap:10px; }
-    .filter-bar .input, .filter-bar .select { min-height:46px; }
+    .search-query-form { margin-bottom:18px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:stretch; }
+    .search-query-input { min-height:58px; border-radius:18px; background:rgba(255,255,255,.9); box-shadow:0 14px 36px rgba(77,28,48,.11); }
+    .search-query-form .btn { min-width:132px; }
+    .filter-panel { margin-bottom:22px; display:flex; align-items:end; gap:10px; }
+    .filter-grid { min-width:0; flex:1; display:grid; grid-template-columns:repeat(5,minmax(140px,1fr)); gap:10px; }
+    .filter-reset { flex:0 0 auto; min-height:58px; }
     .result-count { margin:20px 0 12px; font-weight:800; }
     .search-starters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
     .starter-card { min-height:170px; padding:20px; border-radius:24px; }
@@ -205,6 +239,18 @@
     .contact-status { max-width:150px; padding:6px 9px; border-radius:999px; background:var(--blush); color:var(--ink); font-size:11px; font-weight:800; text-align:center; }
     .contact-skills { display:grid; gap:6px; color:var(--muted); font-size:13px; }
     .contact-details { justify-self:start; }
+    .contact-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .matches-tabs { padding:8px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; border-radius:22px; }
+    .match-tab { min-width:0; min-height:58px; padding:8px 10px; display:flex; align-items:center; justify-content:center; gap:8px; border:0; border-radius:16px; background:transparent; color:var(--muted); font-size:13px; font-weight:800; }
+    .match-tab:hover { background:rgba(255,255,255,.5); color:var(--ink); }
+    .match-tab[aria-selected="true"] { background:var(--ink); color:white; }
+    .match-tab-label { min-width:0; overflow-wrap:anywhere; }
+    .match-tab-count { min-width:26px; min-height:26px; padding:4px 7px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,.7); color:var(--ink); font-size:11px; }
+    .match-panel { margin-top:22px; }
+    .match-panel-head { margin-bottom:16px; display:flex; align-items:end; justify-content:space-between; gap:14px; }
+    .match-panel-head h2 { margin:0; font-size:clamp(26px,4vw,40px); font-weight:600; }
+    .match-panel-head p { margin:0; color:var(--muted); }
+    .confirm-copy { margin:18px 0 22px; color:var(--muted); line-height:1.65; }
     .profile-hero { padding:clamp(24px,5vw,48px); border-radius:32px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
     .profile-hero h1 { margin:0 0 6px; font-size:clamp(38px,6vw,66px); font-weight:500; letter-spacing:-.06em; }
     .profile-columns { margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
@@ -239,8 +285,7 @@
     /* 11. Responsive */
     @media (max-width: 1024px) {
       .card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      .filter-bar { grid-template-columns:2fr repeat(2,1fr); }
-      .filter-bar > :nth-child(n+4) { grid-row:2; }
+      .filter-grid { grid-template-columns:repeat(3,minmax(140px,1fr)); }
       .search-starters { grid-template-columns:1fr 1fr; }
       .hero-title { font-size:clamp(62px,10vw,102px); }
     }
@@ -257,13 +302,16 @@
       .gallery-card { min-height:310px; } .black-card { min-height:310px; align-items:flex-end; }
       .community-stats { align-items:center; }
       .page-head, .section-head { align-items:start; flex-direction:column; }
-      .page-title { font-size:clamp(46px,16vw,72px); }
+      .page-title { font-size:54px; line-height:1.02; }
       .section { margin-top:46px; }
       .card-grid, .peer-grid, .contact-grid, .profile-columns, .profile-details { grid-template-columns:1fr; }
       .search-starters { grid-template-columns:1fr; }
       .user-card { min-height:0; }
-      .filter-bar, .form-grid, .skill-editor-grid { grid-template-columns:1fr; }
-      .filter-bar > :nth-child(n), .span-2 { grid-column:auto; grid-row:auto; }
+      .filter-panel { align-items:stretch; flex-direction:column; }
+      .filter-grid { width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .filter-reset { align-self:flex-start; }
+      .form-grid, .skill-editor-grid { grid-template-columns:1fr; }
+      .span-2 { grid-column:auto; grid-row:auto; }
       .profile-hero { grid-template-columns:auto 1fr; }
       .profile-hero > .button-row { grid-column:1/-1; }
       .auth-art { min-height:230px; } .auth-art::after { width:190px; height:190px; }
@@ -289,6 +337,16 @@
       .profile-hero .avatar { margin:auto; }
       .profile-hero .button-row { justify-content:center; }
       .request-row { align-items:start; flex-direction:column; }
+      .page-title { font-size:42px; }
+      .search-query-form { grid-template-columns:1fr; }
+      .search-query-form .btn { width:100%; }
+      .filter-grid { grid-template-columns:1fr; }
+      .filter-reset { width:100%; }
+      .select-menu.align-end .select-popover { inset-inline:0 auto; }
+      .match-tab { padding:7px 5px; gap:5px; font-size:11px; }
+      .match-tab-count { min-width:23px; min-height:23px; padding:3px 5px; }
+      .match-panel-head { align-items:start; flex-direction:column; }
+      .contact-actions .btn { flex:1 1 130px; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior:auto; }
@@ -343,6 +401,7 @@
         saved: "已收藏",
         viewProfile: "查看资料",
         sendRequest: "发送技能交换请求",
+        startSwap: "发起交换",
         requestSent: "请求已发送",
         pending: "等待回应",
         connected: "已连接",
@@ -357,7 +416,7 @@
         whyMatch: "为什么适合交换",
         demoLabel: "前端演示数据",
         localNotice: "所有资料仅保存在此浏览器。",
-        landingEyebrow: "技能交换社区 · 2.0",
+        landingEyebrow: "技能交换社区 · 3.0",
         landingTitleA: "交换技能，",
         landingTitleB: "遇见同路人。",
         landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
@@ -429,7 +488,7 @@
         noConnections: "还没有新的连接",
         startChat: "开始聊天",
         matchCenter: "匹配中心",
-        matchLead: "把推荐、请求和已连接伙伴放在同一个地方。",
+        matchLead: "在互补伙伴、收藏和已发送请求之间快速切换。",
         editProfile: "编辑资料",
         cancel: "取消",
         saveChanges: "保存修改",
@@ -458,6 +517,18 @@
         userNotFoundBody: "该演示用户不存在或已被移除。",
         searchPlaceholder: "例如：摄影、Python、烹饪…",
         resetFilters: "重置筛选",
+        sortBy: "排序",
+        searchOptions: "搜索选项",
+        noOptions: "没有匹配选项",
+        removeFavorite: "取消收藏",
+        cancelRequest: "取消请求",
+        cancelRequestTitle: "取消交换请求？",
+        cancelRequestBody: "将取消发给 {name} 的所有待回应请求。此操作只影响当前浏览器中的演示数据。",
+        confirmCancelRequest: "确认取消",
+        requestCancelled: "已取消发给 {name} 的请求。",
+        complementaryHint: "根据双方技能方向推荐",
+        favoritesHint: "你保存的技能伙伴",
+        requestsHint: "已发送且正在等待回应",
         settings:"设置",country:"国家",filterCountry:"所有国家",chooseCountryFirst:"请先选择国家",chooseCity:"请选择城市",sortNewest:"最近发布",sortLiked:"最受好评",viewFullProfile:"查看完整资料",communityOverview:"社区概览",demoCommunityData:"演示社区数据",onlineNow:"人在线",totalUsers:"位用户",swapsToday:"今日交换",trendingSkills:"本周热门技能",demoTrend:"演示趋势",peopleSearching:"{count} 人正在寻找",recentSearches:"最近搜索",noRecentSearches:"搜索后会显示在这里",skillCategories:"技能分类",popularSearches:"热门关键词",canTeachSkill:"可以教你：{skill}",matchesFilters:"符合你的筛选条件",likedBy:"{count} 人好评",published:"发布于 {date}",complementaryMatches:"互补匹配",favoritePeople:"收藏的人",swapRequests:"交换请求",interests:"兴趣",availability:"可约时间",meetingPreference:"见面方式",reliability:"可靠度",joined:"加入时间",profileAndAvatar:"个人资料与头像",skillsAndGoals:"技能与学习目标",availabilityAndPlaces:"可约时间与地点",notificationSettings:"通知设置",privacyAndSafety:"隐私与安全",helpAndFeedback:"帮助与反馈",logout:"退出登录",logoutConfirm:"退出当前账号？资料会保留在本机。",profileVisibility:"资料可见性",showOnlineStatus:"显示在线状态",publicPlacesOnly:"仅允许公共地点",publicPlacePolicy:"此请求将仅安排在公共地点。",communityOwnerPreview:"你正在查看社区公开资料",privateOwnerPreview:"你正在查看仅自己可见的资料预览",onlinePreview:"在线（演示）",settingsSaved:"已保存：{section}",primaryNavigation:"主导航",mobileNavigation:"移动端主导航",closeDialog:"关闭对话框",feedbackPlaceholder:"告诉我们哪里可以做得更好",feedbackSaved:"反馈已保存在本机演示中。",avatarTypeError:"请选择 JPEG、PNG 或 WebP 图片。",avatarSizeError:"图片不能超过 5 MB。",avatarProcessError:"无法处理这张图片，请换一张。",changeAvatar:"更换头像",category_technology:"技术",category_creative:"创作",category_academic:"学习",category_sports:"运动",category_lifestyle:"生活"
       }),
       en: Object.freeze({
@@ -481,6 +552,7 @@
         saved: "Saved",
         viewProfile: "View profile",
         sendRequest: "Send Skill Swap request",
+        startSwap: "Start swap",
         requestSent: "Request sent",
         pending: "Pending",
         connected: "Connected",
@@ -495,7 +567,7 @@
         whyMatch: "Why you match",
         demoLabel: "Frontend demo data",
         localNotice: "Everything is stored only in this browser.",
-        landingEyebrow: "Skill exchange community · 2.0",
+        landingEyebrow: "Skill exchange community · 3.0",
         landingTitleA: "Trade skills,",
         landingTitleB: "meet your people.",
         landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
@@ -567,7 +639,7 @@
         noConnections: "No new connections yet",
         startChat: "Start chat",
         matchCenter: "Match center",
-        matchLead: "Keep suggestions, requests, and connections in one place.",
+        matchLead: "Move quickly between complementary partners, saved people, and sent requests.",
         editProfile: "Edit profile",
         cancel: "Cancel",
         saveChanges: "Save changes",
@@ -596,6 +668,18 @@
         userNotFoundBody: "That demo user does not exist or has been removed.",
         searchPlaceholder: "Try Photography, Python, Cooking…",
         resetFilters: "Reset filters",
+        sortBy: "Sort",
+        searchOptions: "Search options",
+        noOptions: "No matching options",
+        removeFavorite: "Remove saved",
+        cancelRequest: "Cancel request",
+        cancelRequestTitle: "Cancel this swap request?",
+        cancelRequestBody: "This cancels every pending request sent to {name}. It only changes demo data in this browser.",
+        confirmCancelRequest: "Cancel request",
+        requestCancelled: "Requests to {name} were cancelled.",
+        complementaryHint: "Recommended from both skill directions",
+        favoritesHint: "People you have saved",
+        requestsHint: "Sent and waiting for a response",
         settings:"Settings",country:"Country",filterCountry:"All countries",chooseCountryFirst:"Choose a country first",chooseCity:"Choose a city",sortNewest:"Newest",sortLiked:"Most liked",viewFullProfile:"View full profile",communityOverview:"Community overview",demoCommunityData:"Demo community data",onlineNow:"online",totalUsers:"users",swapsToday:"swaps today",trendingSkills:"Trending this week",demoTrend:"Demo trend",peopleSearching:"{count} people searching",recentSearches:"Recent searches",noRecentSearches:"Your searches will appear here",skillCategories:"Skill categories",popularSearches:"Popular searches",canTeachSkill:"Can teach you: {skill}",matchesFilters:"Matches your filters",likedBy:"Liked by {count}",published:"Published {date}",complementaryMatches:"Complementary matches",favoritePeople:"Saved people",swapRequests:"Swap requests",interests:"Interests",availability:"Availability",meetingPreference:"Meeting preference",reliability:"Reliability",joined:"Joined",profileAndAvatar:"Profile & avatar",skillsAndGoals:"Skills & learning goals",availabilityAndPlaces:"Availability & places",notificationSettings:"Notifications",privacyAndSafety:"Privacy & safety",helpAndFeedback:"Help & feedback",logout:"Log out",logoutConfirm:"Log out now? Your profile stays on this device.",profileVisibility:"Profile visibility",showOnlineStatus:"Show online status",publicPlacesOnly:"Public places only",publicPlacePolicy:"This request will use public meeting places only.",communityOwnerPreview:"You are viewing your community profile",privateOwnerPreview:"You are viewing your private owner preview",onlinePreview:"Online (demo)",settingsSaved:"Saved: {section}",primaryNavigation:"Primary navigation",mobileNavigation:"Mobile primary navigation",closeDialog:"Close dialog",feedbackPlaceholder:"Tell us what could be better",feedbackSaved:"Feedback saved in this local demo.",avatarTypeError:"Choose a JPEG, PNG, or WebP image.",avatarSizeError:"Images must be 5 MB or smaller.",avatarProcessError:"We could not process that image. Try another one.",changeAvatar:"Change avatar",category_technology:"Technology",category_creative:"Creative",category_academic:"Learning",category_sports:"Sports",category_lifestyle:"Lifestyle"
       })
     });
@@ -1184,7 +1268,13 @@
       const country=getCountryById(query.country)?.id || "";
       const requestedCity=country ? String(query.city||"") : "";
       const city=getCitiesForCountry(country).some(item=>item.id===requestedCity) ? requestedCity : "";
-      return {q:query.q||"",level:query.level||"",country,city,lang:query.lang||"",sort:["newest","liked"].includes(query.sort)?query.sort:"newest"};
+      const level=SKILL_LEVELS.includes(query.level) ? query.level : "";
+      const lang=["zh","en"].includes(query.lang) ? query.lang : "";
+      return {q:query.q||"",level,country,city,lang,sort:["newest","liked"].includes(query.sort)?query.sort:"newest"};
+    }
+
+    function updateSearchFilter(filters,key,value){
+      return key==="country" ? {...filters,country:value,city:""} : {...filters,[key]:value};
     }
 
     function rememberSearch(list,value){
@@ -1202,6 +1292,8 @@
     }
 
     function uniqueUsers(users){return [...new Map(users.filter(Boolean).map(user=>[user.id,user])).values()];}
+    const MATCH_TAB_IDS=Object.freeze(["complementary","favorites","requests"]);
+    function normalizeMatchTab(value){return MATCH_TAB_IDS.includes(value)?value:"complementary";}
     function buildMatchGroups(state){
       const selfId=state.currentUser?.id;
       return {
@@ -1296,6 +1388,10 @@
         createdAt: now.toISOString(), meetingPolicy
       };
       return { requests: [...requests, request], request, created: true };
+    }
+
+    function cancelSwapRequests(requests,targetUserId){
+      return requests.filter(request=>request.targetUserId!==targetUserId || request.status!=="pending");
     }
 
     function localized(value, language) {
@@ -1441,6 +1537,18 @@
       assert(switchedCountry.country==="jp" && switchedCountry.city==="", "Country change must clear an invalid city");
     });
 
+    test("search country changes clear the previous city", () => {
+      const before=normalizeSearchFilters({country:"cn",city:"tianjin",lang:"zh",sort:"liked"});
+      const after=updateSearchFilter(before,"country","jp");
+      assert(after.country==="jp"&&after.city==="", "Country update retained an invalid city");
+      assert(after.lang==="zh"&&after.sort==="liked", "Country update changed unrelated filters");
+    });
+
+    test("search hash rejects unknown select values", () => {
+      const filters=normalizeSearchFilters({level:"expert",lang:"xx",sort:"name"});
+      assert(filters.level===""&&filters.lang===""&&filters.sort==="newest", "Unknown select values survived normalization");
+    });
+
     test("settings routes parse and old profile route redirects", () => {
       assert(parseHash("#/settings").name==="settings", "Settings home route missing");
       const privacy=parseHash("#/settings/privacy");
@@ -1491,6 +1599,31 @@
       assert(groups.complementary.length>=6, "Need six or more complementary contacts");
       assert(groups.favorites.map(user=>user.id).join("|")==="alice-01|jun-01", "Favorites group wrong");
       assert(groups.requests.every(user=>user), "Request target missing");
+    });
+
+    test("matches tabs normalize to a stable route", () => {
+      assert(normalizeMatchTab("favorites")==="favorites", "Favorites tab was lost");
+      assert(normalizeMatchTab("missing")==="complementary", "Unknown tab did not recover");
+      assert(buildHash("#/matches",{tab:"requests"})==="#/matches?tab=requests", "Matches tab hash changed");
+    });
+
+    test("cancelling requests changes only the selected contact", () => {
+      const requests=[
+        {id:"one",targetUserId:"alice-01",status:"pending"},
+        {id:"two",targetUserId:"alice-01",status:"accepted"},
+        {id:"three",targetUserId:"jun-01",status:"pending"}
+      ];
+      const after=cancelSwapRequests(requests,"alice-01");
+      assert(after.map(request=>request.id).join("|")==="two|three", "Request cancellation removed the wrong records");
+      assert(requests.length===3, "Request cancellation mutated its input");
+    });
+
+    test("match request counts update after cancellation", () => {
+      const before=loginAsDemoUser(); const target=before.sentRequests[0]?.targetUserId;
+      assert(Boolean(target), "Demo request target missing");
+      const prior=buildMatchGroups(before).requests.length;
+      const after={...before,sentRequests:cancelSwapRequests(before.sentRequests,target)};
+      assert(buildMatchGroups(after).requests.length===prior-1, "Request group count did not update");
     });
 
     test("every partner supports a complete profile", () => {
@@ -1630,6 +1763,62 @@
     /* 9. Reusable UI components */
     function Button({ children, variant = "primary", small = false, className = "", ...props }) {
       return <button className={`btn btn-${variant} ${small ? "btn-small" : ""} ${className}`} {...props}>{children}</button>;
+    }
+
+    function SelectMenu({label,value,options,onChange,placeholder,disabled=false,searchable=false,searchPlaceholder,noOptionsLabel,align="start"}){
+      const listId=React.useId();
+      const rootRef=React.useRef(null); const triggerRef=React.useRef(null); const searchRef=React.useRef(null); const optionRefs=React.useRef([]);
+      const [open,setOpen]=React.useState(false); const [query,setQuery]=React.useState(""); const [activeIndex,setActiveIndex]=React.useState(0);
+      const selected=options.find(option=>option.value===value);
+      const normalizedQuery=query.trim().toLocaleLowerCase();
+      const visibleOptions=normalizedQuery?options.filter(option=>option.label.toLocaleLowerCase().includes(normalizedQuery)):options;
+      const focusOption=index=>requestAnimationFrame(()=>optionRefs.current[index]?.focus());
+      const openMenu=direction=>{
+        if(disabled)return;
+        setQuery("");
+        const selectedIndex=options.findIndex(option=>option.value===value);
+        setActiveIndex(direction<0?Math.max(0,options.length-1):Math.max(0,selectedIndex));
+        setOpen(true);
+      };
+      const closeMenu=(restore=true)=>{setOpen(false);setQuery("");if(restore)requestAnimationFrame(()=>triggerRef.current?.focus());};
+      const choose=option=>{onChange(option.value);closeMenu();};
+      const move=(index,delta)=>{const next=(index+delta+visibleOptions.length)%visibleOptions.length;setActiveIndex(next);focusOption(next);};
+      const optionKey=(event,index,option)=>{
+        if(event.key==="ArrowDown"&&visibleOptions.length){event.preventDefault();move(index,1);}
+        else if(event.key==="ArrowUp"&&visibleOptions.length){event.preventDefault();move(index,-1);}
+        else if(event.key==="Home"&&visibleOptions.length){event.preventDefault();setActiveIndex(0);focusOption(0);}
+        else if(event.key==="End"&&visibleOptions.length){event.preventDefault();const last=visibleOptions.length-1;setActiveIndex(last);focusOption(last);}
+        else if(event.key==="Enter"||event.key===" "){event.preventDefault();choose(option);}
+        else if(event.key==="Escape"){event.preventDefault();closeMenu();}
+        else if(event.key==="Tab"){setOpen(false);setQuery("");}
+      };
+      React.useEffect(()=>{
+        if(!open)return;
+        const handlePointer=event=>{if(!rootRef.current?.contains(event.target))closeMenu(false);};
+        document.addEventListener("pointerdown",handlePointer);
+        return ()=>document.removeEventListener("pointerdown",handlePointer);
+      },[open]);
+      React.useEffect(()=>{
+        if(!open)return;
+        const timer=setTimeout(()=>searchable?searchRef.current?.focus():focusOption(activeIndex),0);
+        return ()=>clearTimeout(timer);
+      },[open,searchable]);
+      React.useEffect(()=>{if(open&&activeIndex>=visibleOptions.length)setActiveIndex(0);},[query,open,visibleOptions.length,activeIndex]);
+      return <div className={`select-menu ${align==="end"?"align-end":""}`} ref={rootRef}>
+        <button ref={triggerRef} type="button" className="select-trigger" disabled={disabled} aria-haspopup="listbox" aria-expanded={open} aria-controls={open?listId:undefined} aria-label={`${label}: ${selected?.label||placeholder}`} onClick={()=>open?closeMenu(false):openMenu(1)} onKeyDown={event=>{
+          if(event.key==="ArrowDown"||event.key==="ArrowUp"){event.preventDefault();openMenu(event.key==="ArrowUp"?-1:1);}
+          else if(event.key==="Home"||event.key==="End"){event.preventDefault();openMenu(event.key==="End"?-1:1);}
+        }}>
+          <span className="select-trigger-copy"><span className="select-trigger-label">{label}</span><span className="select-trigger-value">{selected?.label||placeholder}</span></span><span className="select-chevron" aria-hidden="true">⌄</span>
+        </button>
+        {open&&<div className="select-popover">
+          {searchable&&<input ref={searchRef} className="input select-search" value={query} onChange={event=>{setQuery(event.target.value);setActiveIndex(0);}} onKeyDown={event=>{
+            if(event.key==="ArrowDown"&&visibleOptions.length){event.preventDefault();setActiveIndex(0);focusOption(0);}
+            else if(event.key==="Escape"){event.preventDefault();closeMenu();}
+          }} placeholder={searchPlaceholder} aria-label={searchPlaceholder}/>}
+          <div id={listId} className="select-options" role="listbox" aria-label={label}>{visibleOptions.length?visibleOptions.map((option,index)=><button ref={node=>optionRefs.current[index]=node} type="button" role="option" className="select-option" aria-selected={option.value===value} tabIndex="-1" key={option.value||"all"} onClick={()=>choose(option)} onKeyDown={event=>optionKey(event,index,option)}><span>{option.label}</span><span aria-hidden="true">{option.value===value?"✓":""}</span></button>):<p className="select-empty">{noOptionsLabel}</p>}</div>
+        </div>}
+      </div>;
     }
 
     function Avatar({ user, size = "normal" }) {
@@ -1902,11 +2091,29 @@
     function SearchPage({ route, state, language, updateState }) {
       const filters=normalizeSearchFilters(route.query);
       const active=hasActiveSearchFilters(filters); const users=sortUsers(filterUsers(MOCK_USERS,filters,language),filters.sort);
-      const setFilter=(key,value)=>navigate("#/search",key==="country"?{...filters,country:value,city:""}:{...filters,[key]:value});
+      const [queryDraft,setQueryDraft]=React.useState(filters.q);
+      React.useEffect(()=>setQueryDraft(filters.q),[filters.q]);
+      const setFilter=(key,value)=>navigate("#/search",updateSearchFilter(filters,key,value));
       const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
-      const commitSearch=value=>{const clean=String(value||"").trim();if(!clean)return;navigate("#/search",{...filters,q:clean});updateState({...state,recentSearches:rememberSearch(state.recentSearches,clean)});};
-      const submit=event=>{event.preventDefault();commitSearch(filters.q);};
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header><form className="filter-bar glass" onSubmit={submit}><label className="field"><span className="sr-only">{t(language,"search")}</span><input className="input" value={filters.q} onChange={event=>setFilter("q",event.target.value)} placeholder={t(language,"searchPlaceholder")}/></label><select className="select" aria-label={t(language,"filterLevel")} value={filters.level} onChange={event=>setFilter("level",event.target.value)}><option value="">{t(language,"filterLevel")}</option>{SKILL_LEVELS.map(level=><option value={level} key={level}>{levelLabel(level,language)}</option>)}</select><select className="select" aria-label={t(language,"country")} value={filters.country} onChange={event=>setFilter("country",event.target.value)}><option value="">{t(language,"filterCountry")}</option>{COUNTRIES.map(country=><option value={country.id} key={country.id}>{country[language]}</option>)}</select><select className="select" aria-label={t(language,"filterCity")} value={filters.city} disabled={!filters.country} onChange={event=>setFilter("city",event.target.value)}><option value="">{filters.country?t(language,"filterCity"):t(language,"chooseCountryFirst")}</option>{getCitiesForCountry(filters.country).map(city=><option value={city.id} key={city.id}>{city[language]}</option>)}</select><select className="select" aria-label={t(language,"filterLanguage")} value={filters.lang} onChange={event=>setFilter("lang",event.target.value)}><option value="">{t(language,"filterLanguage")}</option><option value="zh">中文</option><option value="en">English</option></select><select className="select" aria-label={t(language,"sortNewest")} value={filters.sort} onChange={event=>setFilter("sort",event.target.value)}><option value="newest">{t(language,"sortNewest")}</option><option value="liked">{t(language,"sortLiked")}</option></select><Button small variant="light" type="button" onClick={()=>navigate("#/search")}>{t(language,"resetFilters")}</Button></form>{!active?<SearchEmptyState state={state} language={language} onSearch={commitSearch}/>:users.length?<><p className="result-count" aria-live="polite">{t(language,"results",{count:users.length})}</p><div className="card-grid">{users.map(user=><SearchResultCard key={user.id} user={user} currentUser={state.currentUser} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>)}</div></>:<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</main>;
+      const commitSearch=value=>{const clean=String(value||"").trim();navigate("#/search",{...filters,q:clean});if(clean)updateState({...state,recentSearches:rememberSearch(state.recentSearches,clean)});};
+      const submit=event=>{event.preventDefault();commitSearch(queryDraft);};
+      const allOption=(label)=>({value:"",label});
+      const commonProps={searchPlaceholder:t(language,"searchOptions"),noOptionsLabel:t(language,"noOptions")};
+      const levelOptions=[allOption(t(language,"filterLevel")),...SKILL_LEVELS.map(level=>({value:level,label:levelLabel(level,language)}))];
+      const countryOptions=[allOption(t(language,"filterCountry")),...COUNTRIES.map(country=>({value:country.id,label:country[language]}))];
+      const cityOptions=[allOption(filters.country?t(language,"filterCity"):t(language,"chooseCountryFirst")),...getCitiesForCountry(filters.country).map(city=>({value:city.id,label:city[language]}))];
+      const languageOptions=[allOption(t(language,"filterLanguage")),{value:"zh",label:"中文"},{value:"en",label:"English"}];
+      const sortOptions=[{value:"newest",label:t(language,"sortNewest")},{value:"liked",label:t(language,"sortLiked")}];
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header>
+        <form className="search-query-form" onSubmit={submit}><label className="sr-only" htmlFor="search-query">{t(language,"search")}</label><input id="search-query" className="input search-query-input" value={queryDraft} onChange={event=>setQueryDraft(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} <span aria-hidden="true">→</span></Button></form>
+        <section className="filter-panel" aria-label={t(language,"resetFilters")}><div className="filter-grid">
+          <SelectMenu label={t(language,"level")} value={filters.level} options={levelOptions} onChange={value=>setFilter("level",value)} placeholder={t(language,"filterLevel")} {...commonProps}/>
+          <SelectMenu label={t(language,"country")} value={filters.country} options={countryOptions} onChange={value=>setFilter("country",value)} placeholder={t(language,"filterCountry")} searchable {...commonProps}/>
+          <SelectMenu label={t(language,"city")} value={filters.city} options={cityOptions} onChange={value=>setFilter("city",value)} placeholder={filters.country?t(language,"filterCity"):t(language,"chooseCountryFirst")} disabled={!filters.country} searchable {...commonProps}/>
+          <SelectMenu label={t(language,"languageLabel")} value={filters.lang} options={languageOptions} onChange={value=>setFilter("lang",value)} placeholder={t(language,"filterLanguage")} {...commonProps}/>
+          <SelectMenu label={t(language,"sortBy")} value={filters.sort} options={sortOptions} onChange={value=>setFilter("sort",value)} placeholder={t(language,"sortNewest")} align="end" {...commonProps}/>
+        </div><Button className="filter-reset" variant="light" type="button" onClick={()=>navigate("#/search")}>{t(language,"resetFilters")}</Button></section>
+        {!active?<SearchEmptyState state={state} language={language} onSearch={value=>{setQueryDraft(value);commitSearch(value);}}/>:users.length?<><p className="result-count" aria-live="polite">{t(language,"results",{count:users.length})}</p><div className="card-grid">{users.map(user=><SearchResultCard key={user.id} user={user} currentUser={state.currentUser} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>)}</div></>:<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</main>;
     }
 
     function SwapRequestModal({ target, state, language, updateState, onClose }) {
@@ -1924,18 +2131,33 @@
       return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p>{isSelf&&<p className="notice" role="status">{state.privacySettings.profileVisibility==="private"?t(language,"privateOwnerPreview"):t(language,"communityOwnerPreview")}{state.privacySettings.showOnlineStatus&&` · ${t(language,"onlinePreview")}`}</p>}</div><div className="button-row">{isSelf?<Button onClick={()=>navigate("#/settings/profile")}>{t(language,"editProfile")}</Button>:<><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button><Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button></>}</div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><ProfileDetails user={user} language={language}/>{!isSelf&&<section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>}{open&&!isSelf&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
     }
 
-    function ContactMatchCard({user,currentUser,language,status}){
+    function ContactMatchCard({user,currentUser,language,group,saved,onToggleFavorite,onRequest,onCancelRequest}){
       const relationship=relationshipSummary(currentUser,user,language);
-      return <article className="contact-card glass"><div className="contact-main"><Avatar user={user}/><div><h3>{user.name}</h3><p>{locationLabel(user,language)}</p></div><span className="contact-status">{status||relationship.label}</span></div><div className="contact-skills"><span>{t(language,"canTeach")}: {getSkillName(user.skillsOffered[0].skillId,language)}</span><span>{t(language,"wantsLearn")}: {getSkillName(user.skillsWanted[0].skillId,language)}</span></div><Button small className="contact-details" onClick={()=>navigate(`#/people/${user.id}`,{from:window.location.hash})}>{t(language,"viewFullProfile")} →</Button></article>;
+      const status=group==="favorites"?t(language,"saved"):group==="requests"?t(language,"pending"):relationship.label;
+      return <article className="contact-card glass"><div className="contact-main"><Avatar user={user}/><div><h3>{user.name}</h3><p>{locationLabel(user,language)}</p></div><span className="contact-status">{status}</span></div><div className="contact-skills"><span>{t(language,"canTeach")}: {getSkillName(user.skillsOffered[0].skillId,language)}</span><span>{t(language,"wantsLearn")}: {getSkillName(user.skillsWanted[0].skillId,language)}</span></div><div className="contact-actions"><Button small variant="light" onClick={()=>navigate(`#/people/${user.id}`,{from:window.location.hash})}>{t(language,"viewFullProfile")} <span aria-hidden="true">→</span></Button>{group&&group!=="requests"&&<><button className="icon-btn" type="button" onClick={()=>onToggleFavorite(user.id)} aria-label={saved?t(language,"removeFavorite"):t(language,"save")}>{saved?"♥":"♡"}</button><Button small onClick={()=>onRequest(user)}>{t(language,"startSwap")}</Button></>}{group==="requests"&&<Button small variant="ghost" onClick={()=>onCancelRequest(user)}>{t(language,"cancelRequest")}</Button>}</div></article>;
     }
 
-    function MatchContactGroup({title,users,status,state,language}){
-      return <section className="section"><div className="section-head"><h2 className="section-title">{title}</h2></div>{users.length?<div className="contact-grid">{users.map(user=><ContactMatchCard key={user.id} user={user} currentUser={state.currentUser} language={language} status={status}/>)}</div>:<EmptyState title={t(language,"noResults")} body={t(language,"peerNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>;
+    function MatchContactGroup({group,title,hint,users,state,language,onToggleFavorite,onRequest,onCancelRequest,hidden=false}){
+      return <section className="match-panel" role="tabpanel" id={`match-panel-${group}`} aria-labelledby={`match-tab-${group}`} hidden={hidden}><div className="match-panel-head"><h2>{title}</h2><p>{hint}</p></div>{users.length?<div className="contact-grid">{users.map(user=><ContactMatchCard key={user.id} user={user} currentUser={state.currentUser} language={language} group={group} saved={state.favorites.includes(user.id)} onToggleFavorite={onToggleFavorite} onRequest={onRequest} onCancelRequest={onCancelRequest}/>)}</div>:<EmptyState title={group==="requests"?t(language,"noRequests"):t(language,"noResults")} body={group==="requests"?hint:t(language,"peerNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>;
     }
 
-    function MatchesPage({ state, language }) {
+    function CancelRequestModal({target,language,onConfirm,onClose}){
+      return <Modal title={t(language,"cancelRequestTitle")} onClose={onClose} language={language}><p className="confirm-copy">{t(language,"cancelRequestBody",{name:target.name})}</p><div className="button-row"><Button variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button variant="rose" onClick={onConfirm}>{t(language,"confirmCancelRequest")}</Button></div></Modal>;
+    }
+
+    function MatchesPage({ route, state, language, updateState }) {
       const groups=buildMatchGroups(state);
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header><MatchContactGroup title={t(language,"complementaryMatches")} users={groups.complementary} state={state} language={language}/><MatchContactGroup title={t(language,"favoritePeople")} users={groups.favorites} status={t(language,"saved")} state={state} language={language}/><MatchContactGroup title={t(language,"swapRequests")} users={groups.requests} status={t(language,"pending")} state={state} language={language}/></main>;
+      const activeTab=normalizeMatchTab(route.query.tab); const [requestTarget,setRequestTarget]=React.useState(null); const [cancelTarget,setCancelTarget]=React.useState(null); const [notice,setNotice]=React.useState(""); const tabRefs=React.useRef([]);
+      const tabs=[
+        {id:"complementary",title:t(language,"complementaryMatches"),hint:t(language,"complementaryHint"),users:groups.complementary},
+        {id:"favorites",title:t(language,"favoritePeople"),hint:t(language,"favoritesHint"),users:groups.favorites},
+        {id:"requests",title:t(language,"swapRequests"),hint:t(language,"requestsHint"),users:groups.requests}
+      ];
+      const chooseTab=(id,focus=false)=>{navigate("#/matches",{tab:id});if(focus)requestAnimationFrame(()=>tabRefs.current[MATCH_TAB_IDS.indexOf(id)]?.focus());};
+      const tabKey=(event,index)=>{let next=null;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index-1+tabs.length)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;if(next!==null){event.preventDefault();chooseTab(tabs[next].id,true);}};
+      const toggle=id=>updateState(current=>({...current,favorites:toggleFavorite(current.favorites,id)}));
+      const confirmCancel=()=>{if(!cancelTarget)return;const target=cancelTarget;updateState(current=>({...current,sentRequests:cancelSwapRequests(current.sentRequests,target.id)}));setCancelTarget(null);setNotice(t(language,"requestCancelled",{name:target.name}));};
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header>{notice&&<p className="notice" role="status" aria-live="polite">{notice}</p>}<div className="matches-tabs glass" role="tablist" aria-label={t(language,"matches")}>{tabs.map((tab,index)=><button ref={node=>tabRefs.current[index]=node} key={tab.id} type="button" role="tab" id={`match-tab-${tab.id}`} className="match-tab" aria-selected={activeTab===tab.id} aria-controls={`match-panel-${tab.id}`} tabIndex={activeTab===tab.id?0:-1} onClick={()=>chooseTab(tab.id)} onKeyDown={event=>tabKey(event,index)}><span className="match-tab-label">{tab.title}</span><span className="match-tab-count">{tab.users.length}</span></button>)}</div>{tabs.map(tab=><MatchContactGroup key={tab.id} group={tab.id} title={tab.title} hint={tab.hint} users={tab.users} state={state} language={language} onToggleFavorite={toggle} onRequest={setRequestTarget} onCancelRequest={setCancelTarget} hidden={activeTab!==tab.id}/>)}{requestTarget&&<SwapRequestModal target={requestTarget} state={state} language={language} updateState={updateState} onClose={()=>setRequestTarget(null)}/>} {cancelTarget&&<CancelRequestModal target={cancelTarget} language={language} onConfirm={confirmCancel} onClose={()=>setCancelTarget(null)}/>}</main>;
     }
 
     const SETTINGS_ROWS=Object.freeze([
@@ -2027,7 +2249,7 @@
       else if (route.name === "onboarding-complete") page = <OnboardingCompletePage state={state} language={language} updateState={updateState}/>;
       else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState}/>;
       else if (route.name === "search") page = <SearchPage route={route} state={state} language={language} updateState={updateState}/>;
-      else if (route.name === "matches") page = <MatchesPage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "matches") page = <MatchesPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings") page = <SettingsHome route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings-section") page = <SettingsSectionPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "person") page = <PersonProfilePage route={route} state={state} language={language} updateState={updateState}/>;
