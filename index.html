@@ -58,16 +58,49 @@
     /* 4. App chrome */
     .app-shell { min-height: 100vh; padding: 18px 24px 56px; }
     .site-header {
-      position: sticky; top: 14px; z-index: 30; width: min(1180px, 100%); min-height: 64px; margin: 0 auto 30px;
-      padding: 10px 12px 10px 18px; display: flex; align-items: center; gap: 22px; border-radius: 22px;
+      position: sticky; top: 14px; z-index: 30; width: min(1180px, 100%); min-height: 52px; margin: 0 auto 30px;
+      display: flex; align-items: center; gap: 8px;
     }
     .brand { border: 0; background: transparent; font-weight: 850; font-size: 21px; letter-spacing: -.04em; }
     .brand-dot { color: var(--deep-rose); }
-    .top-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-    .nav-link { min-height: 42px; padding: 10px 15px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-weight: 700; }
-    .nav-link.active { color: white; background: var(--ink); }
+    .pill-logo {
+      width: 52px; height: 52px; flex: 0 0 52px; padding: 0; display: grid; place-items: center; overflow: hidden;
+      border: 0; border-radius: 50%; background: var(--ink); color: white; box-shadow: 0 14px 34px rgba(24,24,24,.22);
+      animation: pill-logo-enter .52s cubic-bezier(.22,1,.36,1) both;
+    }
+    .pill-logo-mark { display: block; font-size: 18px; font-weight: 900; letter-spacing: 0; transition: transform .52s cubic-bezier(.22,1,.36,1); }
+    .pill-logo:hover .pill-logo-mark, .pill-logo:focus-visible .pill-logo-mark { transform: rotate(360deg); }
+    .top-nav {
+      height: 52px; padding: 4px; display: flex; align-items: stretch; gap: 4px; overflow: hidden;
+      border-radius: 999px; background: var(--ink); box-shadow: 0 14px 34px rgba(24,24,24,.18);
+      animation: pill-nav-enter .58s .05s cubic-bezier(.22,1,.36,1) both;
+    }
+    .nav-link {
+      position: relative; isolation: isolate; min-width: 0; height: 44px; padding: 0 18px; overflow: hidden;
+      border: 0; border-radius: 999px; background: #fff6f8; color: var(--ink); font-weight: 800; line-height: 1;
+    }
+    .nav-hover-circle {
+      position: absolute; z-index: 1; left: 50%; bottom: -46px; width: max(130%, 92px); aspect-ratio: 1;
+      border-radius: 50%; background: var(--ink); pointer-events: none;
+      transform: translateX(-50%) scale(0); transform-origin: 50% 100%;
+      transition: transform .38s cubic-bezier(.22,1,.36,1); will-change: transform;
+    }
+    .nav-label-stack { position: relative; z-index: 2; display: grid; place-items: center; overflow: hidden; }
+    .nav-label, .nav-label-hover { grid-area: 1 / 1; display: block; transition: transform .32s cubic-bezier(.22,1,.36,1), opacity .2s ease; }
+    .nav-label-hover { color: white; opacity: 0; transform: translateY(140%); }
+    .nav-link:hover .nav-hover-circle, .nav-link:focus-visible .nav-hover-circle { transform: translateX(-50%) scale(1.35); }
+    .nav-link:hover .nav-label, .nav-link:focus-visible .nav-label { opacity: 0; transform: translateY(-140%); }
+    .nav-link:hover .nav-label-hover, .nav-link:focus-visible .nav-label-hover { opacity: 1; transform: translateY(0); }
+    .nav-link.active { background: var(--deep-rose); color: white; }
+    .nav-link.active::after {
+      content: ""; position: absolute; z-index: 3; left: 50%; bottom: 4px; width: 5px; height: 5px;
+      border-radius: 50%; background: white; transform: translateX(-50%);
+    }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .lang-toggle, .icon-btn { min-width: 44px; min-height: 44px; border: 1px solid rgba(24,24,24,.12); border-radius: 999px; background: rgba(255,255,255,.74); color: var(--ink); font-weight: 800; }
+    .site-header .lang-toggle { width: 52px; height: 52px; border: 0; background: rgba(255,255,255,.9); box-shadow: 0 14px 34px rgba(77,28,48,.14); }
+    @keyframes pill-logo-enter { from { opacity: 0; transform: scale(.55) rotate(-18deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+    @keyframes pill-nav-enter { from { opacity: 0; clip-path: inset(0 100% 0 0 round 999px); } to { opacity: 1; clip-path: inset(0 0 0 0 round 999px); } }
     .page { width: min(1180px, 100%); margin: 0 auto; }
     .page-head { margin: 0 0 30px; display: flex; align-items: end; justify-content: space-between; gap: 20px; }
     .page-title { margin: 0; max-width: 780px; font-size: clamp(42px, 7vw, 82px); font-weight: 500; line-height: .93; letter-spacing: -.065em; }
@@ -292,7 +325,9 @@
     @media (max-width: 767px) {
       body { background-attachment:scroll; }
       .app-shell, .landing-shell { padding:12px 14px calc(92px + env(safe-area-inset-bottom)); }
-      .site-header { position:relative; top:0; margin-bottom:22px; min-height:56px; padding:8px 10px 8px 14px; }
+      .site-header { position:relative; top:0; margin-bottom:22px; min-height:48px; }
+      .pill-logo { width:48px; height:48px; flex-basis:48px; }
+      .site-header .lang-toggle { width:48px; height:48px; min-width:48px; min-height:48px; }
       .top-nav { display:none; } .header-actions { margin-left:auto; }
       .hero-grid, .auth-layout { grid-template-columns:1fr; }
       .hero-copy { min-height:520px; padding:28px 22px; }
@@ -1899,7 +1934,10 @@
     }
 
     function Navigation({ language, routeName }) {
-      return <nav className="top-nav" aria-label={t(language,"primaryNavigation")}>{navItems(language).map(item => <button key={item.route} type="button" className={`nav-link ${(routeName === item.route || item.route==="settings"&&routeName==="settings-section") ? "active" : ""}`} onClick={() => navigate(item.hash)}>{item.label}</button>)}</nav>;
+      return <nav className="top-nav" aria-label={t(language,"primaryNavigation")}>{navItems(language).map(item => {
+        const active = routeName === item.route || item.route === "settings" && routeName === "settings-section";
+        return <button key={item.route} type="button" className={`nav-link ${active ? "active" : ""}`} aria-current={active ? "page" : undefined} onClick={() => navigate(item.hash)}><span className="nav-hover-circle" aria-hidden="true"/><span className="nav-label-stack"><span className="nav-label">{item.label}</span><span className="nav-label-hover" aria-hidden="true">{item.label}</span></span></button>;
+      })}</nav>;
     }
 
     function MobileNavigation({ language, routeName }) {
@@ -1909,8 +1947,8 @@
     function AppShell({ children, language, routeName, onLanguage, showNavigation = true }) {
       return (
         <div className="app-shell">
-          <header className="site-header glass">
-            <button className="brand" type="button" onClick={() => navigate(showNavigation ? "#/discover" : "#/")}>SkillSwap<span className="brand-dot">.</span></button>
+          <header className="site-header">
+            <button className="pill-logo" type="button" onClick={() => navigate(showNavigation ? "#/discover" : "#/")} aria-label={language === "zh" ? "SkillSwap 首页" : "SkillSwap home"} title="SkillSwap"><span className="pill-logo-mark">S<span className="brand-dot">.</span></span></button>
             {showNavigation && <Navigation language={language} routeName={routeName} />}
             <div className="header-actions"><button className="lang-toggle" type="button" onClick={onLanguage} aria-label={language === "zh" ? "Switch to English" : "切换到中文"}>{language === "zh" ? "EN" : "中"}</button></div>
           </header>
