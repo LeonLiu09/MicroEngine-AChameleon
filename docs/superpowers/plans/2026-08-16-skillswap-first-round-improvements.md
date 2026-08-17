@@ -31,7 +31,7 @@
 - [x] Tasks 1–8: deterministic data, location-aware Search, contact-style Matches, rose landing, complete Settings, and local avatar handling are implemented in `index.html` with inline test coverage.
 - [x] Task 9 local documentation: README feature guide and this completion record updated.
 - [x] Task 9 browser visual QA: desktop and 390 × 844 mobile stories passed with no console errors or horizontal overflow; 47/47 inline self-tests pass.
-- [ ] Task 9 GitHub Pages publication: pending remote `main` publication and `built` verification.
+- [x] Task 9 GitHub Pages publication: remote `main` published, Pages workflow succeeded, and the deployed `index.html` Git Blob SHA matches the verified local release.
 
 ---
 
@@ -848,6 +848,7 @@ git commit -m "feat: support local profile avatars"
 - Modify: `index.html`
 - Modify: `README.md`
 - Modify: `docs/superpowers/plans/2026-08-16-skillswap-first-round-improvements.md`
+- Create: `.nojekyll` — publish the static repository directly without parsing implementation-plan examples as Liquid templates.
 
 **Interfaces:**
 - Consumes: all components and helpers from Tasks 1-8.
@@ -911,8 +912,10 @@ git add index.html README.md docs/superpowers/plans/2026-08-16-skillswap-first-r
 git commit -m "feat: deliver SkillSwap first-round improvements"
 ```
 
-- [ ] **Step 7: Publish and verify GitHub Pages**
+- [x] **Step 7: Publish and verify GitHub Pages**
 
 Push or publish the new commit to `LeonLiu09/MicroEngine-SkillSwap20` on `main`. Confirm the remote `main` SHA, confirm README contains the live URL, poll the Pages API until `status` is `built`, then open `https://leonliu09.github.io/MicroEngine-SkillSwap20/` and repeat the landing plus Daniel-login smoke path online.
 
 Expected: HTTPS is enforced, source remains `main /`, the online page matches the local release, and the final deliverable tab is the public GitHub Pages URL.
+
+Verified 2026-08-17: remote `main` was published without a force update. The first Pages run exposed a Jekyll/Liquid conflict in this plan document; adding the official static-site `.nojekyll` marker resolved it. Pages run `31993355380` completed successfully, the public URL returned HTTP 200, and its `index.html` blob SHA `d34263d7cdf575dfca149b192a0d3d96558ef24b` exactly matched the 47/47-tested local release.
