@@ -1,6 +1,6 @@
-# SkillSwap 3.0
+# SkillSwap 4.0
 
-一个可直接演示的双语技能交换前端：分享自己会的技能、按地点发现伙伴、管理联系与设置，并发起技能交换请求。
+一个可直接演示的双语技能交换前端：分享自己会的技能、按地点发现伙伴、发起技能交换、与已连接伙伴聊天，并通过自适应测评认证技能水平。
 
 在线演示：[https://leonliu09.github.io/MicroEngine-SkillSwap20/](https://leonliu09.github.io/MicroEngine-SkillSwap20/)
 
@@ -12,7 +12,7 @@
 python3 -m http.server 4173
 ```
 
-然后打开 `http://localhost:4173/`。首页保留登录/创建账号入口；使用 Daniel 演示账号可体验 Discover、Search、Matches 与 Settings。
+然后打开 `http://localhost:4173/`。首页保留登录/创建账号入口；使用 Daniel 演示账号可体验 Discover、Search、Matches、Chat、技能测评与 Settings。
 
 ## 功能亮点
 
@@ -21,11 +21,13 @@ python3 -m http.server 4173
 - Discover 使用固定演示社区数据（128 在线、3,842 用户、今日 46 次交换）和本周热门技能趋势（摄影 128、英语 96、Python 74、UI 设计 63、视频剪辑 51）。
 - Search 将关键词搜索与筛选控件分成两个独立区域；国家、城市、语言、水平和排序使用支持键盘操作的自定义下拉。城市依赖国家，切换国家会清空城市；关键词通过按钮或 Enter 提交，其余筛选即时更新。
 - Matches 使用带数量的互补匹配、收藏的人与交换请求三标签页；标签保存在 Hash URL 中，并支持就地收藏、发起交换和取消待回应请求。
+- Chat 仅显示已连接伙伴，支持本地消息记录、最新消息排序、表情输入和模拟回复；视频、拍照与图片按钮提供明确的开发中反馈。
+- 技能测评覆盖 Python、摄影、英语、吉他、化学、烹饪、健身与视频剪辑，根据答题结果动态调整难度，并把客观评级与自评并列展示。
 - Settings 提供资料、技能、可约时间/地点、通知、隐私、收藏、帮助反馈与登出；所有状态保存在本地 `skillswap-mvp-v1` 命名空间。
 - 本地头像仅接受 JPEG、PNG、WebP，原文件上限 5 MB；保存前裁切为 256×256 JPEG 预览数据。
-- 桌面/平板顶部导航、移动端底部导航、Hash 路由和本地持久化；“重置演示”只删除 SkillSwap 自己的数据。
+- 桌面/平板使用五项胶囊气泡导航，移动端使用五项底部导航；Hash 路由和本地状态均可恢复，“重置演示”只删除 SkillSwap 自己的数据。
 - 内置自测页：`http://localhost:4173/?selftest=1`。
-- 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0` 与 `v3.0` 分别保留升级前后的可运行基线。
+- 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0`、`v3.0` 保留历史基线，v4.0 合并版发布在同名分支。
 
 ## 技术结构
 
