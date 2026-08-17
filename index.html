@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e89bb1">
   <meta name="description" content="SkillSwap — 学你所爱，分享你所会。">
-  <meta name="application-version" content="3.0.0">
-  <title>SkillSwap v3.0</title>
+  <meta name="application-version" content="4.0.0">
+  <title>SkillSwap v4.0</title>
   <style>
     /* 1. Design tokens */
     :root {
@@ -354,7 +354,7 @@
       .auth-art { min-height:230px; } .auth-art::after { width:190px; height:190px; }
       .auth-card { min-height:500px; }
       .search-hero { grid-template-columns:1fr; }
-      .bottom-nav { position:fixed; z-index:45; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); padding:7px; display:grid; grid-template-columns:repeat(4,1fr); border-radius:22px; }
+      .bottom-nav { position:fixed; z-index:45; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); padding:7px; display:grid; grid-template-columns:repeat(5,1fr); border-radius:22px; }
       .bottom-link { min-height:54px; padding:6px 3px; border:0; border-radius:16px; background:transparent; color:var(--muted); display:grid; place-items:center; gap:1px; font-size:10px; font-weight:800; }
       .bottom-link span:first-child { font-size:18px; }
       .bottom-link.active { background:var(--ink); color:white; }
@@ -384,6 +384,70 @@
       .match-tab-count { min-width:23px; min-height:23px; padding:3px 5px; }
       .match-panel-head { align-items:start; flex-direction:column; }
       .contact-actions .btn { flex:1 1 130px; }
+    }
+
+    /* 12. Chat */
+    .chat-list { display:grid; gap:10px; }
+    .chat-list-item { width:100%; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:14px; align-items:center; padding:16px 18px; border:1px solid rgba(24,24,24,.08); border-radius:22px; background:rgba(255,249,250,.66); color:var(--ink); text-align:left; cursor:pointer; transition:background .2s,border-color .2s,transform .2s; }
+    .chat-list-item:hover { background:rgba(255,255,255,.9); border-color:rgba(184,95,125,.34); transform:translateY(-1px); }
+    .chat-preview { min-width:0; }
+    .chat-preview h3 { margin:0 0 4px; font-size:17px; }
+    .chat-preview p { margin:0; overflow:hidden; color:var(--muted); font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+    .chat-time { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .chat-room { min-height:460px; height:calc(100dvh - 190px); display:flex; flex-direction:column; }
+    .chat-room-header { margin-bottom:14px; padding:14px 18px; display:flex; align-items:center; gap:12px; border-radius:22px; }
+    .chat-room-header h2 { margin:0; font-size:18px; }
+    .chat-room-header p { margin:0; color:var(--muted); font-size:13px; }
+    .chat-messages { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px; border:1px solid rgba(255,255,255,.74); border-radius:22px; background:rgba(255,249,250,.54); }
+    .chat-bubble { max-width:72%; padding:11px 15px; border-radius:18px; font-size:15px; line-height:1.45; overflow-wrap:anywhere; }
+    .chat-bubble.sent { align-self:flex-end; border-bottom-right-radius:5px; background:var(--deep-rose); color:white; }
+    .chat-bubble.received { align-self:flex-start; border-bottom-left-radius:5px; background:rgba(255,255,255,.92); color:var(--ink); }
+    .chat-bubble-time { margin-top:4px; font-size:11px; opacity:.68; }
+    .chat-input-area { margin-top:14px; padding:10px; display:flex; align-items:center; gap:8px; border-radius:22px; }
+    .chat-text-input { min-width:0; min-height:46px; flex:1; padding:11px 15px; border:1px solid rgba(24,24,24,.1); border-radius:999px; background:rgba(255,255,255,.9); color:var(--ink); font-size:15px; }
+    .chat-action-btn,.chat-send-btn { width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border-radius:50%; cursor:pointer; }
+    .chat-action-btn { border:1px solid rgba(24,24,24,.1); background:rgba(255,255,255,.82); font-size:18px; }
+    .chat-action-btn:hover { background:var(--blush); }
+    .chat-send-btn { border:0; background:var(--deep-rose); color:white; font-size:18px; }
+    .chat-send-btn:disabled { opacity:.42; cursor:not-allowed; }
+    .emoji-picker { margin-top:10px; padding:10px; display:grid; grid-template-columns:repeat(10,minmax(36px,1fr)); gap:4px; border:1px solid rgba(24,24,24,.08); border-radius:18px; background:rgba(255,249,250,.94); }
+    .emoji-btn { min-width:36px; min-height:36px; border:0; border-radius:10px; background:transparent; font-size:21px; cursor:pointer; }
+    .emoji-btn:hover { background:var(--blush); }
+
+    /* 13. Adaptive skill assessment */
+    .test-container { width:min(680px,100%); margin:0 auto; }
+    .test-intro,.test-question-card,.test-result { padding:clamp(24px,5vw,36px); border-radius:28px; }
+    .test-intro,.test-result { text-align:center; }
+    .test-intro h2,.test-result h2 { margin:0 0 12px; font-size:28px; }
+    .test-intro p,.test-result p { margin:0 0 24px; color:var(--muted); line-height:1.65; }
+    .test-progress-bar { height:7px; margin-bottom:24px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.58); }
+    .test-progress-fill { height:100%; border-radius:inherit; background:var(--deep-rose); transition:width .3s ease; }
+    .test-question-card h2 { margin:0 0 8px; font-size:22px; line-height:1.45; }
+    .test-question-meta { margin:0 0 24px; color:var(--muted); font-size:13px; }
+    .test-options { display:grid; gap:12px; }
+    .test-option { width:100%; padding:16px 20px; border:2px solid rgba(24,24,24,.1); border-radius:18px; background:rgba(255,255,255,.74); color:var(--ink); text-align:left; font-size:15px; font-weight:700; cursor:pointer; transition:border-color .2s,background .2s; }
+    .test-option:hover { border-color:var(--deep-rose); background:rgba(255,255,255,.94); }
+    .test-option.correct { border-color:var(--success); background:#e0f2e7; color:var(--success); }
+    .test-option.wrong { border-color:var(--danger); background:#fce8ed; color:var(--danger); }
+    .test-option:disabled { cursor:default; }
+    .test-result-badge,.skill-badge-verified { display:inline-flex; align-items:center; gap:6px; border-radius:999px; font-weight:800; }
+    .test-result-badge { margin-bottom:16px; padding:10px 20px; background:var(--deep-rose); color:white; font-size:16px; }
+    .skill-badge-verified { padding:4px 10px; background:#e0f2e7; color:var(--success); font-size:11px; }
+    .test-recommend { margin-top:18px; padding:16px 18px; border:1px solid rgba(184,95,125,.25); border-radius:18px; background:rgba(255,249,250,.62); }
+    .test-recommend p { margin:0; line-height:1.6; }
+
+    @media (max-width: 767px) {
+      .chat-room { min-height:420px; height:calc(100dvh - 250px); }
+      .chat-bubble { max-width:85%; }
+      .emoji-picker { grid-template-columns:repeat(6,minmax(36px,1fr)); }
+    }
+    @media (max-width: 520px) {
+      .chat-list-item { grid-template-columns:auto minmax(0,1fr); }
+      .chat-time { grid-column:2; }
+      .chat-input-area { flex-wrap:wrap; }
+      .chat-text-input { order:2; flex-basis:calc(100% - 54px); }
+      .chat-send-btn { order:3; }
+      .test-option { padding:14px 15px; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior:auto; }
@@ -566,7 +630,7 @@
         complementaryHint: "根据双方技能方向推荐",
         favoritesHint: "你保存的技能伙伴",
         requestsHint: "已发送且正在等待回应",
-        settings:"设置",country:"国家",filterCountry:"所有国家",chooseCountryFirst:"请先选择国家",chooseCity:"请选择城市",sortNewest:"最近发布",sortLiked:"最受好评",viewFullProfile:"查看完整资料",communityOverview:"社区概览",demoCommunityData:"演示社区数据",onlineNow:"人在线",totalUsers:"位用户",swapsToday:"今日交换",trendingSkills:"本周热门技能",demoTrend:"演示趋势",peopleSearching:"{count} 人正在寻找",recentSearches:"最近搜索",noRecentSearches:"搜索后会显示在这里",skillCategories:"技能分类",popularSearches:"热门关键词",canTeachSkill:"可以教你：{skill}",matchesFilters:"符合你的筛选条件",likedBy:"{count} 人好评",published:"发布于 {date}",complementaryMatches:"互补匹配",favoritePeople:"收藏的人",swapRequests:"交换请求",interests:"兴趣",availability:"可约时间",meetingPreference:"见面方式",reliability:"可靠度",joined:"加入时间",profileAndAvatar:"个人资料与头像",skillsAndGoals:"技能与学习目标",availabilityAndPlaces:"可约时间与地点",notificationSettings:"通知设置",privacyAndSafety:"隐私与安全",helpAndFeedback:"帮助与反馈",logout:"退出登录",logoutConfirm:"退出当前账号？资料会保留在本机。",profileVisibility:"资料可见性",showOnlineStatus:"显示在线状态",publicPlacesOnly:"仅允许公共地点",publicPlacePolicy:"此请求将仅安排在公共地点。",communityOwnerPreview:"你正在查看社区公开资料",privateOwnerPreview:"你正在查看仅自己可见的资料预览",onlinePreview:"在线（演示）",settingsSaved:"已保存：{section}",primaryNavigation:"主导航",mobileNavigation:"移动端主导航",closeDialog:"关闭对话框",feedbackPlaceholder:"告诉我们哪里可以做得更好",feedbackSaved:"反馈已保存在本机演示中。",avatarTypeError:"请选择 JPEG、PNG 或 WebP 图片。",avatarSizeError:"图片不能超过 5 MB。",avatarProcessError:"无法处理这张图片，请换一张。",changeAvatar:"更换头像",category_technology:"技术",category_creative:"创作",category_academic:"学习",category_sports:"运动",category_lifestyle:"生活"
+        settings:"设置",country:"国家",filterCountry:"所有国家",chooseCountryFirst:"请先选择国家",chooseCity:"请选择城市",sortNewest:"最近发布",sortLiked:"最受好评",viewFullProfile:"查看完整资料",communityOverview:"社区概览",demoCommunityData:"演示社区数据",onlineNow:"人在线",totalUsers:"位用户",swapsToday:"今日交换",trendingSkills:"本周热门技能",demoTrend:"演示趋势",peopleSearching:"{count} 人正在寻找",recentSearches:"最近搜索",noRecentSearches:"搜索后会显示在这里",skillCategories:"技能分类",popularSearches:"热门关键词",canTeachSkill:"可以教你：{skill}",matchesFilters:"符合你的筛选条件",likedBy:"{count} 人好评",published:"发布于 {date}",complementaryMatches:"互补匹配",favoritePeople:"收藏的人",swapRequests:"交换请求",interests:"兴趣",availability:"可约时间",meetingPreference:"见面方式",reliability:"可靠度",joined:"加入时间",profileAndAvatar:"个人资料与头像",skillsAndGoals:"技能与学习目标",availabilityAndPlaces:"可约时间与地点",notificationSettings:"通知设置",privacyAndSafety:"隐私与安全",helpAndFeedback:"帮助与反馈",logout:"退出登录",logoutConfirm:"退出当前账号？资料会保留在本机。",profileVisibility:"资料可见性",showOnlineStatus:"显示在线状态",publicPlacesOnly:"仅允许公共地点",publicPlacePolicy:"此请求将仅安排在公共地点。",communityOwnerPreview:"你正在查看社区公开资料",privateOwnerPreview:"你正在查看仅自己可见的资料预览",onlinePreview:"在线（演示）",settingsSaved:"已保存：{section}",primaryNavigation:"主导航",mobileNavigation:"移动端主导航",closeDialog:"关闭对话框",feedbackPlaceholder:"告诉我们哪里可以做得更好",feedbackSaved:"反馈已保存在本机演示中。",avatarTypeError:"请选择 JPEG、PNG 或 WebP 图片。",avatarSizeError:"图片不能超过 5 MB。",avatarProcessError:"无法处理这张图片，请换一张。",changeAvatar:"更换头像",category_technology:"技术",category_creative:"创作",category_academic:"学习",category_sports:"运动",category_lifestyle:"生活",chat:"私聊",chatTitle:"消息",chatEmpty:"还没有聊天，先去匹配一个伙伴吧",chatEmptySub:"双方同意交换后即可开始聊天",chatPlaceholder:"输入消息…",emoji:"表情",videoCall:"视频通话",takePhoto:"拍照",sendImage:"发送图片",comingSoon:"功能开发中",connectedChat:"已连接 · 可聊天",noConversations:"还没有聊天记录",startChatNow:"开始聊天",sendMessage:"发送",chatWith:"与 {name} 聊天",skillTest:"技能测试",skillTestTitle:"自适应技能测评",skillTestIntro:"用 10 道选择题，3-5 分钟精准定位你的技能水平。答对出难题，答错出简单题。",skillTestStart:"开始测试",skillTestQuestion:"第 {current} / {total} 题",skillTestLevel:"难度：{level}",skillTestNext:"下一题",skillTestSubmit:"查看结果",skillTestResult:"测试结果",skillTestResultLevel:"客观评级",skillTestResultScore:"正确率 {score}%",skillTestResultDesc:"基于自适应算法评估，与你的自评等级并列展示，不会覆盖自评。",skillTestRetake:"重新测试",skillTestBack:"返回",skillTestRecommended:"推荐完成",skillTestRecommendText:"完成技能测评可以获得「已认证」徽章，让你的技能水平更有说服力。",skillTestSelectSkill:"选择要测试的技能",skillVerified:"已认证",skillSelfAssessed:"自评",objectiveRating:"客观评级",selectSkillToTest:"选择一项技能开始测评"
       }),
       en: Object.freeze({
         brand: "SkillSwap",
@@ -717,7 +781,7 @@
         complementaryHint: "Recommended from both skill directions",
         favoritesHint: "People you have saved",
         requestsHint: "Sent and waiting for a response",
-        settings:"Settings",country:"Country",filterCountry:"All countries",chooseCountryFirst:"Choose a country first",chooseCity:"Choose a city",sortNewest:"Newest",sortLiked:"Most liked",viewFullProfile:"View full profile",communityOverview:"Community overview",demoCommunityData:"Demo community data",onlineNow:"online",totalUsers:"users",swapsToday:"swaps today",trendingSkills:"Trending this week",demoTrend:"Demo trend",peopleSearching:"{count} people searching",recentSearches:"Recent searches",noRecentSearches:"Your searches will appear here",skillCategories:"Skill categories",popularSearches:"Popular searches",canTeachSkill:"Can teach you: {skill}",matchesFilters:"Matches your filters",likedBy:"Liked by {count}",published:"Published {date}",complementaryMatches:"Complementary matches",favoritePeople:"Saved people",swapRequests:"Swap requests",interests:"Interests",availability:"Availability",meetingPreference:"Meeting preference",reliability:"Reliability",joined:"Joined",profileAndAvatar:"Profile & avatar",skillsAndGoals:"Skills & learning goals",availabilityAndPlaces:"Availability & places",notificationSettings:"Notifications",privacyAndSafety:"Privacy & safety",helpAndFeedback:"Help & feedback",logout:"Log out",logoutConfirm:"Log out now? Your profile stays on this device.",profileVisibility:"Profile visibility",showOnlineStatus:"Show online status",publicPlacesOnly:"Public places only",publicPlacePolicy:"This request will use public meeting places only.",communityOwnerPreview:"You are viewing your community profile",privateOwnerPreview:"You are viewing your private owner preview",onlinePreview:"Online (demo)",settingsSaved:"Saved: {section}",primaryNavigation:"Primary navigation",mobileNavigation:"Mobile primary navigation",closeDialog:"Close dialog",feedbackPlaceholder:"Tell us what could be better",feedbackSaved:"Feedback saved in this local demo.",avatarTypeError:"Choose a JPEG, PNG, or WebP image.",avatarSizeError:"Images must be 5 MB or smaller.",avatarProcessError:"We could not process that image. Try another one.",changeAvatar:"Change avatar",category_technology:"Technology",category_creative:"Creative",category_academic:"Learning",category_sports:"Sports",category_lifestyle:"Lifestyle"
+        settings:"Settings",country:"Country",filterCountry:"All countries",chooseCountryFirst:"Choose a country first",chooseCity:"Choose a city",sortNewest:"Newest",sortLiked:"Most liked",viewFullProfile:"View full profile",communityOverview:"Community overview",demoCommunityData:"Demo community data",onlineNow:"online",totalUsers:"users",swapsToday:"swaps today",trendingSkills:"Trending this week",demoTrend:"Demo trend",peopleSearching:"{count} people searching",recentSearches:"Recent searches",noRecentSearches:"Your searches will appear here",skillCategories:"Skill categories",popularSearches:"Popular searches",canTeachSkill:"Can teach you: {skill}",matchesFilters:"Matches your filters",likedBy:"Liked by {count}",published:"Published {date}",complementaryMatches:"Complementary matches",favoritePeople:"Saved people",swapRequests:"Swap requests",interests:"Interests",availability:"Availability",meetingPreference:"Meeting preference",reliability:"Reliability",joined:"Joined",profileAndAvatar:"Profile & avatar",skillsAndGoals:"Skills & learning goals",availabilityAndPlaces:"Availability & places",notificationSettings:"Notifications",privacyAndSafety:"Privacy & safety",helpAndFeedback:"Help & feedback",logout:"Log out",logoutConfirm:"Log out now? Your profile stays on this device.",profileVisibility:"Profile visibility",showOnlineStatus:"Show online status",publicPlacesOnly:"Public places only",publicPlacePolicy:"This request will use public meeting places only.",communityOwnerPreview:"You are viewing your community profile",privateOwnerPreview:"You are viewing your private owner preview",onlinePreview:"Online (demo)",settingsSaved:"Saved: {section}",primaryNavigation:"Primary navigation",mobileNavigation:"Mobile primary navigation",closeDialog:"Close dialog",feedbackPlaceholder:"Tell us what could be better",feedbackSaved:"Feedback saved in this local demo.",avatarTypeError:"Choose a JPEG, PNG, or WebP image.",avatarSizeError:"Images must be 5 MB or smaller.",avatarProcessError:"We could not process that image. Try another one.",changeAvatar:"Change avatar",category_technology:"Technology",category_creative:"Creative",category_academic:"Learning",category_sports:"Sports",category_lifestyle:"Lifestyle",chat:"Chat",chatTitle:"Messages",chatEmpty:"No chats yet; find a partner first",chatEmptySub:"Start chatting after both sides agree to swap",chatPlaceholder:"Type a message…",emoji:"Emoji",videoCall:"Video call",takePhoto:"Take photo",sendImage:"Send image",comingSoon:"Coming soon",connectedChat:"Connected · Chat ready",noConversations:"No conversations yet",startChatNow:"Start chat",sendMessage:"Send",chatWith:"Chat with {name}",skillTest:"Skill test",skillTestTitle:"Adaptive Skill Assessment",skillTestIntro:"Answer 10 multiple-choice questions in 3-5 minutes. Correct answers unlock harder questions and wrong answers get easier ones.",skillTestStart:"Start test",skillTestQuestion:"Question {current} / {total}",skillTestLevel:"Difficulty: {level}",skillTestNext:"Next",skillTestSubmit:"See results",skillTestResult:"Your Result",skillTestResultLevel:"Objective Rating",skillTestResultScore:"{score}% correct",skillTestResultDesc:"Based on the adaptive algorithm. Shown alongside your self-assessment and does not override it.",skillTestRetake:"Retake test",skillTestBack:"Back",skillTestRecommended:"Recommended",skillTestRecommendText:"Complete the skill assessment to earn a verified badge and make your skill level more credible.",skillTestSelectSkill:"Select a skill to test",skillVerified:"Verified",skillSelfAssessed:"Self-rated",objectiveRating:"Objective rating",selectSkillToTest:"Choose a skill to start assessment"
       })
     });
 
@@ -947,7 +1011,66 @@
     const SEEDED_REQUESTS = Object.freeze([
       { id: "request-demo-01", targetUserId: "mika-01", offeredSkillId: "fitness", requestedSkillId: "guitar", status: "pending", createdAt: "2026-08-16T08:00:00.000Z" }
     ]);
-    const SEEDED_CONNECTIONS = Object.freeze(["sarah-01"]);
+    const SEEDED_CONNECTIONS = Object.freeze(["sarah-01", "mika-01"]);
+    /* 4b. Adaptive skill-test question bank (hybrid: prebuilt + extensible for AI generation) */
+    function q(zhQ,enQ,zhOpts,enOpts,answer){return {q:{zh:zhQ,en:enQ},options:zhOpts.map((text,i)=>({zh:text,en:enOpts[i]})),answer};}
+    const QUESTION_BANK = Object.freeze({
+      python: Object.freeze({
+        "complete-beginner": [q("Python 中打印输出用什么函数？","Which function prints output in Python?",["print()","echo()","log()","show()"],["print()","echo()","log()","show()"],0),q("下面哪个是合法的 Python 变量名？","Which is a valid Python variable name?",["my_var","2name","my-var","class"],["my_var","2name","my-var","class"],0)],
+        beginner: [q("list 和 tuple 的主要区别是？","Main difference between list and tuple?",["tuple 不可修改","list 不可修改","没有区别","tuple 只能存数字"],["tuples are immutable","lists are immutable","no difference","tuples only store numbers"],0),q("len([1,2,3]) 的结果是？","What does len([1,2,3]) return?",["3","2","4","1"],["3","2","4","1"],0)],
+        intermediate: [q("字典 d={'a':1}，如何获取 'a' 的值？","For d={'a':1}, how to get value of 'a'?",["d['a']","d('a')","d->a","d.a()"],["d['a']","d('a')","d->a","d.a()"],0),q("哪个不是 Python 的数据结构？","Which is NOT a Python data structure?",["stack","list","dict","set"],["stack","list","dict","set"],0)],
+        advanced: [q("装饰器本质上是什么？","A decorator is essentially a…",["接收函数并返回函数的函数","类","模块","变量"],["function that takes and returns a function","class","module","variable"],0),q("列表推导式 [x*2 for x in range(3)] 的结果是？","What is [x*2 for x in range(3)]?",["[0,2,4]","[2,4,6]","[0,1,2]","[1,2,3]"],["[0,2,4]","[2,4,6]","[0,1,2]","[1,2,3]"],0)]
+      }),
+      photography: Object.freeze({
+        "complete-beginner": [q("拍照时按的快门键通常在哪里？","Where is the shutter button usually located?",["相机顶部右侧","相机底部","镜头前面","相机背面"],["top right of camera","bottom of camera","front of lens","back of camera"],0),q("光线不足时照片容易出现什么问题？","What happens when light is insufficient?",["照片模糊或偏暗","照片更清晰","颜色更鲜艳","没有任何影响"],["blurry or dark photos","sharper photos","more vivid colors","no effect"],0)],
+        beginner: [q("光圈值 f/1.8 与 f/8 相比？","Aperture f/1.8 vs f/8: f/1.8 is…",["更大光圈、更浅景深","更小光圈","完全一样","更慢快门"],["wider, shallower depth of field","smaller aperture","identical","slower shutter"],0),q("ISO 数值越高，画面会？","Higher ISO makes the image…",["更亮但噪点更多","更亮且更干净","更暗","没有变化"],["brighter but noisier","brighter and cleaner","darker","unchanged"],0)],
+        intermediate: [q("三分法构图应该把主体放在？","Rule of thirds places subjects on…",["画面三等分线交点","正中央","画面边缘","顶部"],["grid line intersections","dead center","edges","top"],0),q("白平衡的作用是？","White balance controls…",["色温还原","对焦速度","快门速度","电池续航"],["color temperature","focus speed","shutter speed","battery life"],0)],
+        advanced: [q(" RAW 格式的主要优势是？","Main advantage of RAW format?",["后期调整空间更大","文件更小","无需后期","直接可发朋友圈"],["more post-processing latitude","smaller files","no editing needed","instantly shareable"],0),q("拍摄运动物体凝固瞬间需要？","To freeze motion you need…",["高速快门","慢速快门","大光圈","高感光即可"],["fast shutter speed","slow shutter speed","wide aperture","just high ISO"],0)]
+      }),
+      english: Object.freeze({
+        "complete-beginner": [q("\"How are you?\" 的标准回应是？","A standard reply to \"How are you?\"",["I'm fine, thanks","You are welcome","How do you do","See you"],["I'm fine, thanks","You are welcome","How do you do","See you"],0),q("\"apple\" 是什么意思？","What does \"apple\" mean?",["苹果","香蕉","橙子","葡萄"],["a fruit you eat daily","a banana","an orange","a grape"],0)],
+        beginner: [q("选择正确句子：","Choose the correct sentence:",["She goes to school.","She go to school.","She going school.","She to go school."],["She goes to school.","She go to school.","She going school.","She to go school."],0),q("\"yesterday\" 意思是？","\"yesterday\" means…",["昨天","今天","明天","每天"],["the day before today","today","tomorrow","every day"],0)],
+        intermediate: [q("填空：I have lived here ___ 2010.","Fill in: I have lived here ___ 2010.",["since","for","from","at"],["since","for","from","at"],0),q("\"look after\" 的意思是？","\"look after\" means…",["照顾","向后看","寻找","检查"],["take care of","look backward","search for","check"],0)],
+        advanced: [q("虚拟语气：If I ___ you, I would apologize.","Subjunctive: If I ___ you, I would apologize.",["were","was","am","be"],["were","was","am","be"],0),q("\"The report sheds light on the issue\" 中 shed light on 意思是？","In \"sheds light on\", the phrase means…",["阐明","照亮","遮蔽","忽略"],["clarify","illuminate physically","conceal","ignore"],0)]
+      }),
+      guitar: Object.freeze({
+        "complete-beginner": [q("吉他有几根弦（标准民谣吉他）？","How many strings does a standard acoustic guitar have?",["6","4","5","7"],["6","4","5","7"],0),q("初学者最先学的和弦通常是？","The first chord beginners usually learn is…",["Em 或 C","F","Bm","C#m"],["Em or C","F","Bm","C#m"],0)],
+        beginner: [q("和弦 C 的组成音是？","The notes of a C chord are…",["C-E-G","C-D-E","C-F-A","C-E-A"],["C-E-G","C-D-E","C-F-A","C-E-A"],0),q("节拍器的作用是？","A metronome helps you…",["保持稳定节奏","调音","换弦","录音"],["keep steady tempo","tune strings","change strings","record"],0)],
+        intermediate: [q("「扫弦」和「分解和弦」的区别是？","Strumming vs fingerpicking: the difference is…",["扫弦一次拨多弦，分解逐弦弹","音量不同","没有区别","乐器不同"],["strum hits multiple strings, picking is one by one","volume differs","no difference","different instruments"],0),q("Capo（变调夹）夹第二品后，和弦 C 实际是什么调？","With a capo on fret 2, a C shape sounds as…",["D 调","C 调","E 调","B 调"],["D","C","E","B"],0)],
+        advanced: [q("「揉弦」(vibrato) 技巧的作用是？","Vibrato technique is used to…",["让音更有表现力","加快速度","降低音量","更换音色"],["add expression to notes","play faster","reduce volume","change tone"],0),q("五声音阶（大调）包含几个音？","A major pentatonic scale has how many notes?",["5","7","8","6"],["5","7","8","6"],0)]
+      }),
+      chemistry: Object.freeze({
+        "complete-beginner": [q("水的化学式是？","The chemical formula of water is…",["H₂O","CO₂","O₂","H₂O₂"],["H₂O","CO₂","O₂","H₂O₂"],0),q("元素周期表中排在第一位的元素是？","The first element in the periodic table is…",["氢 H","氧 O","碳 C","氦 He"],["hydrogen","oxygen","carbon","helium"],0)],
+        beginner: [q("原子由什么构成？","An atom consists of…",["原子核+电子","只有质子","只有中子","分子"],["nucleus + electrons","only protons","only neutrons","molecules"],0),q("pH=7 的溶液是？","A solution with pH=7 is…",["中性","酸性","碱性","饱和"],["neutral","acidic","basic","saturated"],0)],
+        intermediate: [q("化学方程式必须遵守什么定律？","Chemical equations must obey the law of…",["质量守恒","能量守恒","牛顿定律","欧姆定律"],["conservation of mass","conservation of energy","Newton's laws","Ohm's law"],0),q("NaCl 中的化学键类型是？","The bond in NaCl is…",["离子键","共价键","金属键","氢键"],["ionic","covalent","metallic","hydrogen"],0)],
+        advanced: [q("勒夏特列原理描述的是？","Le Chatelier's principle describes…",["平衡移动方向","反应速率","分子大小","温度测量"],["how equilibrium shifts","reaction rate","molecular size","temperature measurement"],0),q("氧化还原反应的本质是？","The essence of redox reactions is…",["电子转移","质子转移","能量消失","质量变化"],["electron transfer","proton transfer","energy loss","mass change"],0)]
+      }),
+      cooking: Object.freeze({
+        "complete-beginner": [q("煮米饭前通常要先做什么？","Before cooking rice you usually…",["淘米","加油","冷冻","发酵"],["rinse the rice","add oil","freeze it","ferment it"],0),q("炒菜时油温过高容易导致？","Overheated oil while stir-frying causes…",["冒烟和有害物质","菜更香","更快熟","没有影响"],["smoke and harmful compounds","better flavor","faster cooking","no effect"],0)],
+        beginner: [q("「焯水」的主要目的是？","Blanching (焯水) mainly serves to…",["去除杂质和涩味","增加油脂","让菜变生","上色"],["remove impurities and bitterness","add fat","keep food raw","add color"],0),q("盐一般在什么时候放比较合适？","When is salt usually best added?",["出锅前或炖煮中途","炒之前很久","永不放","菜凉了以后"],["near the end or mid-simmer","long before cooking","never","after cooling"],0)],
+        intermediate: [q("煎鱼不粘锅的关键是？","The key to pan-frying fish without sticking is…",["锅热油热再下鱼","冷锅冷油","多放糖","小火慢煎很久"],["hot pan and hot oil before adding fish","cold pan and oil","add sugar","long low heat"],0),q("酵母发酵需要什么条件？","Yeast fermentation needs…",["适宜温度和糖","低温和无糖","阳光","真空"],["warm temperature and sugar","cold and no sugar","sunlight","vacuum"],0)],
+        advanced: [q("「美拉德反应」发生在？","The Maillard reaction occurs during…",["高温煎烤褐变","低温冷藏","生食切割","水煮"],["high-heat browning","refrigeration","raw cutting","boiling"],0),q("打发蛋白时加少量柠檬汁是为了？","Adding lemon juice when whipping egg whites…",["稳定泡沫","增加甜度","上色","去壳"],["stabilizes the foam","adds sweetness","colors it","shells it"],0)]
+      }),
+      fitness: Object.freeze({
+        "complete-beginner": [q("运动前应该做什么？","What should you do before exercising?",["热身","吃饱","久坐","喝大量咖啡"],["warm up","eat a full meal","sit still","drink lots of coffee"],0),q("成年人的正常静息心率大约是？","A normal adult resting heart rate is about…",["60-100 次/分","120-150 次/分","30-40 次/分","150-200 次/分"],["60-100 bpm","120-150 bpm","30-40 bpm","150-200 bpm"],0)],
+        beginner: [q("力量训练后肌肉需要多久恢复？","How long do muscles need to recover after strength training?",["约 48 小时","1 小时","无需恢复","一个月"],["about 48 hours","1 hour","no recovery needed","a month"],0),q("「有氧运动」的例子是？","An example of aerobic exercise is…",["慢跑","卧推","深蹲最大重量","平板支撑 10 秒"],["jogging","bench press","max squat","10s plank"],0)],
+        intermediate: [q("增肌的主要训练区间是？","The main rep range for hypertrophy is…",["8-12 次","1-3 次","30-50 次","只做 1 次"],["8-12 reps","1-3 reps","30-50 reps","just 1"],0),q("「渐进超负荷」指的是？","\"Progressive overload\" means…",["逐渐增加训练负荷","超过别人","减少重量","只做有氧"],["gradually increasing load","beating others","reducing weight","only cardio"],0)],
+        advanced: [q("训练中「离心阶段」指的是？","The \"eccentric phase\" of a lift is…",["肌肉拉长的下降阶段","肌肉收缩举起","休息","热身"],["the lowering/lengthening phase","lifting up","rest","warmup"],0),q("DOMS（延迟性肌肉酸痛）通常出现在？","DOMS typically appears…",["训练后 24-72 小时","训练前","训练中立刻","一周后"],["24-72h after training","before training","instantly","a week later"],0)]
+      }),
+      "video-editing": Object.freeze({
+        "complete-beginner": [q("剪辑视频最基本的操作是？","The most basic video editing operation is…",["剪切和拼接","调色","配音","导出 8K"],["cutting and joining clips","color grading","voiceover","8K export"],0),q("常见的视频格式是？","A common video format is…",["MP4","DOCX","PNG","ZIP"],["MP4","DOCX","PNG","ZIP"],0)],
+        beginner: [q("「转场」的作用是？","A \"transition\" is used to…",["衔接两个镜头","调整音量","导出视频","压缩文件"],["connect two shots","adjust volume","export video","compress files"],0),q("帧率 24fps 的意思是？","24fps means…",["每秒 24 帧画面","视频长 24 分钟","24 个轨道","24 位色深"],["24 frames per second","24-minute video","24 tracks","24-bit color"],0)],
+        intermediate: [q("J-cut 指的是？","A J-cut means…",["音频先入画面后到","画面先到音频后入","剪切一半","加速播放"],["audio comes before video","video before audio","half a cut","speeding up"],0),q("调色的第一步通常是？","The first step of color grading is usually…",["校正白平衡","加滤镜","提高饱和度到最大","裁剪画面"],["white balance correction","adding filters","max saturation","cropping"],0)],
+        advanced: [q("「动态链接」在剪辑软件中的作用是？","\"Dynamic link\" in editing software…", ["让 AE 合成直接进 PR 时间线","导出更快","自动剪辑","压缩音频"],["embeds AE comps into PR timeline","faster export","auto-editing","compresses audio"],0),q("示波器 (scopes) 主要用于？","Scopes are mainly used to…",["精确分析画面亮度色彩","测音频","测网速","管理素材"],["precisely analyze luma/color","measure audio","measure network","manage assets"],0)]
+      })
+    });
+    const SKILL_TEST_COVERED = Object.keys(QUESTION_BANK);
+    function pickQuestion(skillId, level, usedIds) {
+      const pool = QUESTION_BANK[skillId]?.[level] || [];
+      const fresh = pool.filter(item => !usedIds.includes(`${skillId}:${item.q.en}`));
+      const chosen = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length ? fresh.length : pool.length))];
+      return chosen ? { ...chosen, id: `${skillId}:${chosen.q.en}` } : null;
+    }
     const TRENDING_SKILLS=Object.freeze([
       {skillId:"photography",count:128}, {skillId:"english",count:96}, {skillId:"python",count:74},
       {skillId:"ui-design",count:63}, {skillId:"video-editing",count:51}
@@ -988,7 +1111,7 @@
       };
     }
 
-    function createInitialState(){return {version:STATE_VERSION,language:DEFAULT_LANGUAGE,isAuthenticated:false,currentUser:null,onboardingCompleted:false,onboardingStep:"profile",favorites:[],sentRequests:[],connections:[],editedSkills:[],recentSearches:[],notificationSettings:cloneData(DEFAULT_NOTIFICATIONS),privacySettings:cloneData(DEFAULT_PRIVACY),feedbackEntries:[],session:{loggedIn:false}};}
+    function createInitialState(){return {version:STATE_VERSION,language:DEFAULT_LANGUAGE,isAuthenticated:false,currentUser:null,onboardingCompleted:false,onboardingStep:"profile",favorites:[],sentRequests:[],connections:[],conversations:{},skillAssessments:{},editedSkills:[],recentSearches:[],notificationSettings:cloneData(DEFAULT_NOTIFICATIONS),privacySettings:cloneData(DEFAULT_PRIVACY),feedbackEntries:[],session:{loggedIn:false}};}
     function normalizeState(value){
       const base=createInitialState(); if(!value||typeof value!=="object")return base;
       const loggedIn=value.session?.loggedIn===true||value.isAuthenticated===true;
@@ -996,7 +1119,7 @@
       const currentUserId=currentUser?.id||"";
       const favorites=Array.isArray(value.favorites)?value.favorites.filter(item=>typeof item==="string"&&item!==currentUserId):[];
       const sentRequests=Array.isArray(value.sentRequests)?value.sentRequests.filter(item=>item&&typeof item==="object"&&item.targetUserId!==currentUserId):[];
-      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,sentRequests,connections:Array.isArray(value.connections)?value.connections.filter(item=>typeof item==="string"):[],editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn}};
+      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,sentRequests,connections:Array.isArray(value.connections)?[...new Set(value.connections.filter(item=>typeof item==="string"&&item!==currentUserId))]:[],conversations:value.conversations&&typeof value.conversations==="object"?cloneData(value.conversations):{},skillAssessments:value.skillAssessments&&typeof value.skillAssessments==="object"?cloneData(value.skillAssessments):{},editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn}};
     }
 
     function loadState(storage = window.localStorage) {
@@ -1033,6 +1156,8 @@
         favorites: baseState.currentUser?.id===DEMO_USER.id ? baseState.favorites : ["alice-01", "jun-01"],
         sentRequests: baseState.currentUser?.id===DEMO_USER.id ? baseState.sentRequests : cloneData(SEEDED_REQUESTS),
         connections: baseState.currentUser?.id===DEMO_USER.id ? baseState.connections : [...SEEDED_CONNECTIONS],
+        conversations: baseState.currentUser?.id===DEMO_USER.id ? (baseState.conversations||{}) : {"sarah-01":{messages:[{from:"sarah-01",text:"Hi! Looking forward to our skill swap 😊",at:"2026-08-16T10:00:00.000Z"},{from:DEMO_USER.id,text:"Same here! When are you free this week?",at:"2026-08-16T10:05:00.000Z"}],lastMessage:"Same here! When are you free this week?",lastMessageAt:"2026-08-16T10:05:00.000Z"}},
+        skillAssessments: baseState.currentUser?.id===DEMO_USER.id ? (baseState.skillAssessments||{}) : {},
         editedSkills: baseState.currentUser?.id===DEMO_USER.id ? baseState.editedSkills : cloneData(DEMO_USER.skillsOffered)
       });
     }
@@ -1102,6 +1227,8 @@
       "#/discover": "discover",
       "#/search": "search",
       "#/matches": "matches",
+      "#/chat": "chat",
+      "#/skill-test": "skill-test",
       "#/settings": "settings",
       "#/profile": "legacy-profile"
     });
@@ -1123,6 +1250,10 @@
       }
       const settingsMatch = path.match(/^#\/settings\/([^/?#]+)$/);
       if (settingsMatch) return { name:"settings-section", path, params:{section:decodeURIComponent(settingsMatch[1])}, query, isKnown:true };
+      const chatMatch = path.match(/^#\/chat\/([^/?#]+)$/);
+      if (chatMatch) return { name:"chat-room", path, params:{userId:decodeURIComponent(chatMatch[1])}, query, isKnown:true };
+      const skillTestMatch = path.match(/^#\/skill-test\/([^/?#]+)$/);
+      if (skillTestMatch) return { name:"skill-test-skill", path, params:{skillId:decodeURIComponent(skillTestMatch[1])}, query, isKnown:true };
       const name = ROUTES[path] || "not-found";
       return { name, path, params: {}, query, isKnown: name !== "not-found" };
     }
@@ -1148,7 +1279,7 @@
       const onboardingRoutes = new Set([
         "onboarding-profile", "onboarding-share", "onboarding-learn", "onboarding-complete"
       ]);
-      const appRoutes = new Set(["discover", "search", "matches", "settings", "settings-section", "legacy-profile", "person"]);
+      const appRoutes = new Set(["discover", "search", "matches", "chat", "chat-room", "skill-test", "skill-test-skill", "settings", "settings-section", "legacy-profile", "person"]);
 
       if (publicRoutes.has(route.name)) {
         if (state.isAuthenticated && state.onboardingCompleted && ["login", "signup"].includes(route.name)) {
@@ -1786,6 +1917,65 @@
       assert(result.request.meetingPolicy === "public-place", "Public-place policy was not persisted");
     });
 
+    test("v4 chat and skill assessment routes parse and guard", () => {
+      const chat=parseHash("#/chat/sarah-01?from=%23%2Fchat");
+      const assessment=parseHash("#/skill-test/python");
+      assert(chat.name==="chat-room"&&chat.params.userId==="sarah-01"&&chat.query.from==="#/chat", "Chat room route failed");
+      assert(assessment.name==="skill-test-skill"&&assessment.params.skillId==="python", "Skill assessment route failed");
+      assert(guardRoute(chat,createInitialState())==="#/login", "Logged-out chat route was not guarded");
+    });
+
+    test("legacy v3 state receives v4 feature defaults", () => {
+      const state=normalizeState({version:1,language:"zh",connections:["sarah-01","sarah-01"]});
+      assert(Object.keys(state.conversations).length===0, "Conversation default missing");
+      assert(Object.keys(state.skillAssessments).length===0, "Assessment default missing");
+      assert(state.connections.join("|")==="sarah-01", "Connections were not deduplicated");
+    });
+
+    test("chat messages append immutably and update preview", () => {
+      const before=loginAsDemoUser();
+      const previousCount=before.conversations["sarah-01"].messages.length;
+      const message={from:before.currentUser.id,text:"Test message",at:"2026-08-17T10:00:00.000Z"};
+      const after=appendChatMessage(before,"sarah-01",message);
+      assert(after.conversations["sarah-01"].messages.length===previousCount+1, "Chat message was not appended");
+      assert(after.conversations["sarah-01"].lastMessage==="Test message", "Chat preview was not updated");
+      assert(before.conversations["sarah-01"].messages.length===previousCount, "Chat append mutated previous state");
+    });
+
+    test("chat permits connected directory contacts only", () => {
+      const state=loginAsDemoUser();
+      assert(canChatWith(state,"sarah-01"), "Connected contact was rejected");
+      assert(!canChatWith(state,"alice-01"), "Unconnected contact was accepted");
+      assert(!canChatWith(state,"missing-user"), "Unknown contact was accepted");
+    });
+
+    test("skill assessment catalog covers eight skills and four levels", () => {
+      assert(SKILL_TEST_COVERED.length===8, "Expected eight assessed skills");
+      SKILL_TEST_COVERED.forEach(skillId=>SKILL_LEVELS.forEach(level=>assert(QUESTION_BANK[skillId][level].length>=2,`${skillId}/${level} lacks questions`)));
+    });
+
+    test("skill question picker avoids an already used question", () => {
+      SKILL_TEST_COVERED.forEach(skillId=>{
+        const first=pickQuestion(skillId,"beginner",[]);
+        const second=pickQuestion(skillId,"beginner",[first.id]);
+        assert(first&&second&&first.id!==second.id,`${skillId} repeated a question while a fresh one existed`);
+      });
+    });
+
+    test("skill assessment results survive state normalization", () => {
+      const assessment={level:"intermediate",score:80,testedAt:"2026-08-17T10:00:00.000Z",questionCount:10};
+      const state=normalizeState({...createInitialState(),skillAssessments:{python:assessment}});
+      assert(state.skillAssessments.python.score===80, "Assessment score was lost");
+      assert(state.skillAssessments.python.questionCount===10, "Assessment question count was lost");
+      assert(createInitialState().skillAssessments.python===undefined, "Assessment normalization mutated defaults");
+    });
+
+    test("primary navigation contains five unique destinations", () => {
+      const items=navItems("zh");
+      assert(items.length===5, "Primary navigation must contain five items");
+      assert(new Set(items.map(item=>item.route)).size===5&&items.some(item=>item.route==="chat"), "Chat navigation is missing or duplicated");
+    });
+
     function runSelfTests() {
       return TEST_CASES.map(({ name, run }) => {
         try {
@@ -1931,19 +2121,20 @@
         { route: "discover", hash: "#/discover", icon: "◉", label: t(language, "discover") },
         { route: "search", hash: "#/search", icon: "⌕", label: t(language, "search") },
         { route: "matches", hash: "#/matches", icon: "↔", label: t(language, "matches") },
+        { route: "chat", hash: "#/chat", icon: "✉", label: t(language, "chat") },
         { route: "settings", hash: "#/settings", icon: "⚙", label: t(language, "settings") }
       ];
     }
 
     function Navigation({ language, routeName }) {
       return <nav className="top-nav" aria-label={t(language,"primaryNavigation")}>{navItems(language).map(item => {
-        const active = routeName === item.route || item.route === "settings" && routeName === "settings-section";
+        const active = routeName === item.route || item.route === "settings" && routeName === "settings-section" || item.route === "chat" && routeName === "chat-room";
         return <button key={item.route} type="button" className={`nav-link ${active ? "active" : ""}`} aria-current={active ? "page" : undefined} onClick={() => navigate(item.hash)}><span className="nav-hover-circle" aria-hidden="true"/><span className="nav-label-stack"><span className="nav-label">{item.label}</span><span className="nav-label-hover" aria-hidden="true">{item.label}</span></span></button>;
       })}</nav>;
     }
 
     function MobileNavigation({ language, routeName }) {
-      return <nav className="bottom-nav glass" aria-label={t(language,"mobileNavigation")}>{navItems(language).map(item => <button key={item.route} type="button" className={`bottom-link ${(routeName === item.route || item.route==="settings"&&routeName==="settings-section") ? "active" : ""}`} onClick={() => navigate(item.hash)}><span aria-hidden="true">{item.icon}</span><span>{item.label}</span></button>)}</nav>;
+      return <nav className="bottom-nav glass" aria-label={t(language,"mobileNavigation")}>{navItems(language).map(item => {const active=routeName===item.route||item.route==="settings"&&routeName==="settings-section"||item.route==="chat"&&routeName==="chat-room";return <button key={item.route} type="button" className={`bottom-link ${active ? "active" : ""}`} aria-current={active?"page":undefined} onClick={() => navigate(item.hash)}><span aria-hidden="true">{item.icon}</span><span>{item.label}</span></button>;})}</nav>;
     }
 
     function AppShell({ children, language, routeName, onLanguage, showNavigation = true }) {
@@ -2024,8 +2215,8 @@
       return t(language,key || level);
     }
 
-    function ProfileSkillSection({ title, items, language }) {
-      return <section className="profile-section glass"><h2>{title}</h2>{items.map(item=><div className="profile-skill" key={item.id}><h3>{getSkillName(item.skillId,language)}</h3><p className="user-meta">{levelLabel(item.level,language)}</p><p className="muted">{localized(item.desc,language)}</p></div>)}</section>;
+    function ProfileSkillSection({ title, items, language, assessments = {} }) {
+      return <section className="profile-section glass"><h2>{title}</h2>{items.map(item=>{const assessment=assessments[item.skillId];return <div className="profile-skill" key={item.id}><h3>{getSkillName(item.skillId,language)}</h3><p className="user-meta">{t(language,"skillSelfAssessed")}: {levelLabel(item.level,language)}</p>{assessment&&<p className="rating-line"><span className="skill-badge-verified">✓ {t(language,"objectiveRating")}: {levelLabel(assessment.level,language)}</span></p>}<p className="muted">{localized(item.desc,language)}</p></div>;})}</section>;
     }
 
     function ProfileDetails({user,language}){
@@ -2167,8 +2358,8 @@
 
     function PersonProfilePage({ route, state, language, updateState }) {
       const resolvedUser=getUserById(route.params.id,state.currentUser); const user=resolvedUser?{...resolvedUser,city:locationLabel(resolvedUser,language)}:null; const [open,setOpen]=React.useState(false); if(!user)return <EmptyState title={t(language,"userNotFound")} body={t(language,"userNotFoundBody")} actionLabel={t(language,"backDiscover")} onAction={()=>navigate("#/discover")}/>;
-      const isSelf=isSelfProfile(state.currentUser,user); const match=scoreComplementaryMatch(state.currentUser,user); const backHash=isSelf?"#/settings":route.query.from||"#/discover"; const save=()=>{if(!isSelf)updateState({...state,favorites:toggleFavorite(state.favorites,user.id)});};
-      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p>{isSelf&&<p className="notice" role="status">{state.privacySettings.profileVisibility==="private"?t(language,"privateOwnerPreview"):t(language,"communityOwnerPreview")}{state.privacySettings.showOnlineStatus&&` · ${t(language,"onlinePreview")}`}</p>}</div><div className="button-row">{isSelf?<Button onClick={()=>navigate("#/settings/profile")}>{t(language,"editProfile")}</Button>:<><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button><Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button></>}</div></section><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><ProfileDetails user={user} language={language}/>{!isSelf&&<section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>}{open&&!isSelf&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
+      const isSelf=isSelfProfile(state.currentUser,user); const match=scoreComplementaryMatch(state.currentUser,user); const backHash=isSelf?"#/settings":route.query.from||"#/discover"; const save=()=>{if(!isSelf)updateState(current=>({...current,favorites:toggleFavorite(current.favorites,user.id)}));}; const isConnected=!isSelf&&state.connections.includes(user.id); const assessments=isSelf?(state.skillAssessments||{}):{};
+      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p>{isSelf&&<p className="notice" role="status">{state.privacySettings.profileVisibility==="private"?t(language,"privateOwnerPreview"):t(language,"communityOwnerPreview")}{state.privacySettings.showOnlineStatus&&` · ${t(language,"onlinePreview")}`}</p>}</div><div className="button-row">{isSelf?<><Button onClick={()=>navigate("#/settings/profile")}>{t(language,"editProfile")}</Button><Button variant="rose" onClick={()=>navigate("#/skill-test")}>{t(language,"skillTest")}</Button></>:<><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button>{isConnected?<Button variant="rose" onClick={()=>navigate(`#/chat/${user.id}`,{from:window.location.hash})}>{t(language,"startChatNow")}</Button>:<Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button>}</>}</div></section>{isSelf&&Object.keys(assessments).length===0&&<section className="test-recommend"><p><strong>✓ {t(language,"skillTestRecommended")}</strong> · {t(language,"skillTestRecommendText")} <Button small onClick={()=>navigate("#/skill-test")}>{t(language,"skillTestStart")}</Button></p></section>}<div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language} assessments={assessments}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><ProfileDetails user={user} language={language}/>{!isSelf&&<section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>}{open&&!isSelf&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
     }
 
     function ContactMatchCard({user,currentUser,language,group,saved,onToggleFavorite,onRequest,onCancelRequest}){
@@ -2227,7 +2418,135 @@
 
     function NotFoundPage({ language }) { return <main className="page"><EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"backHome")} onAction={()=>navigate("#/")}/></main>; }
 
-    /* 11. ErrorBoundary */
+    /* 14. Chat feature */
+    const EMOJI_SET = Object.freeze(["😀","😂","😊","😍","🤔","👍","👏","🙏","💪","🎉","❤️","✨","🔥","✅","🤝","📚","🎵","📸","💻","🎨","🍳","🏸","⭐","🥳","😅","🤗","👀","💯","🎯","☕"]);
+    const CHAT_REPLIES = Object.freeze({ zh:["好的！","收到～","听起来不错！","我们可以约个时间细聊","没问题！","哈哈，可以呀","我也是这么想的","那太好了！","方便的时候告诉我你的时间～","期待我们的交换！"], en:["Sounds good!","Got it!","Great idea!","We can schedule a time to chat","No problem!","Haha, sure!","I was thinking the same","That's awesome!","Let me know your availability~","Looking forward to our swap!"] });
+
+    function appendChatMessage(state, userId, message) {
+      const conversation = state.conversations?.[userId] || { messages: [] };
+      const nextConversation = { messages: [...conversation.messages, message], lastMessage: message.text, lastMessageAt: message.at };
+      return { ...state, conversations: { ...state.conversations, [userId]: nextConversation } };
+    }
+    function canChatWith(state, userId) {
+      return state.connections.includes(userId) && Boolean(getUserById(userId, state.currentUser));
+    }
+    function formatChatTime(iso, language) {
+      if (!iso) return "";
+      const date = new Date(iso);
+      const now = new Date();
+      const sameDay = date.toDateString() === now.toDateString();
+      const time = date.toLocaleTimeString(language === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
+      return sameDay ? time : date.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" });
+    }
+
+    function ChatListPage({ state, language }) {
+      const items = state.connections.map(id => ({ user: getUserById(id, state.currentUser), conversation: state.conversations?.[id] })).filter(item => item.user).sort((a,b)=>(b.conversation?.lastMessageAt||"").localeCompare(a.conversation?.lastMessageAt||""));
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP CHAT</p><h1 className="page-title">{t(language,"chatTitle")}</h1><p className="page-subtitle">{t(language,"chatEmptySub")}</p></div></header>{items.length?<div className="chat-list">{items.map(({user,conversation})=><button type="button" className="chat-list-item glass" key={user.id} onClick={()=>navigate(`#/chat/${user.id}`,{from:"#/chat"})}><Avatar user={user}/><div className="chat-preview"><h3>{user.name}</h3><p>{conversation?.lastMessage||t(language,"chatEmptySub")}</p></div><span className="chat-time">{formatChatTime(conversation?.lastMessageAt,language)}</span></button>)}</div>:<EmptyState title={t(language,"noConversations")} body={t(language,"chatEmpty")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</main>;
+    }
+
+    function ChatRoomPage({ route, state, language, updateState }) {
+      const user = getUserById(route.params.userId, state.currentUser);
+      const [text, setText] = React.useState("");
+      const [showEmoji, setShowEmoji] = React.useState(false);
+      const [toast, setToast] = React.useState("");
+      const messagesEndRef = React.useRef(null);
+      const conversation = state.conversations?.[route.params.userId];
+      const isConnected = canChatWith(state, route.params.userId);
+      React.useEffect(()=>{ messagesEndRef.current?.scrollIntoView({ behavior:"smooth" }); },[conversation?.messages?.length]);
+      if (!isConnected) return <main className="page"><EmptyState title={t(language,"userNotFound")} body={t(language,"chatEmptySub")} actionLabel={t(language,"back")} onAction={()=>window.location.hash=route.query.from||"#/chat"}/></main>;
+      const showToast = message => { setToast(message); window.setTimeout(()=>setToast(""), 1800); };
+      const send = () => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const message = { from: state.currentUser.id, text: trimmed, at: new Date().toISOString() };
+        updateState(current => appendChatMessage(current, user.id, message));
+        setText(""); setShowEmoji(false);
+        const replyText = CHAT_REPLIES[language][Math.floor(Math.random()*CHAT_REPLIES[language].length)];
+        window.setTimeout(()=>{ updateState(current => appendChatMessage(current, user.id, { from: user.id, text: replyText, at: new Date().toISOString() })); }, 1200);
+      };
+      return <main className="page"><div className="button-row" style={{marginBottom:14}}><Button variant="light" small onClick={()=>window.location.hash=route.query.from||"#/chat"}>← {t(language,"chatTitle")}</Button></div><div className="chat-room">
+        <div className="chat-room-header glass"><Avatar user={user}/><div><h2>{user.name}</h2><p>{t(language,"connectedChat")}</p></div></div>
+        <div className="chat-messages" aria-live="polite">{(conversation?.messages||[]).map((message,index)=><div key={index} className={`chat-bubble ${message.from===state.currentUser.id?"sent":"received"}`}>{message.text}<div className="chat-bubble-time">{formatChatTime(message.at,language)}</div></div>)}<div ref={messagesEndRef}/></div>
+        {toast&&<p className="notice" role="status" style={{marginTop:10}}>{t(language,"comingSoon")}: {toast}</p>}
+        {showEmoji&&<div className="emoji-picker">{EMOJI_SET.map(emoji=><button type="button" className="emoji-btn" key={emoji} onClick={()=>setText(current=>current+emoji)}>{emoji}</button>)}</div>}
+        <div className="chat-input-area glass">
+          <button type="button" className="chat-action-btn" aria-label={t(language,"videoCall")} title={t(language,"videoCall")} onClick={()=>showToast(t(language,"videoCall"))}>📹</button>
+          <button type="button" className="chat-action-btn" aria-label={t(language,"takePhoto")} title={t(language,"takePhoto")} onClick={()=>showToast(t(language,"takePhoto"))}>📷</button>
+          <button type="button" className="chat-action-btn" aria-label={t(language,"sendImage")} title={t(language,"sendImage")} onClick={()=>showToast(t(language,"sendImage"))}>🖼️</button>
+          <button type="button" className="chat-action-btn" aria-label={t(language,"emoji")} title={t(language,"emoji")} onClick={()=>setShowEmoji(current=>!current)}>😊</button>
+          <input className="chat-text-input" value={text} placeholder={t(language,"chatPlaceholder")} onChange={event=>setText(event.target.value)} onKeyDown={event=>{if(event.key==="Enter")send();}} aria-label={t(language,"chatPlaceholder")}/>
+          <button type="button" className="chat-send-btn" onClick={send} disabled={!text.trim()} aria-label={t(language,"sendMessage")}>➤</button>
+        </div>
+      </div></main>;
+    }
+
+    /* 15. Adaptive skill test */
+    const TEST_QUESTION_COUNT = 10;
+    function SkillTestSelectPage({ state, language }) {
+      const testableSkills = [...new Set([...state.currentUser.skillsOffered.map(item=>item.skillId), ...state.currentUser.skillsWanted.map(item=>item.skillId)])].filter(id => SKILL_TEST_COVERED.includes(id));
+      return <main className="page"><div className="test-container"><header className="page-head"><div><p className="eyebrow">SKILLSWAP ASSESSMENT</p><h1 className="page-title">{t(language,"skillTestTitle")}</h1><p className="page-subtitle">{t(language,"skillTestIntro")}</p></div></header>
+      <section className="test-intro glass"><h2>{t(language,"skillTestSelectSkill")}</h2>{testableSkills.length?<div className="skill-pills" style={{justifyContent:"center"}}>{testableSkills.map(skillId=><button type="button" className="mini-pill" key={skillId} onClick={()=>navigate(`#/skill-test/${skillId}`)}>{getSkillName(skillId,language)}{state.skillAssessments?.[skillId]&&" ✓"} →</button>)}</div>:<p className="muted">{t(language,"selectSkillToTest")}</p>}
+      {Object.keys(state.skillAssessments||{}).length>0&&<div style={{marginTop:20}}>{Object.entries(state.skillAssessments).map(([skillId,assessment])=><p key={skillId} className="rating-line"><span className="skill-badge-verified">✓ {getSkillName(skillId,language)} · {levelLabel(assessment.level,language)} · {t(language,"skillTestResultScore",{score:assessment.score})}</span></p>)}</div>}</section></div></main>;
+    }
+
+    function SkillTestRunPage({ route, state, language, updateState }) {
+      const skillId = route.params.skillId;
+      const [history, setHistory] = React.useState([]);
+      const [levelIndex, setLevelIndex] = React.useState(1);
+      const [current, setCurrent] = React.useState(null);
+      const [selected, setSelected] = React.useState(null);
+      const [phase, setPhase] = React.useState("quiz");
+      const usedRef = React.useRef([]);
+      const askedRef = React.useRef(0);
+      const startLevel = state.currentUser.skillsOffered.find(item=>item.skillId===skillId)?.level || "beginner";
+      const startLevelIndex = React.useMemo(()=>Math.max(0, SKILL_LEVELS.indexOf(startLevel) - 1), []);
+
+      const loadQuestion = nextIndex => {
+        const question = pickQuestion(skillId, SKILL_LEVELS[nextIndex], usedRef.current);
+        if (question) usedRef.current = [...usedRef.current, question.id];
+        setCurrent(question);
+        setSelected(null);
+      };
+      React.useEffect(()=>{ setLevelIndex(startLevelIndex); loadQuestion(startLevelIndex); }, [skillId]);
+
+      if (!SKILL_TEST_COVERED.includes(skillId)) return <main className="page"><div className="test-container"><EmptyState title={t(language,"selectSkillToTest")} body={t(language,"skillTestSelectSkill")} actionLabel={t(language,"skillTestBack")} onAction={()=>navigate("#/skill-test")}/></div></main>;
+
+      const answered = history.length;
+      const choose = optionIndex => {
+        if (selected !== null || !current) return;
+        const isCorrect = optionIndex === current.answer;
+        setSelected(optionIndex);
+        setHistory(historyItems => [...historyItems, { correct: isCorrect, level: SKILL_LEVELS[levelIndex] }]);
+        askedRef.current += 1;
+      };
+      const next = () => {
+        if (askedRef.current >= TEST_QUESTION_COUNT) {
+          const correctCount = history.filter(item=>item.correct).length;
+          const finalIndex = correctCount === 0 ? 0 : Math.max(...history.filter(item=>item.correct).map(item=>SKILL_LEVELS.indexOf(item.level)));
+          const assessment = { level: SKILL_LEVELS[finalIndex], score: Math.round(correctCount/TEST_QUESTION_COUNT*100), testedAt: new Date().toISOString(), questionCount: TEST_QUESTION_COUNT };
+          updateState(currentState => ({ ...currentState, skillAssessments: { ...(currentState.skillAssessments||{}), [skillId]: assessment } }));
+          setPhase("result");
+          return;
+        }
+        const lastCorrect = history[history.length-1]?.correct;
+        const nextIndex = lastCorrect ? Math.min(levelIndex+1, SKILL_LEVELS.length-1) : Math.max(levelIndex-1, 0);
+        setLevelIndex(nextIndex);
+        loadQuestion(nextIndex);
+      };
+
+      if (phase === "result") {
+        const correctCount = history.filter(item=>item.correct).length;
+        const finalIndex = correctCount === 0 ? 0 : Math.max(...history.filter(item=>item.correct).map(item=>SKILL_LEVELS.indexOf(item.level)));
+        return <main className="page"><div className="test-container"><section className="test-result glass"><span className="test-result-badge">✓ {getSkillName(skillId,language)} · {levelLabel(SKILL_LEVELS[finalIndex],language)}</span><h2>{t(language,"skillTestResult")}</h2><p>{t(language,"skillTestResultScore",{score:Math.round(correctCount/TEST_QUESTION_COUNT*100)})}</p><p>{t(language,"skillTestResultDesc")}</p><div className="button-row" style={{justifyContent:"center"}}><Button onClick={()=>{setHistory([]);usedRef.current=[];askedRef.current=0;setPhase("quiz");setLevelIndex(startLevelIndex);loadQuestion(startLevelIndex);}}>{t(language,"skillTestRetake")}</Button><Button variant="light" onClick={()=>{navigate("#/skill-test");}}>{t(language,"skillTestBack")}</Button></div></section></div></main>;
+      }
+
+      return <main className="page"><div className="test-container"><div className="button-row" style={{marginBottom:14}}><Button variant="light" small onClick={()=>navigate("#/skill-test")}>← {t(language,"skillTestBack")}</Button></div>
+        <div className="test-progress-bar" aria-label={`${answered}/${TEST_QUESTION_COUNT}`}><div className="test-progress-fill" style={{width:`${answered/TEST_QUESTION_COUNT*100}%`}}/></div>
+        {current ? <section className="test-question-card glass"><p className="test-question-meta">{t(language,"skillTestQuestion",{current:answered+1,total:TEST_QUESTION_COUNT})} · {t(language,"skillTestLevel",{level:levelLabel(SKILL_LEVELS[levelIndex],language)})} · {getSkillName(skillId,language)}</p><h2>{localized(current.q,language)}</h2><div className="test-options">{current.options.map((option,index)=><button type="button" key={index} className={`test-option ${selected===null?"":index===current.answer?"correct":selected===index?"wrong":""}`} onClick={()=>choose(index)} disabled={selected!==null}>{localized(option,language)}</button>)}</div>{selected!==null&&<div className="button-row" style={{marginTop:20}}><Button onClick={next}>{answered+1>=TEST_QUESTION_COUNT?t(language,"skillTestSubmit"):t(language,"skillTestNext")}</Button></div>}</section> : <section className="test-question-card glass"><p>{t(language,"selectSkillToTest")}</p></section>}
+      </div></main>;
+    }
+
+    /* 16. ErrorBoundary */
     class ErrorBoundary extends React.Component {
       constructor(props) {
         super(props);
@@ -2290,6 +2609,10 @@
       else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState}/>;
       else if (route.name === "search") page = <SearchPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "matches") page = <MatchesPage route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "chat") page = <ChatListPage state={state} language={language}/>;
+      else if (route.name === "chat-room") page = <ChatRoomPage route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "skill-test") page = <SkillTestSelectPage state={state} language={language}/>;
+      else if (route.name === "skill-test-skill") page = <SkillTestRunPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings") page = <SettingsHome route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings-section") page = <SettingsSectionPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "person") page = <PersonProfilePage route={route} state={state} language={language} updateState={updateState}/>;
