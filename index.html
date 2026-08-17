@@ -65,23 +65,25 @@
     .brand-dot { color: var(--deep-rose); }
     .pill-logo {
       width: 52px; height: 52px; flex: 0 0 52px; padding: 0; display: grid; place-items: center; overflow: hidden;
-      border: 0; border-radius: 50%; background: var(--ink); color: white; box-shadow: 0 14px 34px rgba(24,24,24,.22);
+      border: 0; border-radius: 50%; background: var(--deep-rose); color: white; box-shadow: 0 14px 34px rgba(111,34,67,.2);
       animation: pill-logo-enter .52s cubic-bezier(.22,1,.36,1) both;
     }
     .pill-logo-mark { display: block; font-size: 18px; font-weight: 900; letter-spacing: 0; transition: transform .52s cubic-bezier(.22,1,.36,1); }
+    .pill-logo .brand-dot { color: var(--blush); }
     .pill-logo:hover .pill-logo-mark, .pill-logo:focus-visible .pill-logo-mark { transform: rotate(360deg); }
     .top-nav {
-      height: 52px; padding: 4px; display: flex; align-items: stretch; gap: 4px; overflow: hidden;
-      border-radius: 999px; background: var(--ink); box-shadow: 0 14px 34px rgba(24,24,24,.18);
+      height: 54px; margin-left: auto; padding: 5px; display: flex; align-items: stretch; gap: 8px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.74); border-radius: 999px; background: rgba(255,249,250,.62);
+      box-shadow: 0 14px 34px rgba(111,34,67,.14); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       animation: pill-nav-enter .58s .05s cubic-bezier(.22,1,.36,1) both;
     }
     .nav-link {
-      position: relative; isolation: isolate; min-width: 0; height: 44px; padding: 0 18px; overflow: hidden;
-      border: 0; border-radius: 999px; background: #fff6f8; color: var(--ink); font-weight: 800; line-height: 1;
+      position: relative; isolation: isolate; min-width: 0; height: 42px; padding: 0 20px; overflow: hidden;
+      border: 0; border-radius: 999px; background: rgba(255,255,255,.82); color: var(--ink); font-weight: 800; line-height: 1;
     }
     .nav-hover-circle {
       position: absolute; z-index: 1; left: 50%; bottom: -46px; width: max(130%, 92px); aspect-ratio: 1;
-      border-radius: 50%; background: var(--ink); pointer-events: none;
+      border-radius: 50%; background: var(--deep-rose); pointer-events: none;
       transform: translateX(-50%) scale(0); transform-origin: 50% 100%;
       transition: transform .38s cubic-bezier(.22,1,.36,1); will-change: transform;
     }
