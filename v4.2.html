@@ -11,7 +11,7 @@
     /* 1. Design tokens */
     :root {
       --ink: #181818; --paper: #fff9fa; --deep-rose: #b85f7d; --rose: #d97091;
-      --soft-rose: #eba0b5; --blush: #f7dce3; --tag-cream: #f5dfe5; --glass: rgba(255,255,255,.58);
+      --soft-rose: #eba0b5; --blush: #f7dce3; --tag-cream: #f5dfe5; --glass: rgba(247,220,227,.45);
       --line: rgba(255,255,255,.66); --muted: rgba(24,24,24,.64); --focus: #6f2243;
       --danger: #7e1838; --success: #17633c; --shadow: 0 26px 80px rgba(77,28,48,.16);
       --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -23,14 +23,10 @@
     body {
       margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; color: var(--ink); font-family: var(--font);
       background:
-        radial-gradient(circle at 8% 12%, rgba(255,249,250,.76), transparent 22%),
-        radial-gradient(circle at 88% 18%, rgba(255,255,255,.48), transparent 28%),
-        linear-gradient(145deg, #b75f7d 0%, #e99bb1 42%, #f5cbd5 72%, #d67e9a 100%);
+        radial-gradient(circle at 12% 10%, rgba(255,255,255,.88), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(247,220,227,.2), transparent 30%),
+        linear-gradient(145deg, #fdf8f9 0%, #fcf7f8 55%, #fdf8f9 100%);
       background-attachment: fixed;
-    }
-    body::before {
-      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .17;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
     }
     button, input, select, textarea { font: inherit; }
     button, a { -webkit-tap-highlight-color: transparent; }
@@ -529,7 +525,7 @@
     .chat-room-header { margin-bottom:14px; padding:14px 18px; display:flex; align-items:center; gap:12px; border-radius:22px; }
     .chat-room-header h2 { margin:0; font-size:18px; }
     .chat-room-header p { margin:0; color:var(--muted); font-size:13px; }
-    .chat-messages { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px; border:1px solid rgba(255,255,255,.74); border-radius:22px; background:rgba(255,249,250,.54); }
+    .chat-messages { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px; border:1px solid rgba(255,255,255,.74); border-radius:22px; background:rgba(247,220,227,.56); }
     .chat-bubble { max-width:72%; padding:11px 15px; border-radius:18px; font-size:15px; line-height:1.45; overflow-wrap:anywhere; }
     .chat-bubble.sent { align-self:flex-end; border-bottom-right-radius:5px; background:var(--deep-rose); color:white; }
     .chat-bubble.received { align-self:flex-start; border-bottom-left-radius:5px; background:rgba(255,255,255,.92); color:var(--ink); }
