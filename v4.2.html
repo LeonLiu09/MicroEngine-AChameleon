@@ -1303,6 +1303,7 @@
     async function sendBackendChatMessage(recipientUserId,text,clientMessageId){return apiRequest("/api/chat/messages",{method:"POST",body:JSON.stringify({recipientUserId,text,clientMessageId})});}
 
     const DEFAULT_NOTIFICATIONS = Object.freeze({swapRequests:true,favoriteActivity:true,sessionReminders:true});
+    const SWAP_REQUEST_POLL_INTERVAL_MS = 5000;
     const DEFAULT_PRIVACY = Object.freeze({profileVisibility:"community",showOnlineStatus:true,publicPlacesOnly:true});
 
     function legacyLocation(user={}) {
@@ -2420,6 +2421,7 @@
       const [chatHistoryMeta,setChatHistoryMeta]=React.useState({});
       const [chatStatus,setChatStatus]=React.useState("idle");
       const chatCursorRef=React.useRef(0);
+      const swapRefreshInFlightRef=React.useRef(null);
       const route = useHashRoute();
       const updateState = React.useCallback(next => {
         setState(current => normalizeState(typeof next === "function" ? next(current) : next));
@@ -2427,13 +2429,24 @@
       const language = state.language;
 
       const refreshCommunityUsers=React.useCallback(async()=>{setDirectoryStatus("loading");try{const users=await loadAllBackendUsers();setCommunityUsers(users);setDirectoryStatus("ready");return users;}catch(error){setCommunityUsers([]);setDirectoryStatus("error");throw error;}},[]);
-      const refreshSwapRequests=React.useCallback(async()=>{setRequestsStatus("loading");try{const payload=await loadSwapRequests();const all=[...(payload.received||[]),...(payload.sent||[])];all.forEach(item=>{if(item.counterpart)BACKEND_USERS.set(String(item.counterpart.id),normalizeUser(item.counterpart));});setSwapRequests(payload);setRequestsStatus("ready");const connected=[...new Set(all.filter(item=>["accepted","completed"].includes(item.status)&&item.counterpart).map(item=>String(item.counterpart.id)))];setState(current=>current.connections.join("|")===connected.join("|")?current:normalizeState({...current,connections:connected}));return payload;}catch(error){setSwapRequests({received:[],sent:[]});setRequestsStatus("error");throw error;}},[]);
+      const refreshSwapRequests=React.useCallback(({silent=false}={})=>{if(swapRefreshInFlightRef.current)return swapRefreshInFlightRef.current;if(!silent)setRequestsStatus("loading");const task=loadSwapRequests().then(payload=>{const all=[...(payload.received||[]),...(payload.sent||[])];all.forEach(item=>{if(item.counterpart)BACKEND_USERS.set(String(item.counterpart.id),normalizeUser(item.counterpart));});setSwapRequests(payload);setRequestsStatus("ready");const connected=[...new Set(all.filter(item=>["accepted","completed"].includes(item.status)&&item.counterpart).map(item=>String(item.counterpart.id)))];setState(current=>current.connections.join("|")===connected.join("|")?current:normalizeState({...current,connections:connected}));return payload;}).catch(error=>{if(!silent){setSwapRequests({received:[],sent:[]});setRequestsStatus("error");}throw error;}).finally(()=>{if(swapRefreshInFlightRef.current===task)swapRefreshInFlightRef.current=null;});swapRefreshInFlightRef.current=task;return task;},[]);
       const refreshChatConversations=React.useCallback(async()=>{const payload=await loadChatConversations();const conversations=(payload.conversations||[]).map(item=>{const peer=normalizeUser(item.peer);BACKEND_USERS.set(String(peer.id),peer);return {...item,peer};});setChatConversations(conversations);return conversations;},[]);
       const applyChatMessages=React.useCallback(messages=>{if(!messages?.length||!state.currentUser?.id)return;const currentUserId=String(state.currentUser.id);setChatMessagesByPeer(current=>{const next={...current};messages.forEach(message=>{const peerId=String(message.senderId)===currentUserId?String(message.recipientId):String(message.senderId);next[peerId]=mergeChatMessages(next[peerId]||[],[message]);});return next;});setChatConversations(current=>{const next=current.map(item=>({...item}));messages.forEach(message=>{const peerId=String(message.senderId)===currentUserId?String(message.recipientId):String(message.senderId);const index=next.findIndex(item=>String(item.peer?.id)===peerId);if(index>=0&&(!next[index].lastMessage||Number(message.id)>=Number(next[index].lastMessage.id)))next[index]={...next[index],lastMessage:message};});return next.sort((a,b)=>Number(b.lastMessage?.id||0)-Number(a.lastMessage?.id||0));});},[state.currentUser?.id]);
       const loadChatHistory=React.useCallback(async(peerId,beforeId=null)=>{setChatHistoryMeta(current=>({...current,[peerId]:{...(current[peerId]||{}),loading:true}}));try{const payload=await loadChatMessages(peerId,beforeId,50);if(payload.peer){const peer=normalizeUser(payload.peer);BACKEND_USERS.set(String(peer.id),peer);setChatConversations(current=>current.some(item=>String(item.peer?.id)===String(peerId))?current:[...current,{peer,lastMessage:null}]);}setChatMessagesByPeer(current=>({...current,[peerId]:mergeChatMessages(current[peerId]||[],payload.messages||[])}));setChatHistoryMeta(current=>({...current,[peerId]:{loading:false,hasMore:Boolean(payload.hasMore),nextBeforeId:payload.nextBeforeId||null}}));return payload;}catch(error){setChatHistoryMeta(current=>({...current,[peerId]:{...(current[peerId]||{}),loading:false}}));throw error;}},[]);
       const sendChat=React.useCallback(async(peerId,text,clientMessageId)=>{const payload=await sendBackendChatMessage(peerId,text,clientMessageId);applyChatMessages([payload.message]);return payload.message;},[applyChatMessages]);
 
       React.useEffect(()=>{if(state.isAuthenticated&&state.onboardingCompleted&&state.session?.mode==="backend"){void refreshCommunityUsers().catch(()=>{});void refreshSwapRequests().catch(()=>{});}else{BACKEND_USERS.clear();setCommunityUsers([]);setSwapRequests({received:[],sent:[]});setDirectoryStatus("idle");setRequestsStatus("idle");}},[state.isAuthenticated,state.onboardingCompleted,state.currentUser?.id,refreshCommunityUsers,refreshSwapRequests]);
+
+      React.useEffect(()=>{
+        if(!state.isAuthenticated||!state.onboardingCompleted||state.session?.mode!=="backend")return;
+        let stopped=false;
+        const syncSwapRequests=()=>{if(!stopped&&document.visibilityState!=="hidden")void refreshSwapRequests({silent:true}).catch(()=>{});};
+        const onVisibilityChange=()=>{if(document.visibilityState==="visible")syncSwapRequests();};
+        const intervalId=window.setInterval(syncSwapRequests,SWAP_REQUEST_POLL_INTERVAL_MS);
+        window.addEventListener("focus",syncSwapRequests);
+        document.addEventListener("visibilitychange",onVisibilityChange);
+        return()=>{stopped=true;window.clearInterval(intervalId);window.removeEventListener("focus",syncSwapRequests);document.removeEventListener("visibilitychange",onVisibilityChange);};
+      },[state.isAuthenticated,state.onboardingCompleted,state.currentUser?.id,refreshSwapRequests]);
 
       React.useEffect(()=>{if(state.isAuthenticated&&state.onboardingCompleted&&state.session?.mode==="backend")void refreshChatConversations().then(()=>setChatStatus("ready")).catch(error=>setChatStatus(error.status===404?"unsupported":error.status===401?"auth-error":"reconnecting"));},[state.connections.join("|"),state.isAuthenticated,state.onboardingCompleted,refreshChatConversations]);
 
