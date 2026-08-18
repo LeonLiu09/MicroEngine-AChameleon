@@ -8,6 +8,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import server
 
@@ -139,12 +140,112 @@ class AdminMigrationTests(unittest.TestCase):
                 admin_password=ADMIN_PASSWORD,
             )
 
+    def test_admin_sync_updates_the_single_configured_admin(self):
+        server.initialize_database(
+            self.db_path,
+            admin_email=ADMIN_EMAIL,
+            admin_password=ADMIN_PASSWORD,
+            admin_name="Old Name",
+        )
+        new_email = "new-root@example.com"
+        new_password = "DifferentPassword123!"
+        server.initialize_database(
+            self.db_path,
+            admin_email=new_email,
+            admin_password=new_password,
+            admin_name="New Name",
+            admin_sync=True,
+        )
+
+        self.assertIsNone(
+            server.authenticate_user(self.db_path, ADMIN_EMAIL, ADMIN_PASSWORD)
+        )
+        admin = server.authenticate_user(self.db_path, new_email, new_password)
+        self.assertIsNotNone(admin)
+        self.assertEqual(admin["display_name"], "New Name")
+        with closing(server.connect_database(self.db_path)) as connection:
+            audit = connection.execute(
+                """
+                SELECT action, details_json FROM admin_audit_log
+                WHERE action = 'admin.config_sync' ORDER BY id DESC LIMIT 1
+                """
+            ).fetchone()
+        self.assertEqual(audit["action"], "admin.config_sync")
+        details = json.loads(audit["details_json"])
+        self.assertEqual(details["email"], new_email)
+        self.assertEqual(
+            set(details["changedFields"]), {"email", "displayName", "password"}
+        )
+        self.assertNotIn(new_password, audit["details_json"])
+
+    def test_admin_sync_refuses_to_guess_between_multiple_admins(self):
+        server.initialize_database(
+            self.db_path,
+            admin_email=ADMIN_EMAIL,
+            admin_password=ADMIN_PASSWORD,
+        )
+        server.initialize_database(
+            self.db_path,
+            admin_email="second-root@example.com",
+            admin_password="SecondSecure123!",
+        )
+        with self.assertRaisesRegex(ValueError, "multiple superadmins"):
+            server.initialize_database(
+                self.db_path,
+                admin_email="unknown-root@example.com",
+                admin_password="UnknownSecure123!",
+                admin_sync=True,
+            )
+
     def test_loopback_detection_does_not_trust_remote_addresses(self):
         self.assertTrue(server.is_loopback_address("127.0.0.1"))
         self.assertTrue(server.is_loopback_address("::1"))
         self.assertTrue(server.is_loopback_address("::ffff:127.0.0.1"))
         self.assertFalse(server.is_loopback_address("192.168.1.20"))
         self.assertFalse(server.is_loopback_address("203.0.113.10"))
+
+
+class DotenvConfigTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dotenv_path = Path(self.temp_dir.name) / ".env"
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_dotenv_loads_project_settings_and_preserves_process_environment(self):
+        self.dotenv_path.write_text(
+            """
+            # local settings
+            export SKILLSWAP_ADMIN_EMAIL=from-file@example.com
+            SKILLSWAP_ADMIN_NAME='本地 管理员'
+            SKILLSWAP_ADMIN_PASSWORD="Secure\\tPassword123!" # comment
+            SKILLSWAP_PORT=4174 # comment
+            OTHER_SETTING=ignored
+            """,
+            encoding="utf-8",
+        )
+        environment = {"SKILLSWAP_ADMIN_EMAIL": "from-process@example.com"}
+        loaded = server.load_dotenv(self.dotenv_path, environ=environment)
+
+        self.assertEqual(loaded["SKILLSWAP_ADMIN_EMAIL"], "from-file@example.com")
+        self.assertEqual(environment["SKILLSWAP_ADMIN_EMAIL"], "from-process@example.com")
+        self.assertEqual(environment["SKILLSWAP_ADMIN_NAME"], "本地 管理员")
+        self.assertEqual(environment["SKILLSWAP_ADMIN_PASSWORD"], "Secure\tPassword123!")
+        self.assertEqual(environment["SKILLSWAP_PORT"], "4174")
+        self.assertNotIn("OTHER_SETTING", environment)
+
+    def test_dotenv_rejects_malformed_lines(self):
+        self.dotenv_path.write_text("SKILLSWAP_ADMIN_EMAIL\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "line 1"):
+            server.load_dotenv(self.dotenv_path, environ={})
+
+    def test_environment_flags_accept_explicit_values(self):
+        with mock.patch.dict("os.environ", {"SKILLSWAP_ADMIN_SYNC": "yes"}):
+            self.assertTrue(server.env_flag("SKILLSWAP_ADMIN_SYNC"))
+        with mock.patch.dict("os.environ", {"SKILLSWAP_ADMIN_SYNC": "invalid"}):
+            with self.assertRaisesRegex(ValueError, "must be one of"):
+                server.env_flag("SKILLSWAP_ADMIN_SYNC")
 
 
 class AdminHttpTests(unittest.TestCase):

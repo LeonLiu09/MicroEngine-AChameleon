@@ -25,16 +25,18 @@ python server.py
 
 ## 本地管理员后台
 
-管理员后台位于 `http://127.0.0.1:4173/admin`，只接受服务器本机请求。首次创建超级管理员时，在启动服务的同一终端设置环境变量：
+管理员后台位于 `http://127.0.0.1:4173/admin`，只接受服务器本机请求。项目根目录已经提供本机 `.env`，直接填写以下三项并重启服务即可创建或更改管理员：
 
-```powershell
-$env:SKILLSWAP_ADMIN_EMAIL = "admin@example.com"
-$env:SKILLSWAP_ADMIN_PASSWORD = "请替换为至少12位的安全密码"
-$env:SKILLSWAP_ADMIN_NAME = "超级管理员"
-python server.py
+```dotenv
+SKILLSWAP_ADMIN_EMAIL=admin@example.com
+SKILLSWAP_ADMIN_PASSWORD=请替换为至少12位的安全密码
+SKILLSWAP_ADMIN_NAME=超级管理员
+SKILLSWAP_ADMIN_SYNC=1
 ```
 
-管理员邮箱与密码必须同时设置。首次创建后，重复启动不会覆盖管理员密码；如邮箱已经属于普通用户，服务会拒绝静默提权并给出错误。现有旧数据库会在首次迁移前通过 SQLite Backup API 自动备份为 `skillswap.db.backup-时间戳`。
+`.env` 已加入 `.gitignore`，真实密码不会提交到仓库；可提交的字段模板位于 `.env.example`。管理员邮箱与密码必须同时填写，密码长度为 12–128 位。`SKILLSWAP_ADMIN_SYNC=1` 时，重启会把邮箱、名称和密码同步到唯一的已配置超级管理员；存在多个超级管理员且新邮箱无法匹配时，服务会拒绝猜测，请改用后台编辑。如果邮箱已经属于普通用户，服务也会拒绝静默提权。
+
+终端中已有的 `SKILLSWAP_*` 环境变量优先于 `.env`；如果文件修改没有生效，请先清除同名终端变量。未启用 `SKILLSWAP_ADMIN_SYNC` 时保持原有幂等行为，重复启动不会覆盖已存在管理员的密码。现有旧数据库会在首次迁移前通过 SQLite Backup API 自动备份为 `skillswap.db.backup-时间戳`。
 
 后台提供以下能力：
 
@@ -63,7 +65,7 @@ python server.py
 
 ## 技术结构
 
-前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器；独立管理员后台使用原生 HTML、CSS 与 JavaScript。后端使用 Python 标准库 HTTP 服务与 SQLite，提供邮箱密码登录、管理员业务 API、会话管理和审计；密码以 PBKDF2-SHA256 哈希保存，普通与管理员会话使用隔离的 HttpOnly Cookie。管理员写操作额外验证同源请求和 CSRF Token。静态 CDN 失败时主站仍保留可读回退页面，运行时错误由恢复界面接管。
+前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器；独立管理员后台使用原生 HTML、CSS 与 JavaScript。后端使用 Python 标准库 HTTP 服务与 SQLite，启动时原生读取 `.env`，提供邮箱密码登录、管理员业务 API、会话管理和审计；密码以 PBKDF2-SHA256 哈希保存，普通与管理员会话使用隔离的 HttpOnly Cookie。管理员写操作额外验证同源请求和 CSRF Token。静态 CDN 失败时主站仍保留可读回退页面，运行时错误由恢复界面接管。
 
 ---
 

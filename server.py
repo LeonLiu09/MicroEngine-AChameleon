@@ -8,6 +8,7 @@ administrator dashboard, and their isolated authentication APIs.
 from __future__ import annotations
 
 import argparse
+from collections.abc import MutableMapping
 from contextlib import closing
 import hashlib
 import hmac
@@ -44,6 +45,88 @@ CURRENT_SCHEMA_VERSION = 2
 ADMIN_RATE_LIMIT_ATTEMPTS = 5
 ADMIN_RATE_LIMIT_WINDOW_SECONDS = 15 * 60
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+DOTENV_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _parse_dotenv_value(raw_value: str, *, line_number: int) -> str:
+    value = raw_value.strip()
+    if not value:
+        return ""
+    if value[0] not in {"'", '"'}:
+        return re.split(r"\s+#", value, maxsplit=1)[0].rstrip()
+
+    quote = value[0]
+    escaped = False
+    closing_index = None
+    for index in range(1, len(value)):
+        character = value[index]
+        if quote == '"' and character == "\\" and not escaped:
+            escaped = True
+            continue
+        if character == quote and not escaped:
+            closing_index = index
+            break
+        escaped = False
+    if closing_index is None:
+        raise ValueError(f"Invalid .env line {line_number}: unterminated quote")
+    trailing = value[closing_index + 1 :].strip()
+    if trailing and not trailing.startswith("#"):
+        raise ValueError(
+            f"Invalid .env line {line_number}: unexpected text after quoted value"
+        )
+    quoted_value = value[1:closing_index]
+    if quote == "'":
+        return quoted_value
+    try:
+        return json.loads(value[: closing_index + 1])
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"Invalid .env line {line_number}: invalid quoted value"
+        ) from error
+
+
+def load_dotenv(
+    dotenv_path: Path = APP_ROOT / ".env",
+    *,
+    environ: MutableMapping[str, str] | None = None,
+    override: bool = False,
+) -> dict[str, str]:
+    """Load SKILLSWAP_* settings without adding a third-party dependency."""
+    target = os.environ if environ is None else environ
+    if not dotenv_path.is_file():
+        return {}
+    loaded: dict[str, str] = {}
+    for line_number, raw_line in enumerate(
+        dotenv_path.read_text(encoding="utf-8-sig").splitlines(), start=1
+    ):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        key, separator, raw_value = line.partition("=")
+        key = key.strip()
+        if not separator or not DOTENV_KEY_PATTERN.fullmatch(key):
+            raise ValueError(f"Invalid .env line {line_number}: expected KEY=VALUE")
+        if not key.startswith("SKILLSWAP_"):
+            continue
+        value = _parse_dotenv_value(raw_value, line_number=line_number)
+        loaded[key] = value
+        if override or key not in target:
+            target[key] = value
+    return loaded
+
+
+def env_flag(name: str, *, default: bool = False) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return default
+    normalized = raw_value.strip().casefold()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be one of: 1, 0, true, false, yes, no, on, off")
 
 
 def utc_now_iso() -> str:
@@ -176,6 +259,7 @@ def initialize_database(
     admin_email: str | None = None,
     admin_password: str | None = None,
     admin_name: str = "超级管理员",
+    admin_sync: bool = False,
 ) -> Path | None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     needs_migration = _needs_admin_migration(db_path)
@@ -305,13 +389,30 @@ def initialize_database(
                     "SKILLSWAP_ADMIN_PASSWORD must be 12-128 characters"
                 )
             existing_admin = connection.execute(
-                "SELECT id, email, role FROM users WHERE email = ?",
+                """
+                SELECT id, email, role, display_name, password_salt, password_hash
+                FROM users WHERE email = ?
+                """,
                 (normalized_admin_email,),
             ).fetchone()
             if existing_admin is not None and existing_admin["role"] != "superadmin":
                 raise ValueError(
                     "Admin email already belongs to a regular user; refusing privilege escalation"
                 )
+            if existing_admin is None and admin_sync:
+                configured_admins = connection.execute(
+                    """
+                    SELECT id, email, role, display_name, password_salt, password_hash
+                    FROM users WHERE role = 'superadmin' ORDER BY id
+                    """
+                ).fetchall()
+                if len(configured_admins) == 1:
+                    existing_admin = configured_admins[0]
+                elif len(configured_admins) > 1:
+                    raise ValueError(
+                        "SKILLSWAP_ADMIN_SYNC cannot choose between multiple "
+                        "superadmins; use an existing admin email or the admin dashboard"
+                    )
             if existing_admin is None:
                 salt, password_digest = hash_password(admin_password or "")
                 cursor = connection.execute(
@@ -337,6 +438,41 @@ def initialize_database(
                     str(cursor.lastrowid),
                     {"email": normalized_admin_email},
                 )
+            elif admin_sync:
+                changed_fields: list[str] = []
+                updates: dict[str, str] = {}
+                if existing_admin["email"] != normalized_admin_email:
+                    updates["email"] = normalized_admin_email
+                    changed_fields.append("email")
+                if existing_admin["display_name"] != clean_admin_name:
+                    updates["display_name"] = clean_admin_name
+                    changed_fields.append("displayName")
+                if not verify_password(
+                    admin_password or "",
+                    existing_admin["password_salt"],
+                    existing_admin["password_hash"],
+                ):
+                    salt, password_digest = hash_password(admin_password or "")
+                    updates["password_salt"] = salt
+                    updates["password_hash"] = password_digest
+                    changed_fields.append("password")
+                if updates:
+                    assignments = ", ".join(f"{column} = ?" for column in updates)
+                    connection.execute(
+                        f"UPDATE users SET {assignments} WHERE id = ?",
+                        (*updates.values(), existing_admin["id"]),
+                    )
+                    _audit_event(
+                        connection,
+                        None,
+                        "admin.config_sync",
+                        "user",
+                        str(existing_admin["id"]),
+                        {
+                            "changedFields": changed_fields,
+                            "email": normalized_admin_email,
+                        },
+                    )
     return backup_path
 
 
@@ -1595,6 +1731,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    load_dotenv()
     args = parse_args()
     demo_email = os.environ.get("SKILLSWAP_DEMO_EMAIL", "daniel@example.com")
     demo_password = os.environ.get("SKILLSWAP_DEMO_PASSWORD", "SkillSwap123!")
@@ -1608,10 +1745,11 @@ def main() -> None:
         admin_email=admin_email,
         admin_password=admin_password,
         admin_name=admin_name,
+        admin_sync=env_flag("SKILLSWAP_ADMIN_SYNC"),
     )
     config = ServerConfig(
         db_path=args.db,
-        secure_cookie=os.environ.get("SKILLSWAP_SECURE_COOKIE") == "1",
+        secure_cookie=env_flag("SKILLSWAP_SECURE_COOKIE"),
     )
     server = ThreadingHTTPServer((args.host, args.port), make_handler(config))
     print(f"SkillSwap running at http://{args.host}:{args.port}/")
