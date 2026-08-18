@@ -257,6 +257,12 @@
     .filter-grid { min-width:0; flex:1; display:grid; grid-template-columns:repeat(5,minmax(140px,1fr)); gap:10px; }
     .filter-reset { flex:0 0 auto; min-height:58px; }
     .result-count { margin:20px 0 12px; font-weight:800; }
+    .skill-search-results { margin:0 0 22px; padding:20px; border-radius:24px; }
+    .skill-search-results h2 { margin:0 0 12px; font-size:22px; }
+    .skill-result-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .skill-result-item { padding:14px; border:1px solid rgba(24,24,24,.09); border-radius:17px; background:rgba(255,255,255,.55); }
+    .skill-result-item strong,.skill-result-item span { display:block; }
+    .skill-result-item span { margin-top:4px; color:var(--muted); font-size:12px; }
     .search-starters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
     .starter-card { min-height:170px; padding:20px; border-radius:24px; }
     .starter-card h2 { margin:0 0 14px; font-size:20px; }
@@ -285,6 +291,8 @@
     .match-panel-head { margin-bottom:16px; display:flex; align-items:end; justify-content:space-between; gap:14px; }
     .match-panel-head h2 { margin:0; font-size:clamp(26px,4vw,40px); font-weight:600; }
     .match-panel-head p { margin:0; color:var(--muted); }
+    .request-direction-group + .request-direction-group { margin-top:24px; padding-top:22px; border-top:1px solid rgba(24,24,24,.1); }
+    .request-direction-group .match-panel-head h3 { margin:0; font-size:20px; }
     .confirm-copy { margin:18px 0 22px; color:var(--muted); line-height:1.65; }
     .profile-hero { padding:clamp(24px,5vw,48px); border-radius:32px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
     .profile-hero h1 { margin:0 0 6px; font-size:clamp(38px,6vw,66px); font-weight:500; letter-spacing:-.06em; }
@@ -325,6 +333,15 @@
     .settings-menu-arrow { width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:rgba(255,255,255,.7); font-size:18px; transition:transform .2s ease,background .2s ease; }
     .settings-menu-row:hover .settings-menu-arrow { transform:translateX(3px); background:white; }
     .settings-menu-row.danger { color:var(--danger); }
+    .admin-skill-toolbar { display:flex; align-items:end; justify-content:space-between; gap:12px; }
+    .admin-skill-list { display:grid; gap:10px; }
+    .admin-skill-row { padding:15px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center; border:1px solid rgba(24,24,24,.09); border-radius:18px; background:rgba(255,255,255,.55); }
+    .admin-skill-row.inactive { opacity:.62; }
+    .admin-skill-row h3 { margin:0 0 4px; }
+    .admin-skill-row p { margin:0; color:var(--muted); font-size:12px; }
+    .admin-skill-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
+    .admin-skill-form { padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:12px; border-radius:22px; background:rgba(255,255,255,.42); }
+    .admin-skill-form h2,.admin-skill-form .span-2 { grid-column:1/-1; }
 
     .availability-page { display:grid; gap:18px; }
     .availability-head { display:flex; align-items:end; justify-content:space-between; gap:16px; }
@@ -481,6 +498,10 @@
       .availability-actions .btn { flex:1; }
       .settings-form-actions { grid-template-columns:1fr; }
       .settings-form-actions.single { grid-template-columns:1fr; }
+      .skill-result-grid,.admin-skill-form { grid-template-columns:1fr; }
+      .admin-skill-form h2,.admin-skill-form .span-2 { grid-column:auto; }
+      .admin-skill-row { grid-template-columns:1fr; }
+      .admin-skill-actions { justify-content:flex-start; }
       .settings-subpage .avatar-picker { grid-template-columns:1fr; text-align:left; }
       .settings-subpage .avatar-picker .avatar { margin:auto; }
       .avatar-picker-status { grid-column:auto; }
@@ -586,7 +607,7 @@
 
     /* 1. Constants */
     const STORAGE_KEY = "skillswap-mvp-v1";
-    const STATE_VERSION = 1;
+    const STATE_VERSION = 2;
     const DEFAULT_LANGUAGE = "zh";
 
     /* 2. Translation dictionaries */
@@ -600,8 +621,8 @@
         profile: "我的",
         login: "登录",
         signup: "创建账号",
-        tryDemo: "体验 Daniel 演示账号",
-        resetDemo: "重置演示",
+        tryDemo: "使用 Daniel 后端账号",
+        resetDemo: "重置本地数据",
         reload: "重新载入",
         somethingWrong: "出现了一点问题",
         pageNotFound: "页面不存在",
@@ -625,16 +646,16 @@
         canTeach: "可以教你",
         wantsLearn: "想要学习",
         whyMatch: "为什么适合交换",
-        demoLabel: "前端演示数据",
-        localNotice: "所有资料仅保存在此浏览器。",
+        demoLabel: "真实社区数据",
+        localNotice: "账号、资料与交换请求由本地后端保存。",
         landingEyebrow: "技能交换社区 · v4.2",
         landingTitleA: "交换技能，",
         landingTitleB: "遇见同路人。",
         landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
-        exploreDemo: "直接体验完整演示",
+        exploreDemo: "进入技能交换社区",
         socialGallery: "流动技能标签",
         realPeople: "真实的人，清晰的交换理由",
-        members: "位演示伙伴",
+        members: "位社区成员",
         welcomeBack: "欢迎回来",
         loginIntro: "登录以继续寻找技能交换伙伴。",
         email: "邮箱",
@@ -646,7 +667,7 @@
         loginUnavailable: "暂时无法连接登录服务，请确认后端已启动。",
         noAccount: "还没有账号？",
         haveAccount: "已经有账号？",
-        signupIntro: "创建一个只保存在本机的演示资料。",
+        signupIntro: "创建由后端保存的真实账号。",
         emailError: "请输入有效邮箱。",
         passwordError: "密码至少需要 8 个字符。",
         confirmError: "两次输入的密码不一致。",
@@ -706,7 +727,7 @@
         editProfile: "编辑资料",
         cancel: "取消",
         saveChanges: "保存修改",
-        memberSince: "SkillSwap 演示成员",
+        memberSince: "SkillSwap 社区成员",
         teachSection: "我可以分享",
         learnSection: "我想学习",
         languageLabel: "语言",
@@ -726,9 +747,9 @@
         ageCity: "{age} 岁 · {city}",
         languageChinese: "中文",
         languageEnglish: "English",
-        demoSafety: "演示资料仅展示城市，不包含学校、精确位置或联系方式。",
-        notFoundBody: "这个链接可能已过期，或页面尚未加入演示。",
-        userNotFoundBody: "该演示用户不存在或已被移除。",
+        demoSafety: "公开资料仅展示城市，不包含学校、精确位置或联系方式。",
+        notFoundBody: "这个链接可能已过期，或页面不存在。",
+        userNotFoundBody: "该用户不存在、资料尚未完成或未对社区公开。",
         searchPlaceholder: "例如：摄影、Python、烹饪…",
         resetFilters: "重置筛选",
         sortBy: "排序",
@@ -737,13 +758,14 @@
         removeFavorite: "取消收藏",
         cancelRequest: "取消请求",
         cancelRequestTitle: "取消交换请求？",
-        cancelRequestBody: "将取消发给 {name} 的所有待回应请求。此操作只影响当前浏览器中的演示数据。",
+        cancelRequestBody: "将取消发给 {name} 的待回应请求。",
         confirmCancelRequest: "确认取消",
         requestCancelled: "已取消发给 {name} 的请求。",
         complementaryHint: "根据双方技能方向推荐",
         favoritesHint: "你保存的技能伙伴",
         requestsHint: "已发送且正在等待回应",
-        settings:"设置",country:"国家",filterCountry:"所有国家",chooseCountryFirst:"请先选择国家",chooseCity:"请选择城市",sortNewest:"最近发布",sortLiked:"最受好评",viewFullProfile:"查看完整资料",communityOverview:"社区概览",demoCommunityData:"演示社区数据",onlineNow:"人在线",totalUsers:"位用户",swapsToday:"今日交换",trendingSkills:"本周热门技能",demoTrend:"演示趋势",peopleSearching:"{count} 人正在寻找",recentSearches:"最近搜索",noRecentSearches:"搜索后会显示在这里",skillCategories:"技能分类",popularSearches:"热门关键词",canTeachSkill:"可以教你：{skill}",matchesFilters:"符合你的筛选条件",likedBy:"{count} 人好评",published:"发布于 {date}",complementaryMatches:"互补匹配",favoritePeople:"收藏的人",swapRequests:"交换请求",interests:"兴趣",availability:"可约时间",meetingPreference:"见面方式",reliability:"可靠度",joined:"加入时间",profileAndAvatar:"个人资料与头像",skillsAndGoals:"技能与学习目标",availabilityAndPlaces:"可约时间与地点",notificationSettings:"通知设置",privacyAndSafety:"隐私与安全",helpAndFeedback:"帮助与反馈",logout:"退出登录",logoutConfirm:"退出当前账号？资料会保留在本机。",profileVisibility:"资料可见性",showOnlineStatus:"显示在线状态",publicPlacesOnly:"仅允许公共地点",publicPlacePolicy:"此请求将仅安排在公共地点。",communityOwnerPreview:"你正在查看社区公开资料",privateOwnerPreview:"你正在查看仅自己可见的资料预览",onlinePreview:"在线（演示）",settingsSaved:"已保存：{section}",primaryNavigation:"主导航",mobileNavigation:"移动端主导航",closeDialog:"关闭对话框",feedbackPlaceholder:"告诉我们哪里可以做得更好",feedbackSaved:"反馈已保存在本机演示中。",avatarTypeError:"请选择 JPEG、PNG 或 WebP 图片。",avatarSizeError:"图片不能超过 5 MB。",avatarProcessError:"无法处理这张图片，请换一张。",changeAvatar:"更换头像",category_technology:"技术",category_creative:"创作",category_academic:"学习",category_sports:"运动",category_lifestyle:"生活",chat:"私聊",chatTitle:"消息",chatEmpty:"还没有聊天，先去匹配一个伙伴吧",chatEmptySub:"双方同意交换后即可开始聊天",chatPlaceholder:"输入消息…",emoji:"表情",videoCall:"视频通话",takePhoto:"拍照",sendImage:"发送图片",comingSoon:"功能开发中",connectedChat:"已连接 · 可聊天",noConversations:"还没有聊天记录",startChatNow:"开始聊天",sendMessage:"发送",chatWith:"与 {name} 聊天",skillTest:"技能测试",skillTestTitle:"自适应技能测评",skillTestIntro:"用 10 道选择题，3-5 分钟精准定位你的技能水平。答对出难题，答错出简单题。",skillTestStart:"开始测试",skillTestQuestion:"第 {current} / {total} 题",skillTestLevel:"难度：{level}",skillTestNext:"下一题",skillTestSubmit:"查看结果",skillTestResult:"测试结果",skillTestResultLevel:"客观评级",skillTestResultScore:"正确率 {score}%",skillTestResultDesc:"基于自适应算法评估，与你的自评等级并列展示，不会覆盖自评。",skillTestRetake:"重新测试",skillTestBack:"返回",skillTestRecommended:"推荐完成",skillTestRecommendText:"完成技能测评可以获得「已认证」徽章，让你的技能水平更有说服力。",skillTestSelectSkill:"选择要测试的技能",skillVerified:"已认证",skillSelfAssessed:"自评",objectiveRating:"客观评级",selectSkillToTest:"选择一项技能开始测评"
+        skillCatalog: "技能目录管理",
+        settings:"设置",country:"国家",filterCountry:"所有国家",chooseCountryFirst:"请先选择国家",chooseCity:"请选择城市",sortNewest:"最近发布",sortLiked:"最受好评",viewFullProfile:"查看完整资料",communityOverview:"社区概览",demoCommunityData:"真实社区数据",onlineNow:"今日登录",totalUsers:"真实用户",swapsToday:"今日完成交换",trendingSkills:"热门想学技能",demoTrend:"真实趋势",peopleSearching:"{count} 人想学",recentSearches:"最近搜索",noRecentSearches:"搜索后会显示在这里",skillCategories:"技能分类",popularSearches:"热门关键词",canTeachSkill:"可以教你：{skill}",matchesFilters:"符合你的筛选条件",likedBy:"{count} 人好评",published:"发布于 {date}",complementaryMatches:"互补匹配",favoritePeople:"收藏的人",swapRequests:"交换请求",interests:"兴趣",availability:"可约时间",meetingPreference:"见面方式",reliability:"可靠度",joined:"加入时间",profileAndAvatar:"个人资料与头像",skillsAndGoals:"技能与学习目标",availabilityAndPlaces:"可约时间与地点",notificationSettings:"通知设置",privacyAndSafety:"隐私与安全",helpAndFeedback:"帮助与反馈",logout:"退出登录",logoutConfirm:"退出当前账号？资料会保留在后端。",profileVisibility:"资料可见性",showOnlineStatus:"显示在线状态",publicPlacesOnly:"仅允许公共地点",publicPlacePolicy:"此请求将仅安排在公共地点。",communityOwnerPreview:"你正在查看社区公开资料",privateOwnerPreview:"你正在查看仅自己可见的资料预览",onlinePreview:"当前账号",settingsSaved:"已保存：{section}",primaryNavigation:"主导航",mobileNavigation:"移动端主导航",closeDialog:"关闭对话框",feedbackPlaceholder:"告诉我们哪里可以做得更好",feedbackSaved:"反馈已保存在本机。",avatarTypeError:"请选择 JPEG、PNG 或 WebP 图片。",avatarSizeError:"图片不能超过 5 MB。",avatarProcessError:"无法处理这张图片，请换一张。",changeAvatar:"更换头像",category_technology:"技术",category_creative:"创作",category_academic:"学习",category_sports:"运动",category_lifestyle:"生活",chat:"私聊",chatTitle:"消息",chatEmpty:"还没有聊天，先去匹配一个伙伴吧",chatEmptySub:"双方同意交换后即可开始聊天",chatPlaceholder:"输入消息…",emoji:"表情",videoCall:"视频通话",takePhoto:"拍照",sendImage:"发送图片",comingSoon:"功能开发中",connectedChat:"已连接 · 可聊天",noConversations:"还没有聊天记录",startChatNow:"开始聊天",sendMessage:"发送",chatWith:"与 {name} 聊天",skillTest:"技能测试",skillTestTitle:"自适应技能测评",skillTestIntro:"用 10 道选择题，3-5 分钟精准定位你的技能水平。答对出难题，答错出简单题。",skillTestStart:"开始测试",skillTestQuestion:"第 {current} / {total} 题",skillTestLevel:"难度：{level}",skillTestNext:"下一题",skillTestSubmit:"查看结果",skillTestResult:"测试结果",skillTestResultLevel:"客观评级",skillTestResultScore:"正确率 {score}%",skillTestResultDesc:"基于自适应算法评估，与你的自评等级并列展示，不会覆盖自评。",skillTestRetake:"重新测试",skillTestBack:"返回",skillTestRecommended:"推荐完成",skillTestRecommendText:"完成技能测评可以获得「已认证」徽章，让你的技能水平更有说服力。",skillTestSelectSkill:"选择要测试的技能",skillVerified:"已认证",skillSelfAssessed:"自评",objectiveRating:"客观评级",selectSkillToTest:"选择一项技能开始测评"
       }),
       en: Object.freeze({
         brand: "SkillSwap",
@@ -754,8 +776,8 @@
         profile: "Profile",
         login: "Log in",
         signup: "Create account",
-        tryDemo: "Try Daniel's demo",
-        resetDemo: "Reset demo",
+        tryDemo: "Use Daniel's backend account",
+        resetDemo: "Reset local data",
         reload: "Reload",
         somethingWrong: "Something went wrong",
         pageNotFound: "Page not found",
@@ -779,16 +801,16 @@
         canTeach: "Can teach",
         wantsLearn: "Wants to learn",
         whyMatch: "Why you match",
-        demoLabel: "Frontend demo data",
-        localNotice: "Everything is stored only in this browser.",
+        demoLabel: "Live community data",
+        localNotice: "Accounts, profiles, and swap requests are stored by the local backend.",
         landingEyebrow: "Skill exchange community · v4.2",
         landingTitleA: "Trade skills,",
         landingTitleB: "meet your people.",
         landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
-        exploreDemo: "Explore the full demo",
+        exploreDemo: "Enter the skill-swap community",
         socialGallery: "Flowing skill tags",
         realPeople: "Real people, clear exchange reasons",
-        members: "demo partners",
+        members: "community members",
         welcomeBack: "Welcome back",
         loginIntro: "Log in to keep finding skill-swap partners.",
         email: "Email",
@@ -800,7 +822,7 @@
         loginUnavailable: "The login service is unavailable. Make sure the backend is running.",
         noAccount: "New to SkillSwap?",
         haveAccount: "Already have an account?",
-        signupIntro: "Create a demo profile stored only on this device.",
+        signupIntro: "Create a real account stored by the backend.",
         emailError: "Enter a valid email.",
         passwordError: "Use at least 8 characters.",
         confirmError: "The passwords do not match.",
@@ -860,7 +882,7 @@
         editProfile: "Edit profile",
         cancel: "Cancel",
         saveChanges: "Save changes",
-        memberSince: "SkillSwap demo member",
+        memberSince: "SkillSwap community member",
         teachSection: "I can share",
         learnSection: "I want to learn",
         languageLabel: "Languages",
@@ -880,9 +902,9 @@
         ageCity: "Age {age} · {city}",
         languageChinese: "中文",
         languageEnglish: "English",
-        demoSafety: "Demo profiles show city only—never school, precise location, or contact details.",
-        notFoundBody: "This link may have expired, or the page is not part of the demo yet.",
-        userNotFoundBody: "That demo user does not exist or has been removed.",
+        demoSafety: "Public profiles show city only—never school, precise location, or contact details.",
+        notFoundBody: "This link may have expired, or the page does not exist.",
+        userNotFoundBody: "That real user is unavailable or no longer public.",
         searchPlaceholder: "Try Photography, Python, Cooking…",
         resetFilters: "Reset filters",
         sortBy: "Sort",
@@ -891,13 +913,14 @@
         removeFavorite: "Remove saved",
         cancelRequest: "Cancel request",
         cancelRequestTitle: "Cancel this swap request?",
-        cancelRequestBody: "This cancels every pending request sent to {name}. It only changes demo data in this browser.",
+        cancelRequestBody: "This cancels the pending request sent to {name}.",
         confirmCancelRequest: "Cancel request",
         requestCancelled: "Requests to {name} were cancelled.",
         complementaryHint: "Recommended from both skill directions",
         favoritesHint: "People you have saved",
         requestsHint: "Sent and waiting for a response",
-        settings:"Settings",country:"Country",filterCountry:"All countries",chooseCountryFirst:"Choose a country first",chooseCity:"Choose a city",sortNewest:"Newest",sortLiked:"Most liked",viewFullProfile:"View full profile",communityOverview:"Community overview",demoCommunityData:"Demo community data",onlineNow:"online",totalUsers:"users",swapsToday:"swaps today",trendingSkills:"Trending this week",demoTrend:"Demo trend",peopleSearching:"{count} people searching",recentSearches:"Recent searches",noRecentSearches:"Your searches will appear here",skillCategories:"Skill categories",popularSearches:"Popular searches",canTeachSkill:"Can teach you: {skill}",matchesFilters:"Matches your filters",likedBy:"Liked by {count}",published:"Published {date}",complementaryMatches:"Complementary matches",favoritePeople:"Saved people",swapRequests:"Swap requests",interests:"Interests",availability:"Availability",meetingPreference:"Meeting preference",reliability:"Reliability",joined:"Joined",profileAndAvatar:"Profile & avatar",skillsAndGoals:"Skills & learning goals",availabilityAndPlaces:"Availability & places",notificationSettings:"Notifications",privacyAndSafety:"Privacy & safety",helpAndFeedback:"Help & feedback",logout:"Log out",logoutConfirm:"Log out now? Your profile stays on this device.",profileVisibility:"Profile visibility",showOnlineStatus:"Show online status",publicPlacesOnly:"Public places only",publicPlacePolicy:"This request will use public meeting places only.",communityOwnerPreview:"You are viewing your community profile",privateOwnerPreview:"You are viewing your private owner preview",onlinePreview:"Online (demo)",settingsSaved:"Saved: {section}",primaryNavigation:"Primary navigation",mobileNavigation:"Mobile primary navigation",closeDialog:"Close dialog",feedbackPlaceholder:"Tell us what could be better",feedbackSaved:"Feedback saved in this local demo.",avatarTypeError:"Choose a JPEG, PNG, or WebP image.",avatarSizeError:"Images must be 5 MB or smaller.",avatarProcessError:"We could not process that image. Try another one.",changeAvatar:"Change avatar",category_technology:"Technology",category_creative:"Creative",category_academic:"Learning",category_sports:"Sports",category_lifestyle:"Lifestyle",chat:"Chat",chatTitle:"Messages",chatEmpty:"No chats yet; find a partner first",chatEmptySub:"Start chatting after both sides agree to swap",chatPlaceholder:"Type a message…",emoji:"Emoji",videoCall:"Video call",takePhoto:"Take photo",sendImage:"Send image",comingSoon:"Coming soon",connectedChat:"Connected · Chat ready",noConversations:"No conversations yet",startChatNow:"Start chat",sendMessage:"Send",chatWith:"Chat with {name}",skillTest:"Skill test",skillTestTitle:"Adaptive Skill Assessment",skillTestIntro:"Answer 10 multiple-choice questions in 3-5 minutes. Correct answers unlock harder questions and wrong answers get easier ones.",skillTestStart:"Start test",skillTestQuestion:"Question {current} / {total}",skillTestLevel:"Difficulty: {level}",skillTestNext:"Next",skillTestSubmit:"See results",skillTestResult:"Your Result",skillTestResultLevel:"Objective Rating",skillTestResultScore:"{score}% correct",skillTestResultDesc:"Based on the adaptive algorithm. Shown alongside your self-assessment and does not override it.",skillTestRetake:"Retake test",skillTestBack:"Back",skillTestRecommended:"Recommended",skillTestRecommendText:"Complete the skill assessment to earn a verified badge and make your skill level more credible.",skillTestSelectSkill:"Select a skill to test",skillVerified:"Verified",skillSelfAssessed:"Self-rated",objectiveRating:"Objective rating",selectSkillToTest:"Choose a skill to start assessment"
+        skillCatalog: "Skill catalog",
+        settings:"Settings",country:"Country",filterCountry:"All countries",chooseCountryFirst:"Choose a country first",chooseCity:"Choose a city",sortNewest:"Newest",sortLiked:"Most liked",viewFullProfile:"View full profile",communityOverview:"Community overview",demoCommunityData:"Live community data",onlineNow:"logged in today",totalUsers:"real users",swapsToday:"swaps completed today",trendingSkills:"Most wanted skills",demoTrend:"Live trend",peopleSearching:"{count} want to learn",recentSearches:"Recent searches",noRecentSearches:"Your searches will appear here",skillCategories:"Skill categories",popularSearches:"Popular searches",canTeachSkill:"Can teach you: {skill}",matchesFilters:"Matches your filters",likedBy:"Liked by {count}",published:"Published {date}",complementaryMatches:"Complementary matches",favoritePeople:"Saved people",swapRequests:"Swap requests",interests:"Interests",availability:"Availability",meetingPreference:"Meeting preference",reliability:"Reliability",joined:"Joined",profileAndAvatar:"Profile & avatar",skillsAndGoals:"Skills & learning goals",availabilityAndPlaces:"Availability & places",notificationSettings:"Notifications",privacyAndSafety:"Privacy & safety",helpAndFeedback:"Help & feedback",logout:"Log out",logoutConfirm:"Log out now? Your profile stays in the backend.",profileVisibility:"Profile visibility",showOnlineStatus:"Show online status",publicPlacesOnly:"Public places only",publicPlacePolicy:"This request will use public meeting places only.",communityOwnerPreview:"You are viewing your community profile",privateOwnerPreview:"You are viewing your private owner preview",onlinePreview:"Current account",settingsSaved:"Saved: {section}",primaryNavigation:"Primary navigation",mobileNavigation:"Mobile primary navigation",closeDialog:"Close dialog",feedbackPlaceholder:"Tell us what could be better",feedbackSaved:"Feedback saved locally.",avatarTypeError:"Choose a JPEG, PNG, or WebP image.",avatarSizeError:"Images must be 5 MB or smaller.",avatarProcessError:"We could not process that image. Try another one.",changeAvatar:"Change avatar",category_technology:"Technology",category_creative:"Creative",category_academic:"Learning",category_sports:"Sports",category_lifestyle:"Lifestyle",chat:"Chat",chatTitle:"Messages",chatEmpty:"No chats yet; find a partner first",chatEmptySub:"Start chatting after both sides agree to swap",chatPlaceholder:"Type a message…",emoji:"Emoji",videoCall:"Video call",takePhoto:"Take photo",sendImage:"Send image",comingSoon:"Coming soon",connectedChat:"Connected · Chat ready",noConversations:"No conversations yet",startChatNow:"Start chat",sendMessage:"Send",chatWith:"Chat with {name}",skillTest:"Skill test",skillTestTitle:"Adaptive Skill Assessment",skillTestIntro:"Answer 10 multiple-choice questions in 3-5 minutes. Correct answers unlock harder questions and wrong answers get easier ones.",skillTestStart:"Start test",skillTestQuestion:"Question {current} / {total}",skillTestLevel:"Difficulty: {level}",skillTestNext:"Next",skillTestSubmit:"See results",skillTestResult:"Your Result",skillTestResultLevel:"Objective Rating",skillTestResultScore:"{score}% correct",skillTestResultDesc:"Based on the adaptive algorithm. Shown alongside your self-assessment and does not override it.",skillTestRetake:"Retake test",skillTestBack:"Back",skillTestRecommended:"Recommended",skillTestRecommendText:"Complete the skill assessment to earn a verified badge and make your skill level more credible.",skillTestSelectSkill:"Select a skill to test",skillVerified:"Verified",skillSelfAssessed:"Self-rated",objectiveRating:"Objective rating",selectSkillToTest:"Choose a skill to start assessment"
       })
     });
 
@@ -940,7 +963,7 @@
       ["yoga","sports","瑜伽","Yoga"], ["illustration","creative","插画","Illustration"],
       ["personal-finance","lifestyle","基础理财","Personal Finance"], ["pottery","creative","陶艺","Pottery"]
     ];
-    const SKILLS = Object.freeze([
+    let SKILLS = [
       { id: "photography", category: "creative", zh: "摄影", en: "Photography" },
       { id: "chemistry", category: "academic", zh: "化学", en: "Chemistry" },
       { id: "python", category: "technology", zh: "Python 编程", en: "Python" },
@@ -956,13 +979,20 @@
       { id: "basketball", category: "sports", zh: "篮球", en: "Basketball" },
       { id: "planting", category: "lifestyle", zh: "植物养护", en: "Plant Care" },
       ...EXTRA_SKILLS.map(([id,category,zh,en]) => ({id,category,zh,en}))
-    ]);
+    ];
+    const BACKEND_USERS = new Map();
+    function applySkillCatalog(items){
+      if(!Array.isArray(items)||!items.length)return;
+      SKILLS=items.filter(item=>item?.isActive!==false).map(item=>({
+        id:item.id,category:item.category,zh:item.names?.zh||item.id,en:item.names?.en||item.id
+      }));
+    }
 
     const MARQUEE_ROWS=Object.freeze([
       Object.freeze(["photography","python","cooking","guitar","chemistry","fitness","drawing","ui-design","latte-art","tennis","excel","japanese","yoga","personal-finance"]),
       Object.freeze(["english","badminton","video-editing","arduino","writing","basketball","planting","product-design","baking","public-speaking","calligraphy","french","illustration","pottery"])
     ]);
-    const COMMUNITY_STATS=Object.freeze({online:128,users:3842,swapsToday:46});
+    const EMPTY_COMMUNITY_STATS=Object.freeze({onlineToday:null,registeredUsers:null,swapsCompletedToday:null,trendingSkills:[]});
 
     const PROFILE_LABELS=Object.freeze({
       availability:{"weekday-evening":{zh:"工作日晚间",en:"Weekday evenings"},"sat-morning":{zh:"周六上午",en:"Saturday morning"},"sat-afternoon":{zh:"周六下午",en:"Saturday afternoon"},"sun-morning":{zh:"周日上午",en:"Sunday morning"},"sun-afternoon":{zh:"周日下午",en:"Sunday afternoon"},"sun-evening":{zh:"周日晚间",en:"Sunday evening"}},
@@ -971,163 +1001,6 @@
     });
     function profileLabel(group,id,language){return PROFILE_LABELS[group]?.[id]?.[language]||id;}
 
-    const DEMO_USER = Object.freeze({
-      id: "daniel",
-      name: "Daniel Kim",
-      age: 19,
-      city: "Tianjin",
-      countryId: "cn",
-      cityId: "tianjin",
-      languages: ["zh", "en"],
-      interests: ["chemistry", "fitness", "badminton"],
-      likes: 476,
-      publishedAt: "2026-08-10T08:00:00.000Z",
-      availability: ["weekday-evening", "sun-afternoon"],
-      meetingModes: ["public-place", "online"],
-      reliability: 99,
-      memberSince: "2025-10-12T00:00:00.000Z",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&q=80",
-      bio: {
-        zh: "化学爱好者、健身常客，也一直在尝试学习新东西。",
-        en: "Chemistry enthusiast, gym regular, and always trying to learn something new."
-      },
-      skillsOffered: [
-        { id: "daniel-chemistry", skillId: "chemistry", level: "advanced", desc: { zh: "可以辅导 A-Level 化学与热力学。", en: "I can help with A-Level chemistry and thermodynamics." } },
-        { id: "daniel-badminton", skillId: "badminton", level: "intermediate", desc: { zh: "一起练习步法和基础对打。", en: "Let's practice footwork and steady rallies." } },
-        { id: "daniel-fitness", skillId: "fitness", level: "advanced", desc: { zh: "制定安全、简单的力量训练计划。", en: "I can build a safe, simple strength routine." } }
-      ],
-      skillsWanted: [
-        { id: "daniel-photography", skillId: "photography", level: "beginner", desc: { zh: "想学会手动曝光和人像构图。", en: "I want to learn manual exposure and portrait composition." } },
-        { id: "daniel-python", skillId: "python", level: "complete-beginner", desc: { zh: "想用 Python 做第一个小项目。", en: "I want to build my first small Python project." } },
-        { id: "daniel-cooking", skillId: "cooking", level: "beginner", desc: { zh: "想学几道适合宿舍的快手菜。", en: "I want a few quick dorm-friendly recipes." } }
-      ]
-    });
-
-    const EXISTING_USER_META=Object.freeze({
-      "alice-01":{countryId:"cn",cityId:"tianjin",interests:["street-photography","coffee","city-walks"],likes:328,publishedAt:"2026-08-14T09:30:00.000Z",availability:["sat-afternoon","sun-morning"],meetingModes:["public-place","online"],reliability:98,memberSince:"2026-03-18T00:00:00.000Z"},
-      "bob-01":{countryId:"cn",cityId:"beijing",interests:["cooking","basketball","markets"],likes:294,publishedAt:"2026-08-09T10:00:00.000Z",availability:["sat-morning","sun-afternoon"],meetingModes:["public-place"],reliability:95,memberSince:"2026-02-03T00:00:00.000Z"},
-      "mika-01":{countryId:"cn",cityId:"shanghai",interests:["indie-music","bands","songwriting"],likes:219,publishedAt:"2026-08-08T11:40:00.000Z",availability:["weekday-evening","sun-afternoon"],meetingModes:["online","public-place"],reliability:94,memberSince:"2026-05-12T00:00:00.000Z"},
-      "jun-01":{countryId:"kr",cityId:"seoul",interests:["electronics","coding","prototypes"],likes:451,publishedAt:"2026-08-15T13:15:00.000Z",availability:["weekday-evening","sat-afternoon"],meetingModes:["online"],reliability:99,memberSince:"2025-12-19T00:00:00.000Z"},
-      "lina-01":{countryId:"cn",cityId:"hangzhou",interests:["plants","drawing","journaling"],likes:187,publishedAt:"2026-08-06T08:50:00.000Z",availability:["sat-afternoon","sun-morning"],meetingModes:["public-place"],reliability:96,memberSince:"2026-06-01T00:00:00.000Z"},
-      "sarah-01":{countryId:"cn",cityId:"tianjin",interests:["debate","languages","photography"],likes:337,publishedAt:"2026-08-13T07:30:00.000Z",availability:["weekday-evening","sun-afternoon"],meetingModes:["public-place","online"],reliability:98,memberSince:"2026-01-08T00:00:00.000Z"},
-      "nora-01":{countryId:"cn",cityId:"tianjin",interests:["fitness","science","video"],likes:263,publishedAt:"2026-08-07T12:10:00.000Z",availability:["sat-morning","sun-morning"],meetingModes:["public-place","online"],reliability:97,memberSince:"2026-04-24T00:00:00.000Z"}
-    });
-
-    function seedSkill(owner,skillId,level,zh,en){return {id:`${owner}-${skillId}`,skillId,level,desc:{zh,en}};}
-    const EXTRA_USERS=Object.freeze([
-      {id:"leah-01",name:"Leah Xu",age:22,countryId:"cn",cityId:"hangzhou",languages:["zh","en"],interests:["design-systems","museums","tea"],likes:286,publishedAt:"2026-08-15T06:20:00.000Z",availability:["weekday-evening","sun-afternoon"],meetingModes:["public-place","online"],reliability:97,memberSince:"2026-02-11T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=500&q=80",bio:{zh:"产品设计师，喜欢把复杂流程整理得简单清楚。",en:"Product designer who enjoys making complex flows feel simple."},skillsOffered:[seedSkill("leah","ui-design","advanced","界面层级、组件和可用性。","Hierarchy, components, and usability."),seedSkill("leah","calligraphy","intermediate","硬笔基础和日常练习。","Pen calligraphy basics and daily practice."),seedSkill("leah","photography","intermediate","手机摄影和日常取景。","Mobile photography and everyday framing.")],skillsWanted:[seedSkill("leah-want","english","intermediate","练习更自然的工作表达。","Practice natural workplace conversation."),seedSkill("leah-want","tennis","complete-beginner","从握拍和正手开始。","Start with grip and forehand.")]},
-      {id:"omar-01",name:"Omar Khan",age:24,countryId:"uk",cityId:"london",languages:["en"],interests:["debate","startups","food"],likes:412,publishedAt:"2026-08-12T17:00:00.000Z",availability:["sat-morning","sun-evening"],meetingModes:["online","public-place"],reliability:99,memberSince:"2025-12-06T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=500&q=80",bio:{zh:"创业社群主持人，擅长把表达变得有结构。",en:"Startup community host who makes communication more structured."},skillsOffered:[seedSkill("omar","public-speaking","advanced","演讲结构和临场表达。","Speech structure and confident delivery."),seedSkill("omar","personal-finance","intermediate","个人预算和储蓄基础。","Personal budgeting and saving basics.")],skillsWanted:[seedSkill("omar-want","english","intermediate","希望练习更清晰的写作。","I want to sharpen my writing."),seedSkill("omar-want","cooking","beginner","想学三道简单中餐。","Learn three simple Chinese dishes.")]},
-      {id:"yuki-01",name:"Yuki Sato",age:20,countryId:"jp",cityId:"tokyo",languages:["ja","en"],interests:["manga","cafes","travel"],likes:365,publishedAt:"2026-08-16T03:10:00.000Z",availability:["weekday-evening","sat-afternoon"],meetingModes:["online","public-place"],reliability:96,memberSince:"2026-04-09T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=500&q=80",bio:{zh:"插画学生，也喜欢带朋友练习实用日语。",en:"Illustration student who enjoys helping friends practice useful Japanese."},skillsOffered:[seedSkill("yuki","japanese","advanced","旅行与日常会话。","Travel and everyday conversation."),seedSkill("yuki","illustration","advanced","角色造型和配色。","Character shapes and color choices.")],skillsWanted:[seedSkill("yuki-want","photography","beginner","想拍好夜间街景。","Learn better night street photos."),seedSkill("yuki-want","latte-art","complete-beginner","从牛奶打发开始。","Start with steaming milk.")]},
-      {id:"maya-01",name:"Maya Tremblay",age:23,countryId:"ca",cityId:"toronto",languages:["en","fr"],interests:["wellness","books","baking"],likes:244,publishedAt:"2026-08-11T14:45:00.000Z",availability:["sat-afternoon","sun-morning"],meetingModes:["online","public-place"],reliability:98,memberSince:"2026-01-22T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=500&q=80",bio:{zh:"双语编辑和瑜伽爱好者，喜欢温和但持续的学习。",en:"Bilingual editor and yoga enthusiast who values steady learning."},skillsOffered:[seedSkill("maya","french","advanced","法语发音和基础对话。","French pronunciation and basic conversation."),seedSkill("maya","yoga","intermediate","适合初学者的舒展练习。","Beginner-friendly mobility practice.")],skillsWanted:[seedSkill("maya-want","product-design","beginner","理解产品流程和原型。","Understand product flows and prototypes."),seedSkill("maya-want","baking","beginner","想掌握基础面包。","Learn a reliable basic loaf.")]},
-      {id:"ethan-01",name:"Ethan Brooks",age:25,countryId:"us",cityId:"san-francisco",languages:["en"],interests:["data","cycling","ceramics"],likes:521,publishedAt:"2026-08-13T20:00:00.000Z",availability:["weekday-evening","sat-morning"],meetingModes:["online","public-place"],reliability:99,memberSince:"2025-11-17T00:00:00.000Z",avatar:"https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=500&q=80",bio:{zh:"数据分析师，喜欢把实用工具教给第一次接触的人。",en:"Data analyst who enjoys teaching useful tools to first-time learners."},skillsOffered:[seedSkill("ethan","excel","advanced","公式、透视表和数据清理。","Formulas, pivots, and data cleanup."),seedSkill("ethan","python","intermediate","用 Python 自动化重复工作。","Automate repetitive work with Python.")],skillsWanted:[seedSkill("ethan-want","pottery","complete-beginner","想完成第一个小杯子。","Make my first small cup."),seedSkill("ethan-want","public-speaking","beginner","减少演示时的紧张。","Feel calmer during presentations.")]}
-    ]);
-
-    const BASE_MOCK_USERS = Object.freeze([
-      {
-        id: "alice-01", name: "Alice Chen", age: 18, city: "Tianjin", languages: ["zh", "en"],
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "喜欢用照片记录城市里安静的瞬间。", en: "I love documenting quiet moments around the city." },
-        skillsOffered: [
-          { id: "alice-photography", skillId: "photography", level: "advanced", desc: { zh: "人像、构图与手动曝光。", en: "Portraits, composition, and manual exposure." } },
-          { id: "alice-editing", skillId: "video-editing", level: "intermediate", desc: { zh: "短视频节奏和基础调色。", en: "Short-form pacing and basic color work." } }
-        ],
-        skillsWanted: [
-          { id: "alice-chemistry", skillId: "chemistry", level: "beginner", desc: { zh: "想补齐基础化学知识。", en: "I want to strengthen my chemistry basics." } },
-          { id: "alice-cooking", skillId: "cooking", level: "beginner", desc: { zh: "想学简单的家常菜。", en: "I want to learn simple home cooking." } }
-        ]
-      },
-      {
-        id: "bob-01", name: "Bob Li", age: 20, city: "Beijing", languages: ["zh", "en"],
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "周末研究新菜，也热衷篮球。", en: "Weekend recipe tinkerer and committed basketball fan." },
-        skillsOffered: [
-          { id: "bob-cooking", skillId: "cooking", level: "advanced", desc: { zh: "中式快手菜和烘焙基础。", en: "Quick Chinese dishes and baking basics." } },
-          { id: "bob-basketball", skillId: "basketball", level: "intermediate", desc: { zh: "基础运球与投篮动作。", en: "Ball handling and shooting fundamentals." } }
-        ],
-        skillsWanted: [
-          { id: "bob-chemistry", skillId: "chemistry", level: "beginner", desc: { zh: "为考试复习化学。", en: "Reviewing chemistry for an exam." } },
-          { id: "bob-arduino", skillId: "arduino", level: "complete-beginner", desc: { zh: "想让第一颗 LED 亮起来。", en: "I want to light my first LED." } }
-        ]
-      },
-      {
-        id: "mika-01", name: "Mika Zhou", age: 17, city: "Shanghai", languages: ["zh", "en"],
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "独立音乐爱好者，正在组建校园乐队。", en: "Indie music fan putting together a campus band." },
-        skillsOffered: [
-          { id: "mika-guitar", skillId: "guitar", level: "advanced", desc: { zh: "和弦转换和节奏型。", en: "Chord changes and rhythm patterns." } },
-          { id: "mika-english", skillId: "english", level: "intermediate", desc: { zh: "日常英语口语练习。", en: "Everyday English conversation." } }
-        ],
-        skillsWanted: [
-          { id: "mika-fitness", skillId: "fitness", level: "beginner", desc: { zh: "想建立稳定训练习惯。", en: "I want a consistent training habit." } },
-          { id: "mika-writing", skillId: "writing", level: "beginner", desc: { zh: "想写更好的歌词。", en: "I want to write better lyrics." } }
-        ]
-      },
-      {
-        id: "jun-01", name: "Jun Park", age: 21, city: "Seoul", languages: ["en", "ko"],
-        avatar: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "喜欢把小想法做成真正能运行的东西。", en: "I enjoy turning small ideas into things that actually work." },
-        skillsOffered: [
-          { id: "jun-python", skillId: "python", level: "intermediate", desc: { zh: "Python 入门与小型自动化。", en: "Python basics and small automations." } },
-          { id: "jun-arduino", skillId: "arduino", level: "advanced", desc: { zh: "传感器和基础硬件原型。", en: "Sensors and simple hardware prototypes." } }
-        ],
-        skillsWanted: [
-          { id: "jun-photography", skillId: "photography", level: "beginner", desc: { zh: "想拍出更好的项目照片。", en: "I want better photos of my projects." } },
-          { id: "jun-badminton", skillId: "badminton", level: "intermediate", desc: { zh: "寻找同水平练习搭子。", en: "Looking for a same-level practice buddy." } }
-        ]
-      },
-      {
-        id: "lina-01", name: "Lina Wang", age: 16, city: "Hangzhou", languages: ["zh", "en"],
-        avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "速写本不离手，也喜欢收集旧杂志。", en: "Always carrying a sketchbook and collecting old magazines." },
-        skillsOffered: [
-          { id: "lina-drawing", skillId: "drawing", level: "advanced", desc: { zh: "人物速写和色彩练习。", en: "Figure sketching and color studies." } },
-          { id: "lina-writing", skillId: "writing", level: "intermediate", desc: { zh: "短篇故事与视觉叙事。", en: "Short stories and visual narratives." } }
-        ],
-        skillsWanted: [
-          { id: "lina-guitar", skillId: "guitar", level: "complete-beginner", desc: { zh: "想学会第一首歌。", en: "I want to play my first song." } },
-          { id: "lina-photography", skillId: "photography", level: "beginner", desc: { zh: "想记录作品过程。", en: "I want to document my art process." } }
-        ]
-      },
-      {
-        id: "sarah-01", name: "Sarah Wu", age: 20, city: "Tianjin", languages: ["zh", "en"],
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "辩论队成员，也在学习创意编程。", en: "Debate team member exploring creative coding." },
-        skillsOffered: [
-          { id: "sarah-english", skillId: "english", level: "advanced", desc: { zh: "口语表达和演讲反馈。", en: "Conversation and presentation feedback." } },
-          { id: "sarah-photography", skillId: "photography", level: "intermediate", desc: { zh: "手机摄影和构图。", en: "Mobile photography and composition." } }
-        ],
-        skillsWanted: [
-          { id: "sarah-python", skillId: "python", level: "complete-beginner", desc: { zh: "想理解基础编程思维。", en: "I want to understand basic programming logic." } },
-          { id: "sarah-drawing", skillId: "drawing", level: "beginner", desc: { zh: "想练习视觉笔记。", en: "I want to practice visual note-taking." } }
-        ]
-      },
-      {
-        id: "nora-01", name: "Nora Chen", age: 18, city: "Tianjin", languages: ["zh", "en"],
-        avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=500&q=80",
-        bio: { zh: "化学竞赛选手，也喜欢慢跑和植物。", en: "Chemistry competitor who also enjoys running and plants." },
-        skillsOffered: [
-          { id: "nora-chemistry", skillId: "chemistry", level: "advanced", desc: { zh: "化学竞赛题和实验思路。", en: "Chemistry contest problems and lab reasoning." } },
-          { id: "nora-planting", skillId: "planting", level: "intermediate", desc: { zh: "室内植物养护。", en: "Indoor plant care." } }
-        ],
-        skillsWanted: [
-          { id: "nora-fitness", skillId: "fitness", level: "advanced", desc: { zh: "寻找同水平训练搭子。", en: "Looking for an advanced training buddy." } },
-          { id: "nora-video", skillId: "video-editing", level: "beginner", desc: { zh: "想剪辑实验记录。", en: "I want to edit lab diaries." } }
-        ]
-      }
-    ]);
-
-    const MOCK_USERS = Object.freeze([
-      ...BASE_MOCK_USERS.map(user => Object.freeze({ ...user, ...EXISTING_USER_META[user.id] })),
-      ...EXTRA_USERS.map(user => Object.freeze({
-        ...user,
-        city: getCitiesForCountry(user.countryId).find(city => city.id === user.cityId)?.en || ""
-      }))
-    ]);
-
-    const SEEDED_REQUESTS = Object.freeze([
-      { id: "request-demo-01", targetUserId: "mika-01", offeredSkillId: "fitness", requestedSkillId: "guitar", status: "pending", createdAt: "2026-08-16T08:00:00.000Z" }
-    ]);
-    const SEEDED_CONNECTIONS = Object.freeze(["sarah-01", "mika-01"]);
     /* 4b. Adaptive skill-test question bank (hybrid: prebuilt + extensible for AI generation) */
     function q(zhQ,enQ,zhOpts,enOpts,answer){return {q:{zh:zhQ,en:enQ},options:zhOpts.map((text,i)=>({zh:text,en:enOpts[i]})),answer};}
     function qq(z,e,o,a){return{q:{zh:z,en:e},options:o.map(x=>typeof x==='string'?{zh:x,en:x}:{zh:x[0],en:x[1]}),answer:a}}
@@ -1318,11 +1191,6 @@
       const newAnswer = indices.indexOf(chosen.answer);
       return { q: chosen.q, options: shuffledOptions, answer: newAnswer, id: `${skillId}:${chosen.q.en}` };
     }
-    const TRENDING_SKILLS=Object.freeze([
-      {skillId:"photography",count:128}, {skillId:"english",count:96}, {skillId:"python",count:74},
-      {skillId:"ui-design",count:63}, {skillId:"video-editing",count:51}
-    ]);
-
     /* 4. State and helper functions */
     function cloneData(value) {
       return JSON.parse(JSON.stringify(value));
@@ -1356,6 +1224,40 @@
       catch(error){console.warn("SkillSwap session logout",error);}
     }
 
+    async function apiRequest(path,options={}){
+      let response;
+      try{response=await fetch(path,{credentials:"same-origin",...options,headers:{...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});}
+      catch(error){const failure=new Error("Backend unavailable");failure.code="unavailable";throw failure;}
+      let payload=null;
+      if(response.status!==204){try{payload=await response.json();}catch(error){payload=null;}}
+      if(!response.ok){const failure=new Error(payload?.message||"Request failed");failure.code=payload?.error||"request_failed";failure.status=response.status;throw failure;}
+      return payload;
+    }
+    async function registerWithEmail(email,password){return (await apiRequest("/api/auth/register",{method:"POST",body:JSON.stringify({email,password})})).user;}
+    async function loadSkillCatalog(includeInactive=false){const payload=await apiRequest(`/api/skills${includeInactive?"?includeInactive=true":""}`);if(!includeInactive)applySkillCatalog(payload.skills);return payload.skills;}
+    async function loadBackendUser(){
+      const [profilePayload,skillsPayload]=await Promise.all([apiRequest("/api/users/me/profile"),apiRequest("/api/users/me/skills"),loadSkillCatalog()]);
+      return normalizeUser({...profilePayload.profile,...skillsPayload,city:"",avatar:"",interests:[],likes:0,publishedAt:profilePayload.profile.memberSince,availability:[],meetingModes:["public-place"],reliability:100});
+    }
+    function profileApiPayload(user,onboardingCompleted,visibility="community"){
+      return {name:user.name,age:Number(user.age)||18,countryId:user.countryId||"cn",cityId:user.cityId||"tianjin",languages:user.languages?.length?user.languages:["zh"],bio:user.bio||{zh:"",en:""},avatarDataUrl:user.avatarDataUrl||"",profileVisibility:visibility,onboardingCompleted:Boolean(onboardingCompleted)};
+    }
+    async function saveBackendProfile(user,onboardingCompleted,visibility){return (await apiRequest("/api/users/me/profile",{method:"PUT",body:JSON.stringify(profileApiPayload(user,onboardingCompleted,visibility))})).profile;}
+    async function saveBackendSkills(skills){return apiRequest("/api/users/me/skills",{method:"PUT",body:JSON.stringify(skills)});}
+    async function searchBackend(filters){const params=new URLSearchParams(Object.entries(filters).filter(([,value])=>String(value||"").trim()));return apiRequest(`/api/search?${params.toString()}`);}
+    async function loadAllBackendUsers(){
+      const users=[];let offset=0;let hasMore=true;
+      while(hasMore){const payload=await searchBackend({limit:50,offset});(payload.users||[]).forEach(item=>users.push(normalizeUser(item)));hasMore=Boolean(payload.pagination?.hasMore);offset+=payload.pagination?.limit||50;}
+      BACKEND_USERS.clear();users.forEach(user=>BACKEND_USERS.set(String(user.id),user));return users;
+    }
+    async function loadCommunityStats(){return apiRequest("/api/community/stats");}
+    async function loadSwapRequests(){return apiRequest("/api/swap-requests");}
+    async function createBackendSwapRequest(payload){return (await apiRequest("/api/swap-requests",{method:"POST",body:JSON.stringify(payload)})).request;}
+    async function actOnBackendSwapRequest(requestId,action){return (await apiRequest(`/api/swap-requests/${encodeURIComponent(requestId)}/${action}`,{method:"POST"})).request;}
+    async function createBackendSkill(skill){return (await apiRequest("/api/skills",{method:"POST",body:JSON.stringify(skill)})).skill;}
+    async function updateBackendSkill(skill){return (await apiRequest(`/api/skills/${encodeURIComponent(skill.id)}`,{method:"PUT",body:JSON.stringify(skill)})).skill;}
+    async function deactivateBackendSkill(skillId){return apiRequest(`/api/skills/${encodeURIComponent(skillId)}`,{method:"DELETE"});}
+
     const DEFAULT_NOTIFICATIONS = Object.freeze({swapRequests:true,favoriteActivity:true,sessionReminders:true});
     const DEFAULT_PRIVACY = Object.freeze({profileVisibility:"community",showOnlineStatus:true,publicPlacesOnly:true});
 
@@ -1386,15 +1288,15 @@
       };
     }
 
-    function createInitialState(){return {version:STATE_VERSION,language:DEFAULT_LANGUAGE,isAuthenticated:false,currentUser:null,onboardingCompleted:false,onboardingStep:"profile",favorites:[],sentRequests:[],connections:[],conversations:{},skillAssessments:{},editedSkills:[],recentSearches:[],notificationSettings:cloneData(DEFAULT_NOTIFICATIONS),privacySettings:cloneData(DEFAULT_PRIVACY),feedbackEntries:[],session:{loggedIn:false}};}
+    function createInitialState(){return {version:STATE_VERSION,language:DEFAULT_LANGUAGE,isAuthenticated:false,currentUser:null,onboardingCompleted:false,onboardingStep:"profile",favorites:[],connections:[],conversations:{},skillAssessments:{},editedSkills:[],recentSearches:[],notificationSettings:cloneData(DEFAULT_NOTIFICATIONS),privacySettings:cloneData(DEFAULT_PRIVACY),feedbackEntries:[],session:{loggedIn:false,mode:""}};}
     function normalizeState(value){
       const base=createInitialState(); if(!value||typeof value!=="object")return base;
       const loggedIn=value.session?.loggedIn===true||value.isAuthenticated===true;
       const currentUser=value.currentUser&&typeof value.currentUser==="object"?normalizeUser(value.currentUser):null;
       const currentUserId=currentUser?.id||"";
       const favorites=Array.isArray(value.favorites)?value.favorites.filter(item=>typeof item==="string"&&item!==currentUserId):[];
-      const sentRequests=Array.isArray(value.sentRequests)?value.sentRequests.filter(item=>item&&typeof item==="object"&&item.targetUserId!==currentUserId):[];
-      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,sentRequests,connections:Array.isArray(value.connections)?[...new Set(value.connections.filter(item=>typeof item==="string"&&item!==currentUserId))]:[],conversations:value.conversations&&typeof value.conversations==="object"?cloneData(value.conversations):{},skillAssessments:value.skillAssessments&&typeof value.skillAssessments==="object"?cloneData(value.skillAssessments):{},editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn}};
+      const mode=loggedIn?"backend":"";
+      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,connections:Array.isArray(value.connections)?[...new Set(value.connections.filter(item=>typeof item==="string"&&item!==currentUserId))]:[],conversations:value.conversations&&typeof value.conversations==="object"?cloneData(value.conversations):{},skillAssessments:value.skillAssessments&&typeof value.skillAssessments==="object"?cloneData(value.skillAssessments):{},editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn,mode}};
     }
 
     function loadState(storage = window.localStorage) {
@@ -1418,23 +1320,6 @@
         console.warn("SkillSwap state save failed", error);
         return false;
       }
-    }
-
-    function loginAsDemoUser(baseState = createInitialState()) {
-      return normalizeState({
-        ...baseState,
-        version: STATE_VERSION,
-        isAuthenticated: true,
-        currentUser: baseState.currentUser?.id===DEMO_USER.id ? cloneData(baseState.currentUser) : cloneData(DEMO_USER),
-        onboardingCompleted: true,
-        onboardingStep: "complete",
-        favorites: baseState.currentUser?.id===DEMO_USER.id ? baseState.favorites : ["alice-01", "jun-01"],
-        sentRequests: baseState.currentUser?.id===DEMO_USER.id ? baseState.sentRequests : cloneData(SEEDED_REQUESTS),
-        connections: baseState.currentUser?.id===DEMO_USER.id ? baseState.connections : [...SEEDED_CONNECTIONS],
-        conversations: baseState.currentUser?.id===DEMO_USER.id ? (baseState.conversations||{}) : {"sarah-01":{messages:[{from:"sarah-01",text:"Hi! Looking forward to our skill swap 😊",at:"2026-08-16T10:00:00.000Z"},{from:DEMO_USER.id,text:"Same here! When are you free this week?",at:"2026-08-16T10:05:00.000Z"}],lastMessage:"Same here! When are you free this week?",lastMessageAt:"2026-08-16T10:05:00.000Z"}},
-        skillAssessments: baseState.currentUser?.id===DEMO_USER.id ? (baseState.skillAssessments||{}) : {},
-        editedSkills: baseState.currentUser?.id===DEMO_USER.id ? baseState.editedSkills : cloneData(DEMO_USER.skillsOffered)
-      });
     }
 
     function updateSettingsState(state,section,value){
@@ -1471,7 +1356,7 @@
       });
     }
 
-    function logoutState(state){return normalizeState({...state,isAuthenticated:false,session:{...state.session,loggedIn:false}});}
+    function logoutState(state){return normalizeState({...createInitialState(),language:state.language,notificationSettings:state.notificationSettings,privacySettings:state.privacySettings,feedbackEntries:state.feedbackEntries});}
 
     function clearDemoStorage(storage = window.localStorage) {
       try {
@@ -1484,7 +1369,7 @@
     }
 
     function resetDemo() {
-      if (!window.confirm("重置 SkillSwap 本地演示数据？\nReset local SkillSwap demo data?")) return;
+      if (!window.confirm("重置 SkillSwap 本地界面数据？\nReset local SkillSwap interface data?")) return;
       clearDemoStorage();
       window.location.hash = "#/";
       window.location.reload();
@@ -1596,8 +1481,8 @@
 
     function getUserById(userId, currentUser = null) {
       if (currentUser?.id === userId) return currentUser;
-      if (userId === DEMO_USER.id) return DEMO_USER;
-      return MOCK_USERS.find(user => user.id === userId) || null;
+      if (BACKEND_USERS.has(String(userId))) return BACKEND_USERS.get(String(userId));
+      return null;
     }
 
     function getSkillName(skillId, language = DEFAULT_LANGUAGE) {
@@ -1629,7 +1514,7 @@
       });
       const reciprocal = reciprocalPairs.length > 0;
       const sharedLanguage = candidate.languages.some(language => currentUser.languages.includes(language));
-      const sameCity = candidate.city.toLowerCase() === currentUser.city.toLowerCase();
+      const sameCity = Boolean(candidate.cityId&&candidate.cityId===currentUser.cityId&&candidate.countryId===currentUser.countryId);
       const levelFit = teachable.some(offered => {
         const wanted = currentUser.skillsWanted.find(item => item.skillId === offered.skillId);
         return wanted && getLevelRank(offered.level) >= getLevelRank(wanted.level);
@@ -1657,14 +1542,14 @@
       return { user: candidate, score, reciprocal, reasons };
     }
 
-    function findComplementaryMatches(currentUser, users = MOCK_USERS) {
+    function findComplementaryMatches(currentUser, users = []) {
       return users
         .map(user => scoreComplementaryMatch(currentUser, user))
         .filter(match => match.score > 0)
         .sort((a, b) => b.score - a.score || a.user.id.localeCompare(b.user.id));
     }
 
-    function findPeerBuddies(currentUser, users = MOCK_USERS) {
+    function findPeerBuddies(currentUser, users = []) {
       const currentSkills = [...currentUser.skillsOffered, ...currentUser.skillsWanted];
       return users
         .map(user => {
@@ -1737,12 +1622,11 @@
     function uniqueUsers(users){return [...new Map(users.filter(Boolean).map(user=>[user.id,user])).values()];}
     const MATCH_TAB_IDS=Object.freeze(["complementary","favorites","requests"]);
     function normalizeMatchTab(value){return MATCH_TAB_IDS.includes(value)?value:"complementary";}
-    function buildMatchGroups(state){
+    function buildMatchGroups(state,users=[]){
       const selfId=state.currentUser?.id;
       return {
-        complementary:uniqueUsers(findComplementaryMatches(state.currentUser).map(match=>match.user)).filter(user=>user.id!==selfId),
-        favorites:uniqueUsers(state.favorites.map(getUserById)).filter(user=>user.id!==selfId),
-        requests:uniqueUsers(state.sentRequests.map(request=>getUserById(request.targetUserId))).filter(user=>user.id!==selfId)
+        complementary:uniqueUsers(findComplementaryMatches(state.currentUser,users).map(match=>match.user)).filter(user=>user.id!==selfId),
+        favorites:uniqueUsers(state.favorites.map(id=>getUserById(id,state.currentUser))).filter(user=>user.id!==selfId)
       };
     }
 
@@ -1814,28 +1698,6 @@
       return Boolean(currentUser?.id && profile?.id && currentUser.id === profile.id);
     }
 
-    function createSwapRequest(requests, targetUserId, offeredSkillId, requestedSkillId, now = new Date(), meetingPolicy = "flexible") {
-      const duplicate = requests.find(request =>
-        request.targetUserId === targetUserId &&
-        request.offeredSkillId === offeredSkillId &&
-        request.requestedSkillId === requestedSkillId &&
-        request.status === "pending"
-      );
-      if (duplicate) return { requests: [...requests], request: duplicate, created: false };
-      const request = {
-        id: `request-${targetUserId}-${offeredSkillId}-${requestedSkillId}`,
-        targetUserId,
-        offeredSkillId,
-        requestedSkillId,
-        status: "pending",
-        createdAt: now.toISOString(), meetingPolicy
-      };
-      return { requests: [...requests, request], request, created: true };
-    }
-
-    function cancelSwapRequests(requests,targetUserId){
-      return requests.filter(request=>request.targetUserId!==targetUserId || request.status!=="pending");
-    }
 
     function localized(value, language) {
       return typeof value === "string" ? value : (value?.[language] || value?.en || "");
@@ -1846,417 +1708,11 @@
     const TEST_CASES = [];
     function test(name, run) { TEST_CASES.push({ name, run }); }
     function assert(condition, message) { if (!condition) throw new Error(message); }
-
-    test("storage key is stable", () => {
-      assert(STORAGE_KEY === "skillswap-mvp-v1", "Unexpected storage key");
-    });
-
-    test("initial language is Chinese", () => {
-      assert(DEFAULT_LANGUAGE === "zh", "Initial language must be zh");
-    });
-
-    test("initial state is versioned and unauthenticated", () => {
-      const state = createInitialState();
-      assert(state.version === 1, "Wrong state version");
-      assert(state.language === "zh", "Wrong initial state language");
-      assert(state.isAuthenticated === false, "Fresh state must be logged out");
-    });
-
-    test("invalid storage JSON recovers", () => {
-      const storage = { getItem: () => "{bad", setItem() {}, removeItem() {} };
-      assert(loadState(storage).version === 1, "Invalid JSON must recover");
-    });
-
-    test("old storage versions recover", () => {
-      const storage = {
-        getItem: () => JSON.stringify({ version: 0, isAuthenticated: true }),
-        setItem() {},
-        removeItem() {}
-      };
-      assert(loadState(storage).isAuthenticated === false, "Old version must reset");
-    });
-
-    test("persisted self targets are removed from state and match groups", () => {
-      const state = normalizeState({
-        ...createInitialState(), version: STATE_VERSION, isAuthenticated: true, currentUser: cloneData(DEMO_USER),
-        favorites: [DEMO_USER.id, "alice-01"],
-        sentRequests: [{ targetUserId: DEMO_USER.id }, { targetUserId: "alice-01" }]
-      });
-      const groups = buildMatchGroups(state);
-      assert(!state.favorites.includes(DEMO_USER.id), "Normalized favorites retained the current user");
-      assert(!state.sentRequests.some(request => request.targetUserId === DEMO_USER.id), "Normalized requests retained the current user");
-      assert(!Object.values(groups).flat().some(user => user.id === DEMO_USER.id), "A match group retained the current user");
-    });
-
-    test("storage access exceptions do not crash", () => {
-      const storage = { getItem() { throw new Error("denied"); } };
-      assert(loadState(storage).version === 1, "Denied storage must recover");
-    });
-
-    test("translation key sets match", () => {
-      const zh = Object.keys(TRANSLATIONS.zh).sort().join("|");
-      const en = Object.keys(TRANSLATIONS.en).sort().join("|");
-      assert(zh === en, "Translation dictionaries diverged");
-    });
-
-    test("first-round translations stay in parity", () => {
-      const zhKeys = Object.keys(TRANSLATIONS.zh).sort().join("|");
-      const enKeys = Object.keys(TRANSLATIONS.en).sort().join("|");
-      assert(zhKeys === enKeys, "Translation keys diverged");
-      ["settings", "country", "filterCountry", "sortNewest", "sortLiked", "viewFullProfile", "communityOverview", "trendingSkills"].forEach(key => {
-        assert(TRANSLATIONS.zh[key] && TRANSLATIONS.en[key], `Missing translation: ${key}`);
-      });
-    });
-
-    test("expanded seed catalog is complete and deterministic", () => {
-      assert(SKILLS.length === 28, `Expected 28 skills, received ${SKILLS.length}`);
-      assert(MOCK_USERS.length === 12, `Expected 12 users, received ${MOCK_USERS.length}`);
-      assert(new Set(SKILLS.map(skill => skill.id)).size === 28, "Skill ids must be unique");
-      assert(new Set(MOCK_USERS.map(user => user.id)).size === 12, "User ids must be unique");
-      MOCK_USERS.forEach(user => {
-        ["countryId", "cityId", "interests", "likes", "publishedAt", "availability", "meetingModes", "reliability", "memberSince"].forEach(key => {
-          assert(user[key] !== undefined, `${user.id} missing ${key}`);
-        });
-      });
-    });
-
-    test("country catalog puts China first and resolves dependent cities", () => {
-      assert(COUNTRIES[0].id === "cn", "China must be first");
-      assert(getCitiesForCountry("cn").some(city => city.id === "tianjin"), "Tianjin missing");
-      assert(getCitiesForCountry("us").some(city => city.id === "san-francisco"), "San Francisco missing");
-      assert(getCitiesForCountry("missing").length === 0, "Unknown country should return no cities");
-    });
-
-    test("landing visual data matches the approved direction", () => {
-      assert(MARQUEE_ROWS.length===2 && MARQUEE_ROWS.every(row=>row.length===14), "Marquee must show two rows of 14 skills");
-      assert(new Set(MARQUEE_ROWS.flat()).size===28, "Every skill should appear once before duplication");
-      assert(COMMUNITY_STATS.online===128 && COMMUNITY_STATS.users===3842 && COMMUNITY_STATS.swapsToday===46, "Community demo stats changed");
-    });
-
-    test("community stat labels remain available in both languages", () => {
-      ["onlineNow", "totalUsers", "swapsToday"].forEach(key => {
-        assert(TRANSLATIONS.zh[key] && TRANSLATIONS.en[key], `Missing community stat label: ${key}`);
-      });
-    });
-
-    test("trending skill demo data is fixed and searchable", () => {
-      assert(TRENDING_SKILLS.map(item=>`${item.skillId}:${item.count}`).join("|")==="photography:128|english:96|python:74|ui-design:63|video-editing:51", "Trending data changed");
-      TRENDING_SKILLS.forEach(item=>assert(getSkillById(item.skillId),`Missing trending skill ${item.skillId}`));
-    });
-
-    test("old state receives safe first-round defaults", () => {
-      const old = normalizeState({version:1,language:"zh",isAuthenticated:true,currentUser:{id:"legacy",name:"Legacy",city:"Tianjin",skillsOffered:[],skillsWanted:[]}});
-      assert(old.currentUser.countryId === "cn" && old.currentUser.cityId === "tianjin", "Legacy location not migrated");
-      assert(old.recentSearches.length === 0, "Recent searches default missing");
-      assert(old.notificationSettings.swapRequests === true, "Notification default missing");
-      assert(old.privacySettings.publicPlacesOnly === true, "Safety default missing");
-      assert(old.session.loggedIn === true, "Session migration failed");
-    });
-
-    test("location and sorting helpers are deterministic", () => {
-      assert(locationLabel({countryId:"cn",cityId:"tianjin"},"zh") === "中国 · 天津", "Chinese location wrong");
-      const sample=[{id:"a",likes:10,publishedAt:"2026-08-10T00:00:00Z"},{id:"b",likes:20,publishedAt:"2026-08-09T00:00:00Z"}];
-      assert(sortUsers(sample,"liked")[0].id === "b", "Liked sort failed");
-      assert(sortUsers(sample,"newest")[0].id === "a", "Newest sort failed");
-      assert(sample[0].id === "a", "sortUsers mutated input");
-    });
-
-    test("active search filter detection ignores sort alone", () => {
-      assert(hasActiveSearchFilters({q:"",level:"",country:"",city:"",lang:"",sort:"newest"}) === false, "Sort should not activate results");
-      assert(hasActiveSearchFilters({q:"摄影",level:"",country:"",city:"",lang:"",sort:"newest"}) === true, "Query should activate results");
-    });
-
-    test("search filters country before city and exposes only two sorts", () => {
-      const china=filterUsers(MOCK_USERS,{country:"cn",city:"tianjin"},"zh");
-      assert(china.length>0 && china.every(user=>user.countryId==="cn"&&user.cityId==="tianjin"), "Country/city filter leaked");
-      assert(sortUsers(MOCK_USERS,"newest")[0].publishedAt>=sortUsers(MOCK_USERS,"newest")[1].publishedAt, "Newest order wrong");
-      assert(sortUsers(MOCK_USERS,"liked")[0].likes>=sortUsers(MOCK_USERS,"liked")[1].likes, "Liked order wrong");
-    });
-
-    test("city hash state requires a matching country", () => {
-      const cityOnly=normalizeSearchFilters({city:"tianjin"});
-      const switchedCountry=normalizeSearchFilters({country:"jp",city:"tianjin"});
-      assert(cityOnly.city==="" && !hasActiveSearchFilters(cityOnly), "City-only hash must not activate search");
-      assert(switchedCountry.country==="jp" && switchedCountry.city==="", "Country change must clear an invalid city");
-    });
-
-    test("search country changes clear the previous city", () => {
-      const before=normalizeSearchFilters({country:"cn",city:"tianjin",lang:"zh",sort:"liked"});
-      const after=updateSearchFilter(before,"country","jp");
-      assert(after.country==="jp"&&after.city==="", "Country update retained an invalid city");
-      assert(after.lang==="zh"&&after.sort==="liked", "Country update changed unrelated filters");
-    });
-
-    test("search hash rejects unknown select values", () => {
-      const filters=normalizeSearchFilters({level:"expert",lang:"xx",sort:"name"});
-      assert(filters.level===""&&filters.lang===""&&filters.sort==="newest", "Unknown select values survived normalization");
-    });
-
-    test("settings routes parse and old profile route redirects", () => {
-      assert(parseHash("#/settings").name==="settings", "Settings home route missing");
-      const privacy=parseHash("#/settings/privacy");
-      assert(privacy.name==="settings-section"&&privacy.params.section==="privacy", "Settings section route missing");
-      assert(parseHash("#/profile").name==="legacy-profile", "Legacy profile route missing");
-    });
-
-    test("logout ends only the session", () => {
-      const before=loginAsDemoUser(); const after=logoutState(before);
-      assert(after.isAuthenticated===false&&after.session.loggedIn===false, "Session still active");
-      assert(after.currentUser.id===before.currentUser.id, "Logout deleted profile");
-      assert(after.favorites.length===before.favorites.length, "Logout deleted favorites");
-    });
-
-    test("settings updates preserve unrelated state", () => {
-      const before=loginAsDemoUser(); const after=updateSettingsState(before,"notifications",{swapRequests:false});
-      assert(after.notificationSettings.swapRequests===false, "Notification not updated");
-      assert(after.currentUser.id===before.currentUser.id&&after.favorites.length===before.favorites.length, "Unrelated state changed");
-    });
-
-    test("availability schedule normalizes slots and keeps legacy profile labels", () => {
-      const dates=scheduleWeek(0);const date=scheduleDateId(dates[5]);
-      const slots=normalizeAvailabilitySlots([{date,hour:14},{date,hour:"14"},{date:"bad",hour:12}]);
-      assert(slots.length===1&&slots[0].hour===14,"Schedule slots were not normalized");
-      assert(availabilityLabelsFromSlots(slots).includes("sat-afternoon"),"Schedule no longer maps to profile availability");
-    });
-
-    test("demo relogin preserves saved Daniel data and public locations", () => {
-      const saved=updateSettingsState(loginAsDemoUser(),"availability",{publicLocations:["library"]});
-      const relogin=loginAsDemoUser(logoutState(saved));
-      assert(relogin.currentUser.publicLocations[0]==="library", "Relogin replaced Daniel profile");
-      assert(getUserById("daniel",relogin.currentUser)===relogin.currentUser, "Current user lookup ignored saved state");
-    });
-
-    test("avatar validation accepts only supported images up to 5 MB", () => {
-      assert(validateAvatarFile({type:"image/jpeg",size:1024})==="", "JPEG rejected");
-      assert(validateAvatarFile({type:"image/png",size:5*1024*1024})==="", "5 MB PNG rejected");
-      assert(validateAvatarFile({type:"image/gif",size:1024})==="type", "GIF should fail type");
-      assert(validateAvatarFile({type:"image/webp",size:5*1024*1024+1})==="size", "Oversize file should fail");
-    });
-
-    test("recent search history is unique and capped", () => {
-      const history=["Python","摄影","烹饪","网球","吉他"];
-      assert(rememberSearch(history,"Python").join("|")==="Python|摄影|烹饪|网球|吉他", "Duplicate search not moved cleanly");
-      assert(rememberSearch(history,"Excel").join("|")==="Excel|Python|摄影|烹饪|网球", "Search cap failed");
-    });
-
-    test("every search user receives a visible relationship summary", () => {
-      MOCK_USERS.forEach(user=>assert(relationshipSummary(DEMO_USER,user,"zh").label.length>0,`${user.id} lacks relationship copy`));
-    });
-
-    test("match directory groups are stable and deduplicated", () => {
-      const state=loginAsDemoUser();
-      const groups=buildMatchGroups(state);
-      assert(groups.complementary.length>=6, "Need six or more complementary contacts");
-      assert(groups.favorites.map(user=>user.id).join("|")==="alice-01|jun-01", "Favorites group wrong");
-      assert(groups.requests.every(user=>user), "Request target missing");
-    });
-
-    test("matches tabs normalize to a stable route", () => {
-      assert(normalizeMatchTab("favorites")==="favorites", "Favorites tab was lost");
-      assert(normalizeMatchTab("missing")==="complementary", "Unknown tab did not recover");
-      assert(buildHash("#/matches",{tab:"requests"})==="#/matches?tab=requests", "Matches tab hash changed");
-    });
-
-    test("cancelling requests changes only the selected contact", () => {
-      const requests=[
-        {id:"one",targetUserId:"alice-01",status:"pending"},
-        {id:"two",targetUserId:"alice-01",status:"accepted"},
-        {id:"three",targetUserId:"jun-01",status:"pending"}
-      ];
-      const after=cancelSwapRequests(requests,"alice-01");
-      assert(after.map(request=>request.id).join("|")==="two|three", "Request cancellation removed the wrong records");
-      assert(requests.length===3, "Request cancellation mutated its input");
-    });
-
-    test("match request counts update after cancellation", () => {
-      const before=loginAsDemoUser(); const target=before.sentRequests[0]?.targetUserId;
-      assert(Boolean(target), "Demo request target missing");
-      const prior=buildMatchGroups(before).requests.length;
-      const after={...before,sentRequests:cancelSwapRequests(before.sentRequests,target)};
-      assert(buildMatchGroups(after).requests.length===prior-1, "Request group count did not update");
-    });
-
-    test("every partner supports a complete profile", () => {
-      MOCK_USERS.forEach(user=>{
-        assert(user.bio.zh&&user.bio.en,`${user.id} missing bilingual bio`);
-        assert(user.interests.length>=2,`${user.id} missing interests`);
-        assert(user.availability.length>=1,`${user.id} missing availability`);
-        assert(user.meetingModes.length>=1,`${user.id} missing meeting mode`);
-      });
-    });
-
-    test("demo login restores Daniel", () => {
-      const state = loginAsDemoUser(createInitialState());
-      assert(state.currentUser.id === "daniel", "Daniel was not restored");
-      assert(state.onboardingCompleted === true, "Demo onboarding must be complete");
-      assert(state.favorites.length > 0, "Demo favorites missing");
-    });
-
-    test("demo reset removes only SkillSwap key", () => {
-      const calls = [];
-      const storage = { removeItem(key) { calls.push(key); } };
-      clearDemoStorage(storage);
-      assert(calls.length === 1 && calls[0] === STORAGE_KEY, "Reset touched the wrong key");
-    });
-
-    test("dynamic people route extracts id", () => {
-      const route = parseHash("#/people/alice-01");
-      assert(route.name === "person" && route.params.id === "alice-01", "Dynamic route failed");
-    });
-
-    test("search query parses from hash", () => {
-      const route = parseHash("#/search?q=python&level=beginner");
-      assert(route.query.q === "python" && route.query.level === "beginner", "Query parse failed");
-    });
-
-    test("logged-out app route redirects to login", () => {
-      assert(guardRoute(parseHash("#/discover"), createInitialState()) === "#/login", "Logged-out guard failed");
-    });
-
-    test("incomplete user resumes onboarding", () => {
-      const state = { ...createInitialState(), isAuthenticated: true, onboardingStep: "share" };
-      assert(guardRoute(parseHash("#/search"), state) === "#/onboarding/share", "Onboarding guard failed");
-    });
-
-    test("completed user skips login", () => {
-      const state = loginAsDemoUser(createInitialState());
-      assert(guardRoute(parseHash("#/login"), state) === "#/discover", "Completed user redirect failed");
-    });
-
-    test("skill and user lookup helpers are stable", () => {
-      assert(getSkillById("photography").en === "Photography", "Skill lookup failed");
-      assert(getUserById("alice-01").name === "Alice Chen", "User lookup failed");
-      assert(getInitials("Alice Chen") === "AC", "Initials failed");
-    });
-
-    test("reciprocal matches score above one-way matches", () => {
-      const alice = scoreComplementaryMatch(DEMO_USER, getUserById("alice-01"));
-      const jun = scoreComplementaryMatch(DEMO_USER, getUserById("jun-01"));
-      assert(alice.score > jun.score, "Reciprocal match should rank higher");
-      assert(alice.reciprocal === true, "Alice should be marked reciprocal");
-    });
-
-    test("complementary matches are deterministic", () => {
-      const first = findComplementaryMatches(DEMO_USER).map(item => item.user.id).join("|");
-      const second = findComplementaryMatches(DEMO_USER).map(item => item.user.id).join("|");
-      assert(first === second && first.startsWith("alice-01"), "Match order is unstable");
-    });
-
-    test("peer buddies require a shared skill and level", () => {
-      const buddies = findPeerBuddies(DEMO_USER);
-      assert(buddies.some(item => item.user.id === "nora-01"), "Expected Nora fitness buddy");
-      assert(!buddies.some(item => item.user.id === "mika-01"), "Mika should not be a level peer");
-    });
-
-    test("search matches bilingual skill names", () => {
-      const zhResults = filterUsers(MOCK_USERS, { q: "摄影" }, "zh");
-      const enResults = filterUsers(MOCK_USERS, { q: "photography" }, "en");
-      assert(zhResults.length > 0 && zhResults.every(user => user.skillsOffered.some(item => item.skillId === "photography")), "Chinese skill search leaked learners");
-      assert(enResults.length > 0 && enResults.every(user => user.skillsOffered.some(item => item.skillId === "photography")), "English skill search leaked learners");
-    });
-
-    test("search filters compose", () => {
-      const results = filterUsers(MOCK_USERS, { q: "", level: "advanced", country: "cn", city: "tianjin", lang: "en" }, "en");
-      assert(results.some(user => user.id === "alice-01"), "Composed filters lost Alice");
-      assert(!results.some(user => user.id === "mika-01"), "City filter failed");
-    });
-
-    test("signup validation rejects unsafe input", () => {
-      assert(validateSignup("bad", "123", "456").length === 3, "Signup validation missed errors");
-      assert(validateSignup("daniel@example.com", "password", "password").length === 0, "Valid signup was rejected");
-    });
-
-    test("profile and skill validation protect onboarding", () => {
-      assert(validateProfile({ name: "", city: "" }).length === 2, "Profile validation missed fields");
-      assert(validateSkillList([]).length > 0, "Empty skill list was accepted");
-      assert(validateSkillList([{ skillId: "python" }, { skillId: "python" }]).length > 0, "Duplicate skill was accepted");
-    });
-
-    test("favorite transition only changes target id", () => {
-      const added = toggleFavorite(["alice-01"], "bob-01");
-      const removed = toggleFavorite(added, "alice-01");
-      assert(added.join("|") === "alice-01|bob-01", "Favorite add failed");
-      assert(removed.join("|") === "bob-01", "Favorite remove failed");
-    });
-
-    test("self profile is not an interaction target", () => {
-      const currentUser = { id: "daniel" };
-      assert(isSelfProfile(currentUser, { id: "daniel" }), "Self profile was not detected");
-      assert(!isSelfProfile(currentUser, { id: "alice" }), "Other profile was treated as self");
-    });
-
-    test("swap requests normalize and deduplicate", () => {
-      const first = createSwapRequest([], "alice-01", "chemistry", "photography", new Date("2026-08-16T10:00:00Z"));
-      const second = createSwapRequest(first.requests, "alice-01", "chemistry", "photography", new Date("2026-08-16T11:00:00Z"));
-      assert(first.created === true && first.requests.length === 1, "Request was not created");
-      assert(first.requests[0].status === "pending", "Request status is wrong");
-      assert(first.requests[0].meetingPolicy === "flexible", "Default meeting policy is wrong");
-      assert(second.created === false && second.requests.length === 1, "Duplicate request was added");
-    });
-
-    test("swap requests preserve public-place policy", () => {
-      const result = createSwapRequest([], "alice-01", "chemistry", "photography", new Date("2026-08-16T10:00:00Z"), "public-place");
-      assert(result.request.meetingPolicy === "public-place", "Public-place policy was not persisted");
-    });
-
-    test("v4.2 chat and skill assessment routes parse and guard", () => {
-      const chat=parseHash("#/chat/sarah-01?from=%23%2Fchat");
-      const assessment=parseHash("#/skill-test/python");
-      assert(chat.name==="chat-room"&&chat.params.userId==="sarah-01"&&chat.query.from==="#/chat", "Chat room route failed");
-      assert(assessment.name==="skill-test-skill"&&assessment.params.skillId==="python", "Skill assessment route failed");
-      assert(guardRoute(chat,createInitialState())==="#/login", "Logged-out chat route was not guarded");
-    });
-
-    test("legacy v3 state receives v4.2 feature defaults", () => {
-      const state=normalizeState({version:1,language:"zh",connections:["sarah-01","sarah-01"]});
-      assert(Object.keys(state.conversations).length===0, "Conversation default missing");
-      assert(Object.keys(state.skillAssessments).length===0, "Assessment default missing");
-      assert(state.connections.join("|")==="sarah-01", "Connections were not deduplicated");
-    });
-
-    test("chat messages append immutably and update preview", () => {
-      const before=loginAsDemoUser();
-      const previousCount=before.conversations["sarah-01"].messages.length;
-      const message={from:before.currentUser.id,text:"Test message",at:"2026-08-17T10:00:00.000Z"};
-      const after=appendChatMessage(before,"sarah-01",message);
-      assert(after.conversations["sarah-01"].messages.length===previousCount+1, "Chat message was not appended");
-      assert(after.conversations["sarah-01"].lastMessage==="Test message", "Chat preview was not updated");
-      assert(before.conversations["sarah-01"].messages.length===previousCount, "Chat append mutated previous state");
-    });
-
-    test("chat permits connected directory contacts only", () => {
-      const state=loginAsDemoUser();
-      assert(canChatWith(state,"sarah-01"), "Connected contact was rejected");
-      assert(!canChatWith(state,"alice-01"), "Unconnected contact was accepted");
-      assert(!canChatWith(state,"missing-user"), "Unknown contact was accepted");
-    });
-
-    test("skill assessment catalog covers 28 skills, four levels, and 12 questions per level", () => {
-      assert(SKILL_TEST_COVERED.length===28, "Expected 28 assessed skills");
-      SKILL_TEST_COVERED.forEach(skillId=>SKILL_LEVELS.forEach(level=>assert(QUESTION_BANK[skillId][level].length===12,`${skillId}/${level} must contain 12 questions`)));
-    });
-
-    test("skill question picker avoids an already used question", () => {
-      SKILL_TEST_COVERED.forEach(skillId=>{
-        const first=pickQuestion(skillId,"beginner",[]);
-        const second=pickQuestion(skillId,"beginner",[first.id]);
-        assert(first&&second&&first.id!==second.id,`${skillId} repeated a question while a fresh one existed`);
-      });
-    });
-
-    test("skill assessment results survive state normalization", () => {
-      const assessment={level:"intermediate",score:80,testedAt:"2026-08-17T10:00:00.000Z",questionCount:10};
-      const state=normalizeState({...createInitialState(),skillAssessments:{python:assessment}});
-      assert(state.skillAssessments.python.score===80, "Assessment score was lost");
-      assert(state.skillAssessments.python.questionCount===10, "Assessment question count was lost");
-      assert(createInitialState().skillAssessments.python===undefined, "Assessment normalization mutated defaults");
-    });
-
-    test("primary navigation contains five unique destinations", () => {
-      const items=navItems("zh");
-      assert(items.length===5, "Primary navigation must contain five items");
-      assert(new Set(items.map(item=>item.route)).size===5&&items.some(item=>item.route==="chat"), "Chat navigation is missing or duplicated");
-    });
+    test("state v2 starts without simulated relationships",()=>{const state=createInitialState();assert(state.version===2,"Wrong state version");assert(!("sentRequests" in state),"Local requests still exist");assert(state.connections.length===0,"Seeded connections remain");});
+    test("logout clears account-scoped local references",()=>{const state=normalizeState({...createInitialState(),isAuthenticated:true,currentUser:{id:"7",name:"Real User"},onboardingCompleted:true,favorites:["8"],connections:["8"],conversations:{8:{messages:[]}},session:{loggedIn:true,mode:"backend"}});const cleared=logoutState(state);assert(!cleared.currentUser,"Logged-out user reference remains");assert(cleared.favorites.length===0&&cleared.connections.length===0,"Relationships were not cleared");assert(Object.keys(cleared.conversations).length===0,"Chats were not cleared");});
+    test("matching requires an explicit real-user directory",()=>{const self=normalizeUser({id:"1",name:"Self",cityId:"tianjin",countryId:"cn",languages:["zh"],skillsOffered:[{skillId:"chemistry",level:"advanced"}],skillsWanted:[{skillId:"photography",level:"beginner"}]});const peer=normalizeUser({id:"2",name:"Peer",cityId:"tianjin",countryId:"cn",languages:["zh"],skillsOffered:[{skillId:"photography",level:"advanced"}],skillsWanted:[{skillId:"chemistry",level:"beginner"}]});assert(findComplementaryMatches(self).length===0,"Implicit users were used");assert(findComplementaryMatches(self,[peer]).length===1,"Explicit user directory was ignored");});
+    test("request time formatter returns visible text",()=>{assert(formatRequestTime("2026-08-18T08:00:00+00:00","zh",new Date("2026-08-18T12:00:00+08:00")).length>0,"Request time missing");});
+    test("skill catalog retains 28 assessed skills",()=>{assert(SKILL_TEST_COVERED.length===28,"Expected 28 assessed skills");});
 
     function runSelfTests() {
       return TEST_CASES.map(({ name, run }) => {
@@ -2393,8 +1849,15 @@
       );
     }
 
+    function useCommunityStats(){
+      const [stats,setStats]=React.useState(EMPTY_COMMUNITY_STATS);
+      React.useEffect(()=>{let active=true;loadCommunityStats().then(value=>{if(active)setStats(value);}).catch(()=>{if(active)setStats(EMPTY_COMMUNITY_STATS);});return()=>{active=false;};},[]);
+      return stats;
+    }
+    function statValue(value){return Number.isFinite(value)?value.toLocaleString():"—";}
     function CommunityStats({language}){
-      return <section className="black-card community-stats"><div><p className="eyebrow">LIVE DEMO</p><h2>{t(language,"communityOverview")}</h2><p>{t(language,"demoCommunityData")}</p></div><div className="stat-row"><div className="stat-item"><strong>{COMMUNITY_STATS.online}</strong><span>{t(language,"onlineNow")}</span></div><div className="stat-item"><strong>{COMMUNITY_STATS.users.toLocaleString()}</strong><span>{t(language,"totalUsers")}</span></div><div className="stat-item"><strong>{COMMUNITY_STATS.swapsToday}</strong><span>{t(language,"swapsToday")}</span></div></div></section>;
+      const stats=useCommunityStats();
+      return <section className="black-card community-stats"><div><p className="eyebrow">LIVE DATA</p><h2>{t(language,"communityOverview")}</h2><p>{language==="zh"?"来自真实注册与交换记录":"From real accounts and swap records"}</p></div><div className="stat-row"><div className="stat-item"><strong>{statValue(stats.onlineToday)}</strong><span>{language==="zh"?"今日登录":"logged in today"}</span></div><div className="stat-item"><strong>{statValue(stats.registeredUsers)}</strong><span>{language==="zh"?"真实用户":"real users"}</span></div><div className="stat-item"><strong>{statValue(stats.swapsCompletedToday)}</strong><span>{language==="zh"?"今日完成交换":"swaps completed today"}</span></div></div></section>;
     }
 
     function navItems(language) {
@@ -2449,7 +1912,7 @@
       const teach = user.skillsOffered.slice(0,2);
       return (
         <article className="user-card">
-          <div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user.name}</h3><p className="user-meta">{t(language,"ageCity",{age:user.age,city:user.city})}</p></div></div>
+          <div className="card-top"><Avatar user={user}/><div><h3 className="user-name">{user.name}</h3><p className="user-meta">{t(language,"ageCity",{age:user.age,city:locationLabel(user,language)})}</p></div></div>
           <p className="user-bio">{localized(user.bio,language)}</p>
           <p className="mini-heading">{t(language,"canTeach")}</p>
           <div className="skill-pills">{teach.map(item=><span className="mini-pill" key={item.id}>{getSkillName(item.skillId,language)}</span>)}</div>
@@ -2513,7 +1976,7 @@
     }
 
     function RecoveryScreen({ onReload, onReset }) {
-      return <main className="recovery"><section className="panel" aria-labelledby="recovery-title"><p className="fallback-kicker">SKILLSWAP</p><h1 id="recovery-title">出现了一点问题</h1><p>Something went wrong. You can reload the app or reset the local demo.</p><div className="button-row"><Button onClick={onReload}>重新载入 / Reload</Button><Button variant="light" onClick={onReset}>重置演示 / Reset Demo</Button></div></section></main>;
+      return <main className="recovery"><section className="panel" aria-labelledby="recovery-title"><p className="fallback-kicker">SKILLSWAP</p><h1 id="recovery-title">出现了一点问题</h1><p>Something went wrong. You can reload the app or reset its local UI data.</p><div className="button-row"><Button onClick={onReload}>重新载入 / Reload</Button><Button variant="light" onClick={onReset}>重置本地数据 / Reset local data</Button></div></section></main>;
     }
 
     function SelfTestReport() {
@@ -2539,32 +2002,34 @@
     }
 
     /* 10. Page components */
-    function LandingPage({ language, onLanguage, onDemo }) {
-      const previewUsers=[MOCK_USERS[0],MOCK_USERS[1],MOCK_USERS[2]];
-      return <div className="landing-shell"><header className="landing-nav"><button className="brand" type="button" onClick={()=>navigate("#/")}>SkillSwap<span className="brand-dot">.</span></button><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{previewUsers.map(user=><Avatar user={user} key={user.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
+    function LandingPage({ language, onLanguage }) {
+      const brandMarks=[{id:"skill",name:"Skill"},{id:"swap",name:"Swap"},{id:"twenty",name:"20"}];
+      return <div className="landing-shell"><header className="landing-nav"><button className="brand" type="button" onClick={()=>navigate("#/")}>SkillSwap<span className="brand-dot">.</span></button><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{brandMarks.map(mark=><Avatar user={mark} key={mark.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
     }
 
     function AuthArt({ language }) {
       return <aside className="auth-art"><p className="eyebrow">SKILLSWAP · 2026</p><h1>{t(language,"slogan")}</h1><p>{t(language,"localNotice")}</p></aside>;
     }
 
-    function LoginPage({ language, onLogin, onDemo }) {
-      const [email,setEmail]=React.useState("daniel@example.com"); const [password,setPassword]=React.useState(""); const [busy,setBusy]=React.useState(false); const [error,setError]=React.useState("");
+    function LoginPage({ language, onLogin }) {
+      const [email,setEmail]=React.useState("daniel@example.com"); const [password,setPassword]=React.useState(""); const [busy,setBusy]=React.useState(false); const [error,setError]=React.useState("");const passwordRef=React.useRef(null);
       const submit=async event=>{event.preventDefault();if(busy)return;setBusy(true);setError("");try{await onLogin(email,password);}catch(failure){setError(failure.code==="invalid_credentials"?"loginInvalid":"loginUnavailable");setBusy(false);}};
-      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"welcomeBack")}</h1><p className="muted">{t(language,"loginIntro")}</p><form className="auth-form" onSubmit={submit}><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={email} autoComplete="email" onChange={event=>{setEmail(event.target.value);setError("");}} required disabled={busy}/></label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={password} autoComplete="current-password" onChange={event=>{setPassword(event.target.value);setError("");}} required disabled={busy}/></label>{error&&<p className="form-error" role="alert">{t(language,error)}</p>}<Button type="submit" disabled={busy}>{t(language,busy?"loginBusy":"mockLogin")}</Button></form><div className="divider">OR</div><Button variant="rose" onClick={onDemo} disabled={busy}>✦ {t(language,"tryDemo")}</Button><p className="muted" style={{marginTop:18}}>{t(language,"noAccount")} <button type="button" className="brand" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</button></p></section></main>;
+      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"welcomeBack")}</h1><p className="muted">{t(language,"loginIntro")}</p><form className="auth-form" onSubmit={submit}><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={email} autoComplete="email" onChange={event=>{setEmail(event.target.value);setError("");}} required disabled={busy}/></label><label className="field"><span>{t(language,"password")}</span><input ref={passwordRef} className="input" type="password" value={password} autoComplete="current-password" onChange={event=>{setPassword(event.target.value);setError("");}} required disabled={busy}/></label>{error&&<p className="form-error" role="alert">{t(language,error)}</p>}<Button type="submit" disabled={busy}>{t(language,busy?"loginBusy":"mockLogin")}</Button></form><div className="divider">OR</div><Button variant="rose" type="button" onClick={()=>{setEmail("daniel@example.com");setError("");passwordRef.current?.focus();}} disabled={busy}>✦ {t(language,"tryDemo")}</Button><p className="muted" style={{marginTop:18}}>{language==="zh"?"请输入后端配置的 Daniel 密码。":"Enter Daniel's configured backend password."}</p><p className="muted" style={{marginTop:18}}>{t(language,"noAccount")} <button type="button" className="brand" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</button></p></section></main>;
     }
 
     function SignupPage({ language, onSignup }) {
-      const [form,setForm]=React.useState({email:"",password:"",confirmation:""}); const [errors,setErrors]=React.useState([]);
-      const submit=event=>{event.preventDefault();const next=validateSignup(form.email,form.password,form.confirmation);setErrors(next);if(!next.length)onSignup();};
-      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"signup")}</h1><p className="muted">{t(language,"signupIntro")}</p><form className="auth-form" onSubmit={submit} noValidate><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={form.email} onChange={event=>setForm({...form,email:event.target.value})}/>{errors.includes("email")&&<span className="field-error">{t(language,"emailError")}</span>}</label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={form.password} onChange={event=>setForm({...form,password:event.target.value})}/>{errors.includes("password")&&<span className="field-error">{t(language,"passwordError")}</span>}</label><label className="field"><span>{t(language,"confirmPassword")}</span><input className="input" type="password" value={form.confirmation} onChange={event=>setForm({...form,confirmation:event.target.value})}/>{errors.includes("confirmation")&&<span className="field-error">{t(language,"confirmError")}</span>}</label><Button type="submit">{t(language,"continue")} →</Button></form><p className="muted" style={{marginTop:18}}>{t(language,"haveAccount")} <button type="button" className="brand" onClick={()=>navigate("#/login")}>{t(language,"login")}</button></p></section></main>;
+      const [form,setForm]=React.useState({email:"",password:"",confirmation:""}); const [errors,setErrors]=React.useState([]); const [busy,setBusy]=React.useState(false); const [serverError,setServerError]=React.useState("");
+      const submit=async event=>{event.preventDefault();const next=validateSignup(form.email,form.password,form.confirmation);setErrors(next);setServerError("");if(next.length||busy)return;setBusy(true);try{await onSignup(form.email,form.password);}catch(error){setServerError(error.code||"unavailable");setBusy(false);}};
+      const errorText=serverError==="email_exists"?(language==="zh"?"该邮箱已注册。":"This email is already registered."):(language==="zh"?"暂时无法创建账号，请稍后重试。":"Could not create the account. Try again.");
+      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"signup")}</h1><p className="muted">{language==="zh"?"创建真实账号，资料将保存到本地后端。":"Create a real account stored by the local backend."}</p><form className="auth-form" onSubmit={submit} noValidate><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={form.email} disabled={busy} onChange={event=>setForm({...form,email:event.target.value})}/>{errors.includes("email")&&<span className="field-error">{t(language,"emailError")}</span>}</label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={form.password} disabled={busy} onChange={event=>setForm({...form,password:event.target.value})}/>{errors.includes("password")&&<span className="field-error">{t(language,"passwordError")}</span>}</label><label className="field"><span>{t(language,"confirmPassword")}</span><input className="input" type="password" value={form.confirmation} disabled={busy} onChange={event=>setForm({...form,confirmation:event.target.value})}/>{errors.includes("confirmation")&&<span className="field-error">{t(language,"confirmError")}</span>}</label>{serverError&&<p className="form-error" role="alert">{errorText}</p>}<Button type="submit" disabled={busy}>{busy?(language==="zh"?"正在创建…":"Creating…"):`${t(language,"continue")} →`}</Button></form><p className="muted" style={{marginTop:18}}>{t(language,"haveAccount")} <button type="button" className="brand" onClick={()=>navigate("#/login")}>{t(language,"login")}</button></p></section></main>;
     }
 
     function ProfileOnboardingPage({ state, language, updateState }) {
       const [form,setForm]=React.useState(()=>({...state.currentUser})); const [error,setError]=React.useState(false);
-      const submit=event=>{event.preventDefault();if(validateProfile(form).length){setError(true);return;}updateState({...state,currentUser:{...form,languages:form.languages?.length?form.languages:["zh"]},onboardingStep:"share"});navigate("#/onboarding/share");};
+      const validLocation=getCitiesForCountry(form.countryId).some(city=>city.id===form.cityId);
+      const submit=event=>{event.preventDefault();if(validateProfile({...form,city:form.cityId}).length||!validLocation){setError(true);return;}updateState({...state,currentUser:{...form,city:"",languages:form.languages?.length?form.languages:["zh"]},onboardingStep:"share"});navigate("#/onboarding/share");};
       const toggleLang=lang=>setForm({...form,languages:(form.languages||[]).includes(lang)?form.languages.filter(item=>item!==lang):[...(form.languages||[]),lang]});
-      return <main className="page"><section className="onboarding-card glass"><Progress step={1} language={language}/><h1 className="section-title">{t(language,"profileStep")}</h1><p className="muted">{t(language,"demoSafety")}</p><form className="form-grid" onSubmit={submit}><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={form.name||""} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>{t(language,"city")}</span><input className="input" value={form.city||""} onChange={event=>setForm({...form,city:event.target.value})}/></label><label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(form.bio,language)} onChange={event=>setForm({...form,bio:{...(form.bio||{}),[language]:event.target.value}})}/></label><label className="field"><span>{t(language,"age")}</span><input className="input" type="number" min="13" max="99" value={form.age||18} onChange={event=>setForm({...form,age:Number(event.target.value)})}/></label><fieldset className="field" style={{border:0,padding:0}}><legend className="field-label">{t(language,"languages")}</legend><div className="button-row">{["zh","en"].map(lang=><Button key={lang} type="button" small variant={(form.languages||[]).includes(lang)?"primary":"light"} onClick={()=>toggleLang(lang)}>{lang==="zh"?"中文":"English"}</Button>)}</div></fieldset>{error&&<p className="form-error span-2" role="alert">{t(language,"requiredFields")}</p>}<div className="button-row span-2"><Button type="button" variant="ghost" onClick={()=>navigate("#/signup")}>{t(language,"back")}</Button><Button type="submit">{t(language,"continue")} →</Button></div></form></section></main>;
+      return <main className="page"><section className="onboarding-card glass"><Progress step={1} language={language}/><h1 className="section-title">{t(language,"profileStep")}</h1><p className="muted">{language==="zh"?"这些资料会用于真实技能搜索。":"This profile will be used in real skill search."}</p><form className="form-grid" onSubmit={submit}><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={form.name||""} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>{t(language,"age")}</span><input className="input" type="number" min="13" max="99" value={form.age||18} onChange={event=>setForm({...form,age:Number(event.target.value)})}/></label><label className="field"><span>{t(language,"country")}</span><select className="select" value={form.countryId||"cn"} onChange={event=>setForm({...form,countryId:event.target.value,cityId:""})}>{COUNTRIES.map(country=><option value={country.id} key={country.id}>{country[language]}</option>)}</select></label><label className="field"><span>{t(language,"city")}</span><select className="select" value={form.cityId||""} onChange={event=>setForm({...form,cityId:event.target.value})}><option value="">{t(language,"chooseCity")}</option>{getCitiesForCountry(form.countryId||"cn").map(city=><option value={city.id} key={city.id}>{city[language]}</option>)}</select></label><label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(form.bio,language)} onChange={event=>setForm({...form,bio:{...(form.bio||{}),[language]:event.target.value}})}/></label><fieldset className="field span-2" style={{border:0,padding:0}}><legend className="field-label">{t(language,"languages")}</legend><div className="button-row">{["zh","en"].map(lang=><Button key={lang} type="button" small variant={(form.languages||[]).includes(lang)?"primary":"light"} onClick={()=>toggleLang(lang)}>{lang==="zh"?"中文":"English"}</Button>)}</div></fieldset>{error&&<p className="form-error span-2" role="alert">{t(language,"requiredFields")}</p>}<div className="button-row span-2"><Button type="button" variant="ghost" onClick={()=>navigate("#/signup")}>{t(language,"back")}</Button><Button type="submit">{t(language,"continue")} →</Button></div></form></section></main>;
     }
 
     function SkillOnboardingPage({ state, language, updateState, wanted=false }) {
@@ -2575,19 +2040,21 @@
     }
 
     function OnboardingCompletePage({ state, language, updateState }) {
-      const finish=()=>{updateState({...state,onboardingCompleted:true,onboardingStep:"complete"});navigate("#/discover");};
-      return <main className="page"><section className="onboarding-card glass"><Progress step={4} language={language}/><p className="eyebrow">SKILLSWAP READY</p><h1 className="page-title">{t(language,"onboardingDone")}</h1><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={state.currentUser.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={state.currentUser.skillsWanted} language={language}/></div><div className="button-row" style={{marginTop:24}}><Button variant="ghost" onClick={()=>navigate("#/onboarding/learn")}>{t(language,"back")}</Button><Button onClick={finish}>{t(language,"findPartners")} →</Button></div></section></main>;
+      const [busy,setBusy]=React.useState(false);const [error,setError]=React.useState("");
+      const finish=async()=>{if(busy)return;setBusy(true);setError("");try{await saveBackendSkills({skillsOffered:state.currentUser.skillsOffered,skillsWanted:state.currentUser.skillsWanted});await saveBackendProfile(state.currentUser,true,state.privacySettings.profileVisibility);updateState({...state,onboardingCompleted:true,onboardingStep:"complete"});navigate("#/discover");}catch(failure){setError(failure.message);setBusy(false);}};
+      return <main className="page"><section className="onboarding-card glass"><Progress step={4} language={language}/><p className="eyebrow">SKILLSWAP READY</p><h1 className="page-title">{t(language,"onboardingDone")}</h1><div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={state.currentUser.skillsOffered} language={language}/><ProfileSkillSection title={t(language,"learnSection")} items={state.currentUser.skillsWanted} language={language}/></div>{error&&<p className="form-error" role="alert">{language==="zh"?"保存失败，请检查后端后重试。":"Save failed. Check the backend and try again."}</p>}<div className="button-row" style={{marginTop:24}}><Button variant="ghost" disabled={busy} onClick={()=>navigate("#/onboarding/learn")}>{t(language,"back")}</Button><Button disabled={busy} onClick={finish}>{busy?(language==="zh"?"正在保存…":"Saving…"):`${t(language,"findPartners")} →`}</Button></div></section></main>;
     }
 
-    function DiscoverPage({ state, language, updateState }) {
-      const user=state.currentUser; const matches=findComplementaryMatches(user); const peers=findPeerBuddies(user).slice(0,3); const [query,setQuery]=React.useState("");
+    function DiscoverPage({ state, language, updateState, communityUsers=[], directoryStatus="loading" }) {
+      const user=state.currentUser; const matches=findComplementaryMatches(user,communityUsers); const peers=findPeerBuddies(user,communityUsers).slice(0,3); const [query,setQuery]=React.useState("");
       const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP DISCOVER</p><h1 className="page-title">{t(language,"hello",{name:user.name.split(" ")[0]})}</h1><p className="page-subtitle">{t(language,"discoverLead")}</p></div></header><form className="search-hero glass" onSubmit={event=>{event.preventDefault();navigate("#/search",query?{q:query}:{})}}><label className="sr-only" htmlFor="discover-search">{t(language,"searchPeople")}</label><input id="discover-search" className="search-input" value={query} onChange={event=>setQuery(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} →</Button></form><div className="goal-row"><strong>{t(language,"yourGoals")}:</strong>{user.skillsWanted.map(item=><SkillTag key={item.id} skillId={item.skillId} language={language} onClick={()=>navigate("#/search",{q:item.skillId})}/>)}</div><SkillMarquee language={language} interactive/><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"recommended")}</h2><p className="section-note">{t(language,"recommendedNote")}</p></div><div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div></section><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"peerBuddies")}</h2><p className="section-note">{t(language,"peerNote")}</p></div><div className="peer-grid">{peers.map(peer=><article className="peer-card glass" key={peer.user.id}><Avatar user={peer.user}/><div><h3 className="user-name">{peer.user.name}</h3><p>{t(language,"sameLevel",{skill:getSkillName(peer.sharedSkillIds[0],language)})}</p><button className="brand" type="button" onClick={()=>navigate(`#/people/${peer.user.id}`)}>{t(language,"viewProfile")} →</button></div></article>)}</div></section><TrendingSkills language={language}/></main>;
+      const emptyBody=directoryStatus==="error"?(language==="zh"?"真实用户目录加载失败，请稍后重试。":"The real user directory could not be loaded."):(language==="zh"?"暂时没有符合条件的真实注册用户。":"No eligible real registered users yet.");
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP DISCOVER</p><h1 className="page-title">{t(language,"hello",{name:user.name.split(" ")[0]})}</h1><p className="page-subtitle">{t(language,"discoverLead")}</p></div></header><form className="search-hero glass" onSubmit={event=>{event.preventDefault();navigate("#/search",query?{q:query}:{})}}><label className="sr-only" htmlFor="discover-search">{t(language,"searchPeople")}</label><input id="discover-search" className="search-input" value={query} onChange={event=>setQuery(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} →</Button></form><div className="goal-row"><strong>{t(language,"yourGoals")}:</strong>{user.skillsWanted.map(item=><SkillTag key={item.id} skillId={item.skillId} language={language} onClick={()=>navigate("#/search",{q:item.skillId})}/>)}</div><SkillMarquee language={language} interactive/><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"recommended")}</h2><p className="section-note">{t(language,"recommendedNote")}</p></div>{directoryStatus==="loading"?<p className="notice" role="status">{language==="zh"?"正在加载真实用户…":"Loading real users…"}</p>:matches.length?<div className="card-grid">{matches.slice(0,6).map(match=><UserCard key={match.user.id} user={match.user} match={match} language={language} saved={state.favorites.includes(match.user.id)} onSave={save}/>)}</div>:<EmptyState title={t(language,"noResults")} body={emptyBody} actionLabel={t(language,"search")} onAction={()=>navigate("#/search")}/>}</section><section className="section"><div className="section-head"><h2 className="section-title">{t(language,"peerBuddies")}</h2><p className="section-note">{t(language,"peerNote")}</p></div>{peers.length?<div className="peer-grid">{peers.map(peer=><article className="peer-card glass" key={peer.user.id}><Avatar user={peer.user}/><div><h3 className="user-name">{peer.user.name}</h3><p>{t(language,"sameLevel",{skill:getSkillName(peer.sharedSkillIds[0],language)})}</p><button className="brand" type="button" onClick={()=>navigate(`#/people/${peer.user.id}`)}>{t(language,"viewProfile")} →</button></div></article>)}</div>:<p className="muted">{emptyBody}</p>}</section><TrendingSkills language={language}/></main>;
     }
 
     function TrendingSkills({language}){
-      const max=TRENDING_SKILLS[0].count;
-      return <section className="section trending-card glass"><div className="section-head"><div><p className="eyebrow">TRENDING</p><h2 className="section-title">{t(language,"trendingSkills")}</h2></div><span className="demo-chip">{t(language,"demoTrend")}</span></div><div className="trend-list">{TRENDING_SKILLS.map(item=><button className="trend-row" type="button" key={item.skillId} onClick={()=>navigate("#/search",{q:item.skillId})}><span>{getSkillName(item.skillId,language)}</span><span>{t(language,"peopleSearching",{count:item.count})}</span><i style={{width:`${Math.round(item.count/max*100)}%`}}/></button>)}</div></section>;
+      const stats=useCommunityStats();const items=stats.trendingSkills||[];const max=Math.max(1,...items.map(item=>item.wantCount));
+      return <section className="section trending-card glass"><div className="section-head"><div><p className="eyebrow">TRENDING</p><h2 className="section-title">{t(language,"trendingSkills")}</h2></div><span className="demo-chip">{language==="zh"?"真实数据":"Live data"}</span></div>{items.length?<div className="trend-list">{items.map(item=><button className="trend-row" type="button" key={item.skillId} onClick={()=>navigate("#/search",{q:item.skillId})}><span>{getSkillName(item.skillId,language)}</span><span>{t(language,"peopleSearching",{count:item.wantCount})}</span><i style={{width:`${Math.round(item.wantCount/max*100)}%`}}/></button>)}</div>:<p className="muted">{language==="zh"?"还没有真实的学习需求。":"No real learning demand yet."}</p>}</section>;
     }
 
     function SearchEmptyState({state,language,onSearch}){
@@ -2603,9 +2070,12 @@
 
     function SearchPage({ route, state, language, updateState }) {
       const filters=normalizeSearchFilters(route.query);
-      const active=hasActiveSearchFilters(filters); const users=sortUsers(filterUsers(MOCK_USERS,filters,language),filters.sort);
+      const active=hasActiveSearchFilters(filters); const realSession=state.session?.mode==="backend";
       const [queryDraft,setQueryDraft]=React.useState(filters.q);
+      const [result,setResult]=React.useState({skills:[],users:[],pagination:{totalUsers:0}});const [loading,setLoading]=React.useState(false);const [error,setError]=React.useState("");
       React.useEffect(()=>setQueryDraft(filters.q),[filters.q]);
+      const searchKey=JSON.stringify(filters);
+      React.useEffect(()=>{let cancelled=false;if(!realSession||!active){setResult({skills:[],users:[],pagination:{totalUsers:0}});setLoading(false);return()=>{cancelled=true;};}setLoading(true);setError("");searchBackend(filters).then(payload=>{if(cancelled)return;const users=(payload.users||[]).map(normalizeUser);users.forEach(user=>BACKEND_USERS.set(String(user.id),user));setResult({...payload,users});}).catch(failure=>{if(!cancelled)setError(failure.code||"request_failed");}).finally(()=>{if(!cancelled)setLoading(false);});return()=>{cancelled=true;};},[searchKey,realSession,active]);
       const setFilter=(key,value)=>navigate("#/search",updateSearchFilter(filters,key,value));
       const save=id=>updateState({...state,favorites:toggleFavorite(state.favorites,id)});
       const commitSearch=value=>{const clean=String(value||"").trim();navigate("#/search",{...filters,q:clean});if(clean)updateState({...state,recentSearches:rememberSearch(state.recentSearches,clean)});};
@@ -2617,6 +2087,7 @@
       const cityOptions=[allOption(filters.country?t(language,"filterCity"):t(language,"chooseCountryFirst")),...getCitiesForCountry(filters.country).map(city=>({value:city.id,label:city[language]}))];
       const languageOptions=[allOption(t(language,"filterLanguage")),{value:"zh",label:"中文"},{value:"en",label:"English"}];
       const sortOptions=[{value:"newest",label:t(language,"sortNewest")},{value:"liked",label:t(language,"sortLiked")}];
+      if(!realSession)return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header><EmptyState title={language==="zh"?"请登录真实账号":"Real login required"} body={language==="zh"?"登录或注册后即可搜索数据库中的技能与用户。":"Log in or register to search skills and people stored by the backend."} actionLabel={t(language,"login")} onAction={()=>navigate("#/login")}/></main>;
       return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP SEARCH</p><h1 className="page-title">{t(language,"searchPeople")}</h1></div></header>
         <form className="search-query-form" onSubmit={submit}><label className="sr-only" htmlFor="search-query">{t(language,"search")}</label><input id="search-query" className="input search-query-input" value={queryDraft} onChange={event=>setQueryDraft(event.target.value)} placeholder={t(language,"searchPlaceholder")}/><Button type="submit">{t(language,"searchAction")} <span aria-hidden="true">→</span></Button></form>
         <section className="filter-panel" aria-label={t(language,"resetFilters")}><div className="filter-grid">
@@ -2626,77 +2097,85 @@
           <SelectMenu label={t(language,"languageLabel")} value={filters.lang} options={languageOptions} onChange={value=>setFilter("lang",value)} placeholder={t(language,"filterLanguage")} {...commonProps}/>
           <SelectMenu label={t(language,"sortBy")} value={filters.sort} options={sortOptions} onChange={value=>setFilter("sort",value)} placeholder={t(language,"sortNewest")} align="end" {...commonProps}/>
         </div><Button className="filter-reset" variant="light" type="button" onClick={()=>navigate("#/search")}>{t(language,"resetFilters")}</Button></section>
-        {!active?<SearchEmptyState state={state} language={language} onSearch={value=>{setQueryDraft(value);commitSearch(value);}}/>:users.length?<><p className="result-count" aria-live="polite">{t(language,"results",{count:users.length})}</p><div className="card-grid">{users.map(user=><SearchResultCard key={user.id} user={user} currentUser={state.currentUser} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>)}</div></>:<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</main>;
+        {!active?<SearchEmptyState state={state} language={language} onSearch={value=>{setQueryDraft(value);commitSearch(value);}}/>:loading?<p className="notice" role="status">{language==="zh"?"正在搜索技能与用户…":"Searching skills and people…"}</p>:error?<EmptyState title={language==="zh"?"搜索失败":"Search unavailable"} body={language==="zh"?"请确认后端服务已启动后重试。":"Check that the backend is running and try again."} actionLabel={t(language,"searchAction")} onAction={()=>commitSearch(filters.q)}/>:<>{result.skills.length>0&&<section className="skill-search-results glass"><h2>{language==="zh"?"匹配技能":"Matching skills"}</h2><div className="skill-result-grid">{result.skills.map(skill=><article className="skill-result-item" key={skill.id}><strong>{skill.names?.[language]||skill.names?.en||skill.id}</strong><span>{t(language,`category_${skill.category}`)} · {skill.id}</span></article>)}</div></section>}{result.users.length>0?<><p className="result-count" aria-live="polite">{t(language,"results",{count:result.pagination?.totalUsers??result.users.length})}</p><div className="card-grid">{result.users.map(user=><SearchResultCard key={user.id} user={user} currentUser={state.currentUser} language={language} saved={state.favorites.includes(user.id)} onSave={save} fromHash={window.location.hash}/>)}</div></>:result.skills.length===0&&<EmptyState title={t(language,"noResults")} body={t(language,"notFoundBody")} actionLabel={t(language,"clearFilters")} onAction={()=>navigate("#/search")}/>}</>}</main>;
     }
 
-    function SwapRequestModal({ target, state, language, updateState, onClose }) {
+    function SwapRequestModal({ target, state, language, onCreated, onClose }) {
       const compatibleWanted=target.skillsOffered.find(item=>state.currentUser.skillsWanted.some(wanted=>wanted.skillId===item.skillId))||target.skillsOffered[0];
       const compatibleOffer=state.currentUser.skillsOffered.find(item=>target.skillsWanted.some(wanted=>wanted.skillId===item.skillId))||state.currentUser.skillsOffered[0];
-      const [offered,setOffered]=React.useState(compatibleOffer?.skillId||""); const [wanted,setWanted]=React.useState(compatibleWanted?.skillId||""); const [message,setMessage]=React.useState(""); const [result,setResult]=React.useState(null);
+      const [offered,setOffered]=React.useState(compatibleOffer?.skillId||""); const [wanted,setWanted]=React.useState(compatibleWanted?.skillId||""); const [message,setMessage]=React.useState(""); const [result,setResult]=React.useState(null);const [busy,setBusy]=React.useState(false);
       const policy=state.privacySettings.publicPlacesOnly?"public-place":"flexible";
-      const submit=event=>{event.preventDefault();if(isSelfProfile(state.currentUser,target))return;const next=createSwapRequest(state.sentRequests,target.id,offered,wanted,new Date(),policy);updateState({...state,sentRequests:next.requests});setResult(next.created?"success":"exists");};
-      return <Modal title={t(language,"requestTitle")} onClose={onClose} language={language}>{result&&<div className="notice" role="status">{t(language,result==="success"?"requestSuccess":"requestExists")}</div>}<form className="modal-form" onSubmit={submit}>{policy==="public-place"&&<p className="notice" role="status">{t(language,"publicPlacePolicy")}</p>}<label className="field"><span>{t(language,"iCanOffer")}</span><select className="select" value={offered} onChange={event=>setOffered(event.target.value)}>{state.currentUser.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"iWantLearn")}</span><select className="select" value={wanted} onChange={event=>setWanted(event.target.value)}>{target.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"optionalMessage")}</span><textarea className="textarea" value={message} onChange={event=>setMessage(event.target.value)}/></label><div className="button-row"><Button type="button" variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button type="submit">{t(language,"send")}</Button>{result&&<Button type="button" variant="light" onClick={()=>{onClose();navigate("#/matches")}}>{t(language,"viewMatches")}</Button>}</div></form></Modal>;
+      const submit=async event=>{event.preventDefault();if(isSelfProfile(state.currentUser,target)||busy)return;setBusy(true);setResult(null);try{await createBackendSwapRequest({targetUserId:target.id,offeredSkillId:offered,requestedSkillId:wanted,meetingPolicy:policy});setResult("success");await onCreated?.();}catch(failure){setResult(failure.code==="request_exists"?"exists":"error");}finally{setBusy(false);}};
+      return <Modal title={t(language,"requestTitle")} onClose={onClose} language={language}>{result&&<div className="notice" role="status">{result==="error"?(language==="zh"?"请求发布失败，请重试。":"Request failed. Try again."):t(language,result==="success"?"requestSuccess":"requestExists")}</div>}<form className="modal-form" onSubmit={submit}>{policy==="public-place"&&<p className="notice" role="status">{t(language,"publicPlacePolicy")}</p>}<label className="field"><span>{t(language,"iCanOffer")}</span><select className="select" value={offered} disabled={busy} onChange={event=>setOffered(event.target.value)}>{state.currentUser.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"iWantLearn")}</span><select className="select" value={wanted} disabled={busy} onChange={event=>setWanted(event.target.value)}>{target.skillsOffered.map(item=><option key={item.id} value={item.skillId}>{getSkillName(item.skillId,language)}</option>)}</select></label><label className="field"><span>{t(language,"optionalMessage")}</span><textarea className="textarea" value={message} disabled={busy} onChange={event=>setMessage(event.target.value)}/></label><div className="button-row"><Button type="button" variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button type="submit" disabled={busy}>{busy?(language==="zh"?"正在发布…":"Sending…"):t(language,"send")}</Button>{result==="success"&&<Button type="button" variant="light" onClick={()=>{onClose();navigate("#/matches",{tab:"requests"})}}>{t(language,"viewMatches")}</Button>}</div></form></Modal>;
     }
 
-    function PersonProfilePage({ route, state, language, updateState }) {
+    function PersonProfilePage({ route, state, language, updateState, refreshSwapRequests }) {
       const resolvedUser=getUserById(route.params.id,state.currentUser); const user=resolvedUser?{...resolvedUser,city:locationLabel(resolvedUser,language)}:null; const [open,setOpen]=React.useState(false); if(!user)return <EmptyState title={t(language,"userNotFound")} body={t(language,"userNotFoundBody")} actionLabel={t(language,"backDiscover")} onAction={()=>navigate("#/discover")}/>;
       const isSelf=isSelfProfile(state.currentUser,user); const match=scoreComplementaryMatch(state.currentUser,user); const backHash=isSelf?"#/settings":route.query.from||"#/discover"; const save=()=>{if(!isSelf)updateState(current=>({...current,favorites:toggleFavorite(current.favorites,user.id)}));}; const isConnected=!isSelf&&state.connections.includes(user.id); const assessments=isSelf?(state.skillAssessments||{}):{};
-      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p>{isSelf&&<p className="notice" role="status">{state.privacySettings.profileVisibility==="private"?t(language,"privateOwnerPreview"):t(language,"communityOwnerPreview")}{state.privacySettings.showOnlineStatus&&` · ${t(language,"onlinePreview")}`}</p>}</div><div className="button-row">{isSelf?<><Button onClick={()=>navigate("#/settings/profile")}>{t(language,"editProfile")}</Button><Button variant="rose" onClick={()=>navigate("#/skill-test")}>{t(language,"skillTest")}</Button></>:<><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button>{isConnected?<Button variant="rose" onClick={()=>navigate(`#/chat/${user.id}`,{from:window.location.hash})}>{t(language,"startChatNow")}</Button>:<Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button>}</>}</div></section>{isSelf&&Object.keys(assessments).length===0&&<section className="test-recommend"><p><strong>✓ {t(language,"skillTestRecommended")}</strong> · {t(language,"skillTestRecommendText")} <Button small onClick={()=>navigate("#/skill-test")}>{t(language,"skillTestStart")}</Button></p></section>}<div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language} assessments={assessments}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><ProfileDetails user={user} language={language}/>{!isSelf&&<section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>}{open&&!isSelf&&<SwapRequestModal target={user} state={state} language={language} updateState={updateState} onClose={()=>setOpen(false)}/>}</main>;
+      return <main className="page"><div className="button-row" style={{marginBottom:16}}><Button variant="light" small onClick={()=>window.location.hash=backHash}>← {t(language,"back")}</Button></div><section className="profile-hero glass"><Avatar user={user} size="large"/><div><p className="eyebrow">{t(language,"memberSince")}</p><h1>{user.name}</h1><p className="muted">{t(language,"ageCity",{age:user.age,city:user.city})} · {user.languages.join(" / ").toUpperCase()}</p><p>{localized(user.bio,language)}</p>{isSelf&&<p className="notice" role="status">{state.privacySettings.profileVisibility==="private"?t(language,"privateOwnerPreview"):t(language,"communityOwnerPreview")}</p>}</div><div className="button-row">{isSelf?<><Button onClick={()=>navigate("#/settings/profile")}>{t(language,"editProfile")}</Button><Button variant="rose" onClick={()=>navigate("#/skill-test")}>{t(language,"skillTest")}</Button></>:<><Button variant="light" onClick={save}>{state.favorites.includes(user.id)?"♥":"♡"} {t(language,state.favorites.includes(user.id)?"saved":"save")}</Button>{isConnected?<Button variant="rose" onClick={()=>navigate(`#/chat/${user.id}`,{from:window.location.hash})}>{t(language,"startChatNow")}</Button>:<Button onClick={()=>setOpen(true)}>{t(language,"sendRequest")}</Button>}</>}</div></section>{isSelf&&Object.keys(assessments).length===0&&<section className="test-recommend"><p><strong>✓ {t(language,"skillTestRecommended")}</strong> · {t(language,"skillTestRecommendText")} <Button small onClick={()=>navigate("#/skill-test")}>{t(language,"skillTestStart")}</Button></p></section>}<div className="profile-columns"><ProfileSkillSection title={t(language,"teachSection")} items={user.skillsOffered} language={language} assessments={assessments}/><ProfileSkillSection title={t(language,"learnSection")} items={user.skillsWanted} language={language}/></div><ProfileDetails user={user} language={language}/>{!isSelf&&<section className="why-card"><p className="eyebrow">MATCH LOGIC</p><h2>{t(language,"whyMatch")}</h2><ul className="why-list">{match.reasons.length?match.reasons.map((reason,index)=><li key={index}>{reason.type==="reciprocal"?t(language,"reciprocalReason",{offer:getSkillName(reason.skillId,language),learn:getSkillName(reason.reciprocalSkillId,language)}):t(language,"teachesWanted",{name:user.name,skill:getSkillName(reason.skillId,language)})}</li>):<li>{t(language,"oneWay")}</li>}</ul></section>}{open&&!isSelf&&<SwapRequestModal target={user} state={state} language={language} onCreated={refreshSwapRequests} onClose={()=>setOpen(false)}/>}</main>;
     }
 
-    function ContactMatchCard({user,currentUser,language,group,saved,onToggleFavorite,onRequest,onCancelRequest}){
-      const relationship=relationshipSummary(currentUser,user,language);
-      const status=group==="favorites"?t(language,"saved"):group==="requests"?t(language,"pending"):relationship.label;
-      return <article className="contact-card glass"><div className="contact-main"><Avatar user={user}/><div><h3>{user.name}</h3><p>{locationLabel(user,language)}</p></div><span className="contact-status">{status}</span></div><div className="contact-skills"><span>{t(language,"canTeach")}: {getSkillName(user.skillsOffered[0].skillId,language)}</span><span>{t(language,"wantsLearn")}: {getSkillName(user.skillsWanted[0].skillId,language)}</span></div><div className="contact-actions"><Button small variant="light" onClick={()=>navigate(`#/people/${user.id}`,{from:window.location.hash})}>{t(language,"viewFullProfile")} <span aria-hidden="true">→</span></Button>{group&&group!=="requests"&&<><button className="icon-btn" type="button" onClick={()=>onToggleFavorite(user.id)} aria-label={saved?t(language,"removeFavorite"):t(language,"save")}>{saved?"♥":"♡"}</button><Button small onClick={()=>onRequest(user)}>{t(language,"startSwap")}</Button></>}{group==="requests"&&<Button small variant="ghost" onClick={()=>onCancelRequest(user)}>{t(language,"cancelRequest")}</Button>}</div></article>;
+    function ContactMatchCard({user,currentUser,language,group,saved,onToggleFavorite,onRequest}){
+      const relationship=relationshipSummary(currentUser,user,language);const status=group==="favorites"?t(language,"saved"):relationship.label;
+      return <article className="contact-card glass"><div className="contact-main"><Avatar user={user}/><div><h3>{user.name}</h3><p>{locationLabel(user,language)}</p></div><span className="contact-status">{status}</span></div><div className="contact-skills"><span>{t(language,"canTeach")}: {getSkillName(user.skillsOffered[0]?.skillId||"",language)}</span><span>{t(language,"wantsLearn")}: {getSkillName(user.skillsWanted[0]?.skillId||"",language)}</span></div><div className="contact-actions"><Button small variant="light" onClick={()=>navigate(`#/people/${user.id}`,{from:window.location.hash})}>{t(language,"viewFullProfile")} <span aria-hidden="true">→</span></Button>{group&&<><button className="icon-btn" type="button" onClick={()=>onToggleFavorite(user.id)} aria-label={saved?t(language,"removeFavorite"):t(language,"save")}>{saved?"♥":"♡"}</button><Button small onClick={()=>onRequest(user)}>{t(language,"startSwap")}</Button></>}</div></article>;
     }
 
-    function MatchContactGroup({group,title,hint,users,state,language,onToggleFavorite,onRequest,onCancelRequest,hidden=false}){
-      return <section className="match-panel" role="tabpanel" id={`match-panel-${group}`} aria-labelledby={`match-tab-${group}`} hidden={hidden}><div className="match-panel-head"><h2>{title}</h2><p>{hint}</p></div>{users.length?<div className="contact-grid">{users.map(user=><ContactMatchCard key={user.id} user={user} currentUser={state.currentUser} language={language} group={group} saved={state.favorites.includes(user.id)} onToggleFavorite={onToggleFavorite} onRequest={onRequest} onCancelRequest={onCancelRequest}/>)}</div>:<EmptyState title={group==="requests"?t(language,"noRequests"):t(language,"noResults")} body={group==="requests"?hint:t(language,"peerNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>;
+    function MatchContactGroup({group,title,hint,users,state,language,onToggleFavorite,onRequest,hidden=false}){
+      return <section className="match-panel" role="tabpanel" id={`match-panel-${group}`} aria-labelledby={`match-tab-${group}`} hidden={hidden}><div className="match-panel-head"><h2>{title}</h2><p>{hint}</p></div>{users.length?<div className="contact-grid">{users.map(user=><ContactMatchCard key={user.id} user={user} currentUser={state.currentUser} language={language} group={group} saved={state.favorites.includes(user.id)} onToggleFavorite={onToggleFavorite} onRequest={onRequest}/>)}</div>:<EmptyState title={t(language,"noResults")} body={t(language,"peerNote")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</section>;
     }
 
-    function CancelRequestModal({target,language,onConfirm,onClose}){
-      return <Modal title={t(language,"cancelRequestTitle")} onClose={onClose} language={language}><p className="confirm-copy">{t(language,"cancelRequestBody",{name:target.name})}</p><div className="button-row"><Button variant="ghost" onClick={onClose}>{t(language,"cancel")}</Button><Button variant="rose" onClick={onConfirm}>{t(language,"confirmCancelRequest")}</Button></div></Modal>;
+    function formatRequestTime(iso,language,now=new Date()){
+      const value=new Date(iso);if(Number.isNaN(value.getTime()))return "—";const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());const yesterday=new Date(today);yesterday.setDate(today.getDate()-1);const clock=new Intl.DateTimeFormat(language==="zh"?"zh-CN":"en-US",{hour:"2-digit",minute:"2-digit",hour12:false}).format(value);
+      if(value>=today)return clock;if(value>=yesterday)return language==="zh"?`昨天 ${clock}`:`Yesterday ${clock}`;return new Intl.DateTimeFormat(language==="zh"?"zh-CN":"en-US",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(value);
+    }
+    function requestStatusLabel(status,language){
+      const labels={pending:{zh:"等待回应",en:"Pending"},accepted:{zh:"已接受",en:"Accepted"},rejected:{zh:"已拒绝",en:"Rejected"},cancelled:{zh:"已取消",en:"Cancelled"},completed:{zh:"已完成",en:"Completed"}};return localized(labels[status]||labels.pending,language);
+    }
+    function SwapRequestCard({request,currentUser,language,busy,onAction}){
+      const user=request.counterpart;if(!user)return null;const selfIsRequester=String(currentUser.id)===String(request.requesterId);const selfConfirmed=selfIsRequester?request.requesterCompletedAt:request.targetCompletedAt;const otherConfirmed=selfIsRequester?request.targetCompletedAt:request.requesterCompletedAt;
+      return <article className="contact-card glass"><div className="contact-main"><Avatar user={user}/><div><h3>{user.name}</h3><p>{locationLabel(user,language)} · {formatRequestTime(request.createdAt,language)}</p></div><span className="contact-status">{requestStatusLabel(request.status,language)}</span></div><div className="contact-skills"><span>{language==="zh"?"我提供":"I offer"}: {getSkillName(selfIsRequester?request.offeredSkillId:request.requestedSkillId,language)}</span><span>{language==="zh"?"我学习":"I learn"}: {getSkillName(selfIsRequester?request.requestedSkillId:request.offeredSkillId,language)}</span></div>{request.status==="accepted"&&<p className="muted">{language==="zh"?`完成确认：你${selfConfirmed?"已确认":"未确认"}，对方${otherConfirmed?"已确认":"未确认"}`:`Completion: you ${selfConfirmed?"confirmed":"not confirmed"}, partner ${otherConfirmed?"confirmed":"not confirmed"}`}</p>}<div className="contact-actions"><Button small variant="light" onClick={()=>navigate(`#/people/${user.id}`,{from:window.location.hash})}>{t(language,"viewFullProfile")} →</Button>{request.direction==="received"&&request.status==="pending"&&<><Button small disabled={busy} onClick={()=>onAction(request,"accept")}>{language==="zh"?"接受":"Accept"}</Button><Button small variant="ghost" disabled={busy} onClick={()=>onAction(request,"reject")}>{language==="zh"?"拒绝":"Reject"}</Button></>}{request.direction==="sent"&&request.status==="pending"&&<Button small variant="ghost" disabled={busy} onClick={()=>onAction(request,"cancel")}>{t(language,"cancelRequest")}</Button>}{request.status==="accepted"&&!selfConfirmed&&<Button small variant="rose" disabled={busy} onClick={()=>onAction(request,"complete")}>{language==="zh"?"确认完成":"Confirm completion"}</Button>}</div></article>;
+    }
+    function SwapRequestsPanel({requests,state,language,status,onAction,busyId,hidden=false}){
+      const received=requests.received||[],sent=requests.sent||[];const section=(title,items)=><section className="request-direction-group"><div className="match-panel-head"><h3>{title}</h3><p>{language==="zh"?`${items.length} 条真实请求`:`${items.length} real requests`}</p></div>{items.length?<div className="contact-grid">{items.map(request=><SwapRequestCard key={request.id} request={request} currentUser={state.currentUser} language={language} busy={busyId===request.id} onAction={onAction}/>)}</div>:<p className="muted">{language==="zh"?"暂无请求。":"No requests yet."}</p>}</section>;
+      return <section className="match-panel" role="tabpanel" id="match-panel-requests" aria-labelledby="match-tab-requests" hidden={hidden}><div className="match-panel-head"><h2>{t(language,"swapRequests")}</h2><p>{t(language,"requestsHint")}</p></div>{status==="loading"?<p className="notice" role="status">{language==="zh"?"正在加载请求…":"Loading requests…"}</p>:status==="error"?<EmptyState title={language==="zh"?"请求加载失败":"Requests unavailable"} body={language==="zh"?"请稍后重试。":"Try again later."}/>:<>{section(language==="zh"?"收到的请求":"Received requests",received)}{section(language==="zh"?"发出的请求":"Sent requests",sent)}</>}</section>;
     }
 
-    function MatchesPage({ route, state, language, updateState }) {
-      const groups=buildMatchGroups(state);
-      const activeTab=normalizeMatchTab(route.query.tab); const [requestTarget,setRequestTarget]=React.useState(null); const [cancelTarget,setCancelTarget]=React.useState(null); const [notice,setNotice]=React.useState(""); const tabRefs=React.useRef([]);
-      const tabs=[
-        {id:"complementary",title:t(language,"complementaryMatches"),hint:t(language,"complementaryHint"),users:groups.complementary},
-        {id:"favorites",title:t(language,"favoritePeople"),hint:t(language,"favoritesHint"),users:groups.favorites},
-        {id:"requests",title:t(language,"swapRequests"),hint:t(language,"requestsHint"),users:groups.requests}
-      ];
+    function MatchesPage({ route, state, language, updateState, communityUsers=[], swapRequests={received:[],sent:[]}, requestsStatus="loading", refreshSwapRequests }) {
+      const groups=buildMatchGroups(state,communityUsers);const activeTab=normalizeMatchTab(route.query.tab);const [requestTarget,setRequestTarget]=React.useState(null);const [notice,setNotice]=React.useState("");const [busyId,setBusyId]=React.useState("");const tabRefs=React.useRef([]);const requestCount=(swapRequests.received?.length||0)+(swapRequests.sent?.length||0);
+      const tabs=[{id:"complementary",title:t(language,"complementaryMatches"),hint:t(language,"complementaryHint"),users:groups.complementary,count:groups.complementary.length},{id:"favorites",title:t(language,"favoritePeople"),hint:t(language,"favoritesHint"),users:groups.favorites,count:groups.favorites.length},{id:"requests",title:t(language,"swapRequests"),hint:t(language,"requestsHint"),count:requestCount}];
       const chooseTab=(id,focus=false)=>{navigate("#/matches",{tab:id});if(focus)requestAnimationFrame(()=>tabRefs.current[MATCH_TAB_IDS.indexOf(id)]?.focus());};
       const tabKey=(event,index)=>{let next=null;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index-1+tabs.length)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;if(next!==null){event.preventDefault();chooseTab(tabs[next].id,true);}};
       const toggle=id=>updateState(current=>({...current,favorites:toggleFavorite(current.favorites,id)}));
-      const confirmCancel=()=>{if(!cancelTarget)return;const target=cancelTarget;updateState(current=>({...current,sentRequests:cancelSwapRequests(current.sentRequests,target.id)}));setCancelTarget(null);setNotice(t(language,"requestCancelled",{name:target.name}));};
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header>{notice&&<p className="notice" role="status" aria-live="polite">{notice}</p>}<div className="matches-tabs glass" role="tablist" aria-label={t(language,"matches")}>{tabs.map((tab,index)=><button ref={node=>tabRefs.current[index]=node} key={tab.id} type="button" role="tab" id={`match-tab-${tab.id}`} className="match-tab" aria-selected={activeTab===tab.id} aria-controls={`match-panel-${tab.id}`} tabIndex={activeTab===tab.id?0:-1} onClick={()=>chooseTab(tab.id)} onKeyDown={event=>tabKey(event,index)}><span className="match-tab-label">{tab.title}</span><span className="match-tab-count">{tab.users.length}</span></button>)}</div>{tabs.map(tab=><MatchContactGroup key={tab.id} group={tab.id} title={tab.title} hint={tab.hint} users={tab.users} state={state} language={language} onToggleFavorite={toggle} onRequest={setRequestTarget} onCancelRequest={setCancelTarget} hidden={activeTab!==tab.id}/>)}{requestTarget&&<SwapRequestModal target={requestTarget} state={state} language={language} updateState={updateState} onClose={()=>setRequestTarget(null)}/>} {cancelTarget&&<CancelRequestModal target={cancelTarget} language={language} onConfirm={confirmCancel} onClose={()=>setCancelTarget(null)}/>}</main>;
+      const act=async(request,action)=>{if(busyId)return;setBusyId(request.id);setNotice("");try{await actOnBackendSwapRequest(request.id,action);await refreshSwapRequests?.();setNotice(language==="zh"?"请求状态已更新。":"Request updated.");}catch(failure){setNotice(language==="zh"?"操作失败，请重试。":"Action failed. Try again.");}finally{setBusyId("");}};
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP MATCHES</p><h1 className="page-title">{t(language,"matchCenter")}</h1><p className="page-subtitle">{t(language,"matchLead")}</p></div></header>{notice&&<p className="notice" role="status" aria-live="polite">{notice}</p>}<div className="matches-tabs glass" role="tablist" aria-label={t(language,"matches")}>{tabs.map((tab,index)=><button ref={node=>tabRefs.current[index]=node} key={tab.id} type="button" role="tab" id={`match-tab-${tab.id}`} className="match-tab" aria-selected={activeTab===tab.id} aria-controls={`match-panel-${tab.id}`} tabIndex={activeTab===tab.id?0:-1} onClick={()=>chooseTab(tab.id)} onKeyDown={event=>tabKey(event,index)}><span className="match-tab-label">{tab.title}</span><span className="match-tab-count">{tab.count}</span></button>)}</div>{tabs.filter(tab=>tab.id!=="requests").map(tab=><MatchContactGroup key={tab.id} group={tab.id} title={tab.title} hint={tab.hint} users={tab.users} state={state} language={language} onToggleFavorite={toggle} onRequest={setRequestTarget} hidden={activeTab!==tab.id}/>)}<SwapRequestsPanel requests={swapRequests} state={state} language={language} status={requestsStatus} onAction={act} busyId={busyId} hidden={activeTab!=="requests"}/>{requestTarget&&<SwapRequestModal target={requestTarget} state={state} language={language} onCreated={refreshSwapRequests} onClose={()=>setRequestTarget(null)}/>}</main>;
     }
 
     const SETTINGS_ROWS=Object.freeze([
       ["profile","profileAndAvatar",{zh:"头像、昵称、城市与个人简介",en:"Avatar, name, city, and bio"}],
       ["skills","skillsAndGoals",{zh:"管理你能分享和想学习的技能",en:"Manage what you can share and want to learn"}],
+      ["skill-catalog","skillCatalog",{zh:"管理员维护全局技能目录",en:"Administrators maintain the global skill catalog"}],
       ["availability","availabilityAndPlaces",{zh:"用日程表安排可约时间和见面地点",en:"Plan available times and meeting places on a schedule"}],
       ["notifications","notificationSettings",{zh:"选择哪些动态需要提醒",en:"Choose which activity should notify you"}],
       ["privacy","privacyAndSafety",{zh:"控制资料可见性与安全偏好",en:"Control profile visibility and safety preferences"}],
       ["favorites","favoritePeople",{zh:"回看你收藏的技能伙伴",en:"Review the skill partners you saved"}],
       ["help","helpAndFeedback",{zh:"查看常见问题或告诉我们你的想法",en:"Read common answers or tell us what you think"}],
-      ["logout","logout",{zh:"退出账号，保留本机资料",en:"Sign out while keeping your local profile"}]
+      ["logout","logout",{zh:"结束当前后端账号会话",en:"End the current backend account session"}]
     ]);
     const SETTINGS_GROUPS=Object.freeze([
-      {id:"account",title:{zh:"账号与技能",en:"Account & skills"},description:{zh:"管理你的公开身份和交换方式",en:"Manage your public identity and how you swap"},rows:["profile","skills","availability"]},
+      {id:"account",title:{zh:"账号与技能",en:"Account & skills"},description:{zh:"管理你的公开身份和交换方式",en:"Manage your public identity and how you swap"},rows:["profile","skills","skill-catalog","availability"]},
       {id:"preferences",title:{zh:"偏好与隐私",en:"Preferences & privacy"},description:{zh:"让提醒和可见范围符合你的习惯",en:"Tune notifications and visibility to your preferences"},rows:["notifications","privacy","favorites"]},
       {id:"support",title:{zh:"支持",en:"Support"},description:{zh:"获得帮助或管理当前会话",en:"Get help or manage this session"},rows:["help","logout"]}
     ]);
     function SettingsHome({route,state,language,updateState}){
-      const logout=()=>{if(window.confirm(t(language,"logoutConfirm"))){void logoutEmailSession();updateState(logoutState(state));navigate("#/");}};
+      const logout=async()=>{if(window.confirm(t(language,"logoutConfirm"))){await logoutEmailSession();updateState(logoutState(state));navigate("#/");}};
       const savedRow=SETTINGS_ROWS.find(([id])=>id===route.query.saved);
       const rowById=id=>SETTINGS_ROWS.find(([rowId])=>rowId===id);
-      return <main className="page">{savedRow&&<p className="notice" role="status" aria-live="polite">{t(language,"settingsSaved",{section:t(language,savedRow[1])})}</p>}<header className="page-head"><div><p className="eyebrow">SKILLSWAP SETTINGS</p><h1 className="page-title">{t(language,"settings")}</h1><p className="page-subtitle">{language==="zh"?"把资料、时间和偏好放在更清楚的位置，快速找到要改的内容。":"Your profile, schedule, and preferences—organized so everything is easy to find."}</p></div></header><div className="settings-layout"><aside className="settings-profile-card glass"><Avatar user={state.currentUser} size="large"/><div><p className="eyebrow">{language==="zh"?"当前资料":"CURRENT PROFILE"}</p><h1>{state.currentUser.name}</h1><p className="muted">{locationLabel(state.currentUser,language)}</p></div><Button variant="light" onClick={()=>navigate(`#/people/${state.currentUser.id}`)}>{t(language,"viewProfile")}</Button></aside><div className="settings-groups">{SETTINGS_GROUPS.map(group=><section className="settings-group glass" key={group.id}><header className="settings-group-head"><h2>{localized(group.title,language)}</h2><p>{localized(group.description,language)}</p></header><ul className="settings-menu">{group.rows.map(id=>{const [,title,description]=rowById(id);return <li key={id}><button className={`settings-menu-row ${id==="logout"?"danger":""}`} type="button" onClick={()=>id==="logout"?logout():navigate(`#/settings/${id}`)}><span className="settings-menu-copy"><strong>{t(language,title)}</strong><small>{localized(description,language)}</small></span><span className="settings-menu-arrow" aria-hidden="true">→</span></button></li>;})}</ul></section>)}</div></div></main>;
+      return <main className="page">{savedRow&&<p className="notice" role="status" aria-live="polite">{t(language,"settingsSaved",{section:t(language,savedRow[1])})}</p>}<header className="page-head"><div><p className="eyebrow">SKILLSWAP SETTINGS</p><h1 className="page-title">{t(language,"settings")}</h1><p className="page-subtitle">{language==="zh"?"把资料、时间和偏好放在更清楚的位置，快速找到要改的内容。":"Your profile, schedule, and preferences—organized so everything is easy to find."}</p></div></header><div className="settings-layout"><aside className="settings-profile-card glass"><Avatar user={state.currentUser} size="large"/><div><p className="eyebrow">{language==="zh"?"当前资料":"CURRENT PROFILE"}</p><h1>{state.currentUser.name}</h1><p className="muted">{locationLabel(state.currentUser,language)}</p></div><Button variant="light" onClick={()=>navigate(`#/people/${state.currentUser.id}`)}>{t(language,"viewProfile")}</Button></aside><div className="settings-groups">{SETTINGS_GROUPS.map(group=><section className="settings-group glass" key={group.id}><header className="settings-group-head"><h2>{localized(group.title,language)}</h2><p>{localized(group.description,language)}</p></header><ul className="settings-menu">{group.rows.filter(id=>id!=="skill-catalog"||(state.session?.mode==="backend"&&state.currentUser.isAdmin)).map(id=>{const [,title,description]=rowById(id);return <li key={id}><button className={`settings-menu-row ${id==="logout"?"danger":""}`} type="button" onClick={()=>id==="logout"?logout():navigate(`#/settings/${id}`)}><span className="settings-menu-copy"><strong>{title==="skillCatalog"?(language==="zh"?"技能目录管理":"Skill catalog"):t(language,title)}</strong><small>{localized(description,language)}</small></span><span className="settings-menu-arrow" aria-hidden="true">→</span></button></li>;})}</ul></section>)}</div></div></main>;
     }
     function SettingsSectionPage({route,state,language,updateState}){
       const section=route.params.section; const user=state.currentUser; const back=()=>navigate("#/settings"); const saved=()=>navigate("#/settings",{saved:section});
-      if(!["profile","skills","availability","notifications","privacy","favorites","help"].includes(section))return <EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"settings")} onAction={back}/>;
+      if(!["profile","skills","skill-catalog","availability","notifications","privacy","favorites","help"].includes(section))return <EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"settings")} onAction={back}/>;
+      if(section==="skill-catalog")return state.session?.mode==="backend"&&state.currentUser.isAdmin?<SkillCatalogAdmin language={language} back={back}/>:<EmptyState title={language==="zh"?"需要管理员权限":"Administrator access required"} body={language==="zh"?"只有管理员可以维护全局技能目录。":"Only administrators can manage the global skill catalog."} actionLabel={t(language,"settings")} onAction={back}/>;
       if(section==="favorites")return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><section className="section contact-grid">{state.favorites.map(id=>getUserById(id,user)).filter(Boolean).map(person=><ContactMatchCard key={person.id} user={person} currentUser={user} language={language}/>)}</section></main>;
       if(section==="help")return <HelpSettings state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
       if(section==="notifications"||section==="privacy")return <ToggleSettings key={section} section={section} state={state} language={language} updateState={updateState} back={back} onSaved={saved}/>;
@@ -2706,8 +2185,18 @@
     }
     function SettingsBackButton({language,onBack}){return <Button small variant="light" className="settings-back-button" onClick={onBack}>← {t(language,"settings")}</Button>;}
     function FormActions({language}){return <div className="settings-form-actions single"><Button type="submit" className="settings-action-card primary"><span>{t(language,"saveChanges")}</span><span className="settings-action-indicator" aria-hidden="true">✓</span></Button></div>;}
-    function ProfileSettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const [draft,setDraft]=React.useState(()=>cloneData(persisted));const [error,setError]=React.useState(false);const valid=getCitiesForCountry(draft.countryId).some(city=>city.id===draft.cityId);const save=e=>{e.preventDefault();if(!valid){setError(true);return;}updateState(updateSettingsState(state,"profile",draft));onSaved();};return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><form className="onboarding-card glass form-grid" onSubmit={save}><h1 className="span-2">{t(language,"profileAndAvatar")}</h1><AvatarPicker user={draft} language={language} onSave={avatarDataUrl=>setDraft({...draft,avatarDataUrl})}/><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label><label className="field"><span>{t(language,"country")}</span><select className="select" value={draft.countryId} onChange={e=>{setError(false);setDraft({...draft,countryId:e.target.value,cityId:""});}}>{COUNTRIES.map(c=><option key={c.id} value={c.id}>{c[language]}</option>)}</select></label><label className="field"><span>{t(language,"city")}</span><select className="select" value={draft.cityId} onChange={e=>{setError(false);setDraft({...draft,cityId:e.target.value});}}><option value="">{t(language,"chooseCity")}</option>{getCitiesForCountry(draft.countryId).map(c=><option key={c.id} value={c.id}>{c[language]}</option>)}</select></label>{error&&<p className="form-error" role="alert">{t(language,"requiredFields")}</p>}<label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(draft.bio,language)} onChange={e=>setDraft({...draft,bio:{...draft.bio,[language]:e.target.value}})}/></label><FormActions language={language}/></form></main>;}
-    function SkillsSettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const [draft,setDraft]=React.useState(()=>cloneData({skillsOffered:persisted.skillsOffered,skillsWanted:persisted.skillsWanted}));const [errors,setErrors]=React.useState([]);const save=e=>{e.preventDefault();const next=[...validateSkillList(draft.skillsOffered),...validateSkillList(draft.skillsWanted)];setErrors(next);if(next.length)return;updateState(updateSettingsState(state,"skills",draft));onSaved();};return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,"skillsAndGoals")}</h1><SkillEditor items={draft.skillsOffered} onChange={items=>setDraft({...draft,skillsOffered:items})} language={language} settingsMode/><SkillEditor items={draft.skillsWanted} onChange={items=>setDraft({...draft,skillsWanted:items})} language={language} wanted settingsMode/>{errors.length>0&&<p className="form-error" role="alert">{t(language,errors.includes("duplicate")?"skillDuplicate":"skillRequired")}</p>}<FormActions language={language}/></form></main>;}
+    function ProfileSettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const [draft,setDraft]=React.useState(()=>cloneData(persisted));const [error,setError]=React.useState(false);const [busy,setBusy]=React.useState(false);const valid=getCitiesForCountry(draft.countryId).some(city=>city.id===draft.cityId);const save=async e=>{e.preventDefault();if(!valid){setError(true);return;}setBusy(true);try{if(state.session?.mode==="backend")await saveBackendProfile(draft,true,state.privacySettings.profileVisibility);updateState(updateSettingsState(state,"profile",draft));onSaved();}catch(failure){setError(true);setBusy(false);}};return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><form className="onboarding-card glass form-grid" onSubmit={save}><h1 className="span-2">{t(language,"profileAndAvatar")}</h1><AvatarPicker user={draft} language={language} onSave={avatarDataUrl=>setDraft({...draft,avatarDataUrl})}/><label className="field"><span>{t(language,"nickname")}</span><input className="input" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label><label className="field"><span>{t(language,"country")}</span><select className="select" value={draft.countryId} onChange={e=>{setError(false);setDraft({...draft,countryId:e.target.value,cityId:""});}}>{COUNTRIES.map(c=><option key={c.id} value={c.id}>{c[language]}</option>)}</select></label><label className="field"><span>{t(language,"city")}</span><select className="select" value={draft.cityId} onChange={e=>{setError(false);setDraft({...draft,cityId:e.target.value});}}><option value="">{t(language,"chooseCity")}</option>{getCitiesForCountry(draft.countryId).map(c=><option key={c.id} value={c.id}>{c[language]}</option>)}</select></label>{error&&<p className="form-error" role="alert">{busy?(language==="zh"?"保存失败":"Save failed"):t(language,"requiredFields")}</p>}<label className="field span-2"><span>{t(language,"bio")}</span><textarea className="textarea" value={localized(draft.bio,language)} onChange={e=>setDraft({...draft,bio:{...draft.bio,[language]:e.target.value}})}/></label><FormActions language={language}/></form></main>;}
+    function SkillsSettings({state,language,updateState,back,onSaved}){const persisted=state.currentUser;const [draft,setDraft]=React.useState(()=>cloneData({skillsOffered:persisted.skillsOffered,skillsWanted:persisted.skillsWanted}));const [errors,setErrors]=React.useState([]);const save=async e=>{e.preventDefault();const next=[...validateSkillList(draft.skillsOffered),...validateSkillList(draft.skillsWanted)];setErrors(next);if(next.length)return;try{if(state.session?.mode==="backend")await saveBackendSkills(draft);updateState(updateSettingsState(state,"skills",draft));onSaved();}catch(failure){setErrors(["server"]);}};return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,"skillsAndGoals")}</h1><SkillEditor items={draft.skillsOffered} onChange={items=>setDraft({...draft,skillsOffered:items})} language={language} settingsMode/><SkillEditor items={draft.skillsWanted} onChange={items=>setDraft({...draft,skillsWanted:items})} language={language} wanted settingsMode/>{errors.length>0&&<p className="form-error" role="alert">{errors.includes("server")?(language==="zh"?"保存失败，请重试。":"Save failed. Try again."):t(language,errors.includes("duplicate")?"skillDuplicate":"skillRequired")}</p>}<FormActions language={language}/></form></main>;}
+    function SkillCatalogAdmin({language,back}){
+      const blank={id:"",category:"technology",names:{zh:"",en:""},isActive:true};const [items,setItems]=React.useState([]);const [form,setForm]=React.useState(blank);const [editing,setEditing]=React.useState(false);const [busy,setBusy]=React.useState(false);const [error,setError]=React.useState("");
+      const refresh=React.useCallback(async()=>{const skills=await loadSkillCatalog(true);setItems(skills);applySkillCatalog(skills.filter(skill=>skill.isActive));},[]);
+      React.useEffect(()=>{refresh().catch(()=>setError("load"));},[refresh]);
+      const save=async event=>{event.preventDefault();if(busy)return;setBusy(true);setError("");try{if(editing)await updateBackendSkill(form);else await createBackendSkill(form);setForm(blank);setEditing(false);await refresh();}catch(failure){setError(failure.code||"save");}finally{setBusy(false);}};
+      const edit=skill=>{setEditing(true);setError("");setForm({id:skill.id,category:skill.category,names:{...skill.names},isActive:skill.isActive});window.scrollTo({top:0,behavior:"smooth"});};
+      const toggle=async skill=>{if(busy)return;setBusy(true);setError("");try{if(skill.isActive)await deactivateBackendSkill(skill.id);else await updateBackendSkill({...skill,isActive:true});await refresh();if(form.id===skill.id){setForm(blank);setEditing(false);}}catch(failure){setError(failure.code||"save");}finally{setBusy(false);}};
+      const categories=["technology","creative","academic","sports","lifestyle"];
+      return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><section className="onboarding-card glass"><div className="admin-skill-toolbar"><div><p className="eyebrow">ADMIN</p><h1>{language==="zh"?"技能目录管理":"Skill catalog"}</h1></div><span className="demo-chip">{items.length} {language==="zh"?"项技能":"skills"}</span></div><form className="admin-skill-form" onSubmit={save}><h2>{editing?(language==="zh"?"编辑技能":"Edit skill"):(language==="zh"?"新增技能":"Add skill")}</h2><label className="field"><span>ID</span><input className="input" value={form.id} disabled={editing||busy} placeholder="data-analysis" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required onChange={event=>setForm({...form,id:event.target.value.toLowerCase()})}/></label><label className="field"><span>{language==="zh"?"分类":"Category"}</span><select className="select" value={form.category} disabled={busy} onChange={event=>setForm({...form,category:event.target.value})}>{categories.map(category=><option value={category} key={category}>{t(language,`category_${category}`)}</option>)}</select></label><label className="field"><span>中文名称</span><input className="input" value={form.names.zh} disabled={busy} required onChange={event=>setForm({...form,names:{...form.names,zh:event.target.value}})}/></label><label className="field"><span>English name</span><input className="input" value={form.names.en} disabled={busy} required onChange={event=>setForm({...form,names:{...form.names,en:event.target.value}})}/></label>{error&&<p className="form-error span-2" role="alert">{error==="skill_exists"?(language==="zh"?"技能 ID 或名称已存在。":"The skill id or name already exists."):(language==="zh"?"操作失败，请重试。":"The operation failed. Try again.")}</p>}<div className="button-row span-2"><Button type="submit" disabled={busy}>{busy?(language==="zh"?"处理中…":"Working…"):(editing?t(language,"saveChanges"):(language==="zh"?"新增技能":"Add skill"))}</Button>{editing&&<Button type="button" variant="light" disabled={busy} onClick={()=>{setForm(blank);setEditing(false);setError("");}}>{t(language,"cancel")}</Button>}</div></form><div className="admin-skill-list">{items.map(skill=><article className={`admin-skill-row ${skill.isActive?"":"inactive"}`} key={skill.id}><div><h3>{skill.names?.[language]||skill.names?.en}</h3><p>{skill.id} · {t(language,`category_${skill.category}`)} · {skill.isActive?(language==="zh"?"启用":"Active"):(language==="zh"?"已停用":"Inactive")}</p></div><div className="admin-skill-actions"><Button small variant="light" disabled={busy} onClick={()=>edit(skill)}>{language==="zh"?"编辑":"Edit"}</Button><Button small variant={skill.isActive?"ghost":"rose"} disabled={busy} onClick={()=>toggle(skill)}>{skill.isActive?(language==="zh"?"停用":"Disable"):(language==="zh"?"恢复":"Restore")}</Button></div></article>)}</div></section></main>;
+    }
     const SCHEDULE_HOURS=Object.freeze(Array.from({length:14},(_,index)=>index+8));
     function scheduleDateId(date){const year=date.getFullYear();const month=String(date.getMonth()+1).padStart(2,"0");const day=String(date.getDate()).padStart(2,"0");return `${year}-${month}-${day}`;}
     function scheduleWeek(offset=0){const today=new Date();today.setHours(12,0,0,0);const monday=new Date(today);const day=today.getDay()||7;monday.setDate(today.getDate()-day+1+(offset*7));return Array.from({length:7},(_,index)=>{const date=new Date(monday);date.setDate(monday.getDate()+index);return date;});}
@@ -2726,9 +2215,9 @@
       return <main className="page availability-page"><header className="availability-head"><div><Button small variant="light" className="settings-back-button" onClick={back}>← {t(language,"settings")}</Button><h1>{t(language,"availabilityAndPlaces")}</h1><p className="page-subtitle">{language==="zh"?"点击日程格可快速切换一小时；也可以一次新增连续时段。":"Tap a schedule cell to toggle one hour, or add a longer block at once."}</p></div><Button variant="rose" onClick={()=>setShowComposer(current=>!current)}>{showComposer?(language==="zh"?"收起":"Close"):(language==="zh"?"＋ 新增可约时间":"＋ Add availability")}</Button></header>{showComposer&&<section className="availability-composer"><label className="field"><span>{language==="zh"?"日期":"Date"}</span><input className="input" type="date" value={newDate} onChange={event=>setNewDate(event.target.value)}/></label><label className="field"><span>{language==="zh"?"开始":"Starts"}</span><select className="select" value={startHour} onChange={event=>setStartHour(Number(event.target.value))}>{SCHEDULE_HOURS.map(hour=><option key={hour} value={hour}>{formatScheduleHour(hour)}</option>)}</select></label><label className="field"><span>{language==="zh"?"结束":"Ends"}</span><select className="select" value={endHour} onChange={event=>setEndHour(Number(event.target.value))}>{SCHEDULE_HOURS.filter(hour=>hour>8).map(hour=><option key={hour} value={hour}>{formatScheduleHour(hour)}</option>)}</select></label><Button onClick={addRange}>{language==="zh"?"添加到日程":"Add to schedule"}</Button></section>}<section className="schedule-card glass"><div className="schedule-toolbar"><Button small variant="light" aria-label={language==="zh"?"上一周":"Previous week"} onClick={()=>setWeekOffset(offset=>offset-1)}>←</Button><div className="schedule-week-label"><strong>{weekOffset===0?(language==="zh"?"本周":"This week"):weekLabel}</strong><span>{weekOffset===0&&weekLabel}</span></div><Button small variant="light" aria-label={language==="zh"?"下一周":"Next week"} onClick={()=>setWeekOffset(offset=>offset+1)}>→</Button></div><div className="schedule-scroll"><div className="schedule-grid"><div className="schedule-corner">GMT+8</div>{weekDates.map(date=><div className={`schedule-day ${scheduleDateId(date)===todayId?"today":""}`} key={scheduleDateId(date)}><span>{date.toLocaleDateString(locale,{weekday:"short"})}</span><strong>{date.getDate()}</strong></div>)}{SCHEDULE_HOURS.map(hour=><React.Fragment key={hour}><div className="schedule-time">{formatScheduleHour(hour)}</div>{weekDates.map(date=>{const dateId=scheduleDateId(date);const selected=slotKeys.has(`${dateId}@${hour}`);return <button type="button" className={`schedule-slot ${selected?"selected":""}`} aria-pressed={selected} aria-label={`${date.toLocaleDateString(locale)} ${formatScheduleHour(hour)}${selected?(language==="zh"?"，已选择":", selected"):""}`} key={`${dateId}-${hour}`} onClick={()=>toggleSlot(dateId,hour)}/>;})}</React.Fragment>)}</div></div><p className="schedule-summary" role="status">{language==="zh"?`已选择 ${slots.length} 个小时，深色格子会展示在你的可约日程中。`:`${slots.length} hours selected. Dark cells are shown as available.`}</p></section><section className="availability-options"><div className="availability-option-card glass"><h2>{t(language,"meetingPreference")}</h2><p>{language==="zh"?"选择你愿意采用的见面方式。":"Choose the meeting formats that work for you."}</p><div className="choice-grid">{["online","public-place"].map(id=>{const selected=meetingModes.includes(id);return <button type="button" className="choice-card" aria-pressed={selected} key={id} onClick={()=>toggleChoice(setMeetingModes,id)}><span>{localized(modeLabels[id],language)}</span><span className="choice-indicator" aria-hidden="true">{selected?"✓":""}</span></button>;})}</div></div><div className="availability-option-card glass"><h2>{language==="zh"?"公共见面地点":"Public meeting places"}</h2><p>{language==="zh"?"只显示安全、公开的建议地点。":"Only safe, public suggestions are shown."}</p><div className="choice-grid">{["library","cafe","community-center"].map(id=>{const selected=publicLocations.includes(id);return <button type="button" className="choice-card" aria-pressed={selected} key={id} onClick={()=>toggleChoice(setPublicLocations,id)}><span>{localized(locationLabels[id],language)}</span><span className="choice-indicator" aria-hidden="true">{selected?"✓":""}</span></button>;})}</div></div></section><div className="availability-actions"><Button onClick={save}>{t(language,"saveChanges")}</Button></div></main>;
     }
     function ToggleSettings({section,state,language,updateState,back,onSaved}){
-      const persisted=section==="notifications"?state.notificationSettings:state.privacySettings;const [draft,setDraft]=React.useState(()=>cloneData(persisted));const labels={swapRequests:{zh:"交换请求",en:"Swap requests"},favoriteActivity:{zh:"收藏动态",en:"Favorite activity"},sessionReminders:{zh:"学习提醒",en:"Session reminders"},community:{zh:"社区可见",en:"Community"},private:{zh:"仅自己可见",en:"Private"},showOnlineStatus:{zh:"显示在线状态",en:"Show online status"},publicPlacesOnly:{zh:"仅允许公共地点",en:"Public places only"}};const descriptions={swapRequests:{zh:"收到新的交换邀请时提醒我",en:"Notify me when a new swap invitation arrives"},favoriteActivity:{zh:"收藏伙伴有新动态时提醒我",en:"Notify me about activity from saved partners"},sessionReminders:{zh:"在已约学习开始前提醒我",en:"Remind me before a scheduled learning session"},showOnlineStatus:{zh:"让其他用户看到你当前在线",en:"Let other people see when you are online"},publicPlacesOnly:{zh:"线下交换只使用公开、安全的地点",en:"Use public, safer places for in-person swaps"},community:{zh:"社区用户可以查看你的资料",en:"People in the community can view your profile"},private:{zh:"只有你自己可以查看完整资料",en:"Only you can view the complete profile"}};const save=e=>{e.preventDefault();updateState(updateSettingsState(state,section,draft));onSaved();};const booleanKeys=Object.keys(draft).filter(key=>key!=="profileVisibility");return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,section==="notifications"?"notificationSettings":"privacyAndSafety")}</h1>{draft.profileVisibility!==undefined&&<section className="settings-choice-section"><header className="settings-choice-head"><h2>{t(language,"profileVisibility")}</h2><p>{language==="zh"?"选择谁可以看到你的完整技能资料。":"Choose who can see your complete skill profile."}</p></header><div className="settings-choice-grid">{["community","private"].map(value=>{const selected=draft.profileVisibility===value;return <button type="button" className="choice-card" aria-pressed={selected} key={value} onClick={()=>setDraft({...draft,profileVisibility:value})}><span><strong>{localized(labels[value],language)}</strong><small className="muted">{localized(descriptions[value],language)}</small></span><span className="choice-indicator" aria-hidden="true">{selected?"✓":""}</span></button>;})}</div></section>}<section className="settings-choice-section"><header className="settings-choice-head"><h2>{section==="notifications"?(language==="zh"?"提醒类型":"Notification types"):(language==="zh"?"安全偏好":"Safety preferences")}</h2><p>{language==="zh"?"点击整行即可开启或关闭。":"Select a row to turn it on or off."}</p></header><div className="settings-choice-grid single">{booleanKeys.map(key=>{const selected=Boolean(draft[key]);const label=labels[key]||{zh:key,en:key};const description=descriptions[key]||{zh:"",en:""};return <button type="button" className="choice-card" aria-pressed={selected} key={key} onClick={()=>setDraft({...draft,[key]:!selected})}><span><strong>{localized(label,language)}</strong><small className="muted">{localized(description,language)}</small></span><span className="choice-indicator" aria-hidden="true">{selected?"✓":""}</span></button>;})}</div></section><FormActions language={language}/></form></main>;
+      const persisted=section==="notifications"?state.notificationSettings:state.privacySettings;const [draft,setDraft]=React.useState(()=>cloneData(persisted));const [error,setError]=React.useState(false);const labels={swapRequests:{zh:"交换请求",en:"Swap requests"},favoriteActivity:{zh:"收藏动态",en:"Favorite activity"},sessionReminders:{zh:"学习提醒",en:"Session reminders"},community:{zh:"社区可见",en:"Community"},private:{zh:"仅自己可见",en:"Private"},showOnlineStatus:{zh:"显示在线状态",en:"Show online status"},publicPlacesOnly:{zh:"仅允许公共地点",en:"Public places only"}};const descriptions={swapRequests:{zh:"收到新的交换邀请时提醒我",en:"Notify me when a new swap invitation arrives"},favoriteActivity:{zh:"收藏伙伴有新动态时提醒我",en:"Notify me about activity from saved partners"},sessionReminders:{zh:"在已约学习开始前提醒我",en:"Remind me before a scheduled learning session"},showOnlineStatus:{zh:"让其他用户看到你当前在线",en:"Let other people see when you are online"},publicPlacesOnly:{zh:"线下交换只使用公开、安全的地点",en:"Use public, safer places for in-person swaps"},community:{zh:"社区用户可以查看你的资料",en:"People in the community can view your profile"},private:{zh:"只有你自己可以查看完整资料",en:"Only you can view the complete profile"}};const save=async e=>{e.preventDefault();try{if(section==="privacy"&&state.session?.mode==="backend")await saveBackendProfile(state.currentUser,true,draft.profileVisibility);updateState(updateSettingsState(state,section,draft));onSaved();}catch(failure){setError(true);}};const booleanKeys=Object.keys(draft).filter(key=>key!=="profileVisibility");return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><form className="onboarding-card glass" onSubmit={save}><h1>{t(language,section==="notifications"?"notificationSettings":"privacyAndSafety")}</h1>{draft.profileVisibility!==undefined&&<section className="settings-choice-section"><header className="settings-choice-head"><h2>{t(language,"profileVisibility")}</h2><p>{language==="zh"?"选择谁可以看到你的完整技能资料。":"Choose who can see your complete skill profile."}</p></header><div className="settings-choice-grid">{["community","private"].map(value=>{const selected=draft.profileVisibility===value;return <button type="button" className="choice-card" aria-pressed={selected} key={value} onClick={()=>setDraft({...draft,profileVisibility:value})}><span><strong>{localized(labels[value],language)}</strong><small className="muted">{localized(descriptions[value],language)}</small></span><span className="choice-indicator" aria-hidden="true">{selected?"✓":""}</span></button>;})}</div></section>}<section className="settings-choice-section"><header className="settings-choice-head"><h2>{section==="notifications"?(language==="zh"?"提醒类型":"Notification types"):(language==="zh"?"安全偏好":"Safety preferences")}</h2><p>{language==="zh"?"点击整行即可开启或关闭。":"Select a row to turn it on or off."}</p></header><div className="settings-choice-grid single">{booleanKeys.map(key=>{const selected=Boolean(draft[key]);const label=labels[key]||{zh:key,en:key};const description=descriptions[key]||{zh:"",en:""};return <button type="button" className="choice-card" aria-pressed={selected} key={key} onClick={()=>setDraft({...draft,[key]:!selected})}><span><strong>{localized(label,language)}</strong><small className="muted">{localized(description,language)}</small></span><span className="choice-indicator" aria-hidden="true">{selected?"✓":""}</span></button>;})}</div></section>{error&&<p className="form-error" role="alert">{language==="zh"?"保存失败，请重试。":"Save failed. Try again."}</p>}<FormActions language={language}/></form></main>;
     }
-    function HelpSettings({state,language,updateState,back,onSaved}){const initial="";const [draft,setDraft]=React.useState(()=>cloneData(initial));const submit=e=>{e.preventDefault();if(!draft.trim())return;updateState(updateSettingsState(state,"feedback",{id:`feedback-${state.feedbackEntries.length+1}`,body:draft.trim(),createdAt:"2026-08-16T12:00:00.000Z"}));onSaved();};return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><section className="onboarding-card glass"><h1>{t(language,"helpAndFeedback")}</h1><p>{language==="zh"?"常见问题：这是一个本地演示，资料仅保存在此设备。":"FAQ: this is a local demo and data stays on this device."}</p><form onSubmit={submit}><label className="field"><span>{t(language,"helpAndFeedback")}</span><textarea className="textarea" value={draft} placeholder={t(language,"feedbackPlaceholder")} onChange={e=>setDraft(e.target.value)}/></label><FormActions language={language}/></form></section></main>;}
+    function HelpSettings({state,language,updateState,back,onSaved}){const initial="";const [draft,setDraft]=React.useState(()=>cloneData(initial));const submit=e=>{e.preventDefault();if(!draft.trim())return;updateState(updateSettingsState(state,"feedback",{id:`feedback-${state.feedbackEntries.length+1}`,body:draft.trim(),createdAt:new Date().toISOString()}));onSaved();};return <main className="page settings-subpage"><SettingsBackButton language={language} onBack={back}/><section className="onboarding-card glass"><h1>{t(language,"helpAndFeedback")}</h1><p>{language==="zh"?"账号、资料、技能和交换请求保存在本地 Python 后端。":"Accounts, profiles, skills, and swap requests are stored by the local Python backend."}</p><form onSubmit={submit}><label className="field"><span>{t(language,"helpAndFeedback")}</span><textarea className="textarea" value={draft} placeholder={t(language,"feedbackPlaceholder")} onChange={e=>setDraft(e.target.value)}/></label><FormActions language={language}/></form></section></main>;}
 
     function NotFoundPage({ language }) { return <main className="page"><EmptyState title={t(language,"pageNotFound")} body={t(language,"notFoundBody")} actionLabel={t(language,"backHome")} onAction={()=>navigate("#/")}/></main>; }
 
@@ -2878,11 +2367,20 @@
     /* 12. App */
     function App() {
       const [state, setState] = React.useState(() => loadState());
+      const [communityUsers,setCommunityUsers]=React.useState([]);
+      const [directoryStatus,setDirectoryStatus]=React.useState("idle");
+      const [swapRequests,setSwapRequests]=React.useState({received:[],sent:[]});
+      const [requestsStatus,setRequestsStatus]=React.useState("idle");
       const route = useHashRoute();
       const updateState = React.useCallback(next => {
         setState(current => normalizeState(typeof next === "function" ? next(current) : next));
       }, []);
       const language = state.language;
+
+      const refreshCommunityUsers=React.useCallback(async()=>{setDirectoryStatus("loading");try{const users=await loadAllBackendUsers();setCommunityUsers(users);setDirectoryStatus("ready");return users;}catch(error){setCommunityUsers([]);setDirectoryStatus("error");throw error;}},[]);
+      const refreshSwapRequests=React.useCallback(async()=>{setRequestsStatus("loading");try{const payload=await loadSwapRequests();const all=[...(payload.received||[]),...(payload.sent||[])];all.forEach(item=>{if(item.counterpart)BACKEND_USERS.set(String(item.counterpart.id),normalizeUser(item.counterpart));});setSwapRequests(payload);setRequestsStatus("ready");const connected=[...new Set(all.filter(item=>["accepted","completed"].includes(item.status)&&item.counterpart).map(item=>String(item.counterpart.id)))];setState(current=>current.connections.join("|")===connected.join("|")?current:normalizeState({...current,connections:connected}));return payload;}catch(error){setSwapRequests({received:[],sent:[]});setRequestsStatus("error");throw error;}},[]);
+
+      React.useEffect(()=>{if(state.isAuthenticated&&state.onboardingCompleted&&state.session?.mode==="backend"){void refreshCommunityUsers().catch(()=>{});void refreshSwapRequests().catch(()=>{});}else{BACKEND_USERS.clear();setCommunityUsers([]);setSwapRequests({received:[],sent:[]});setDirectoryStatus("idle");setRequestsStatus("idle");}},[state.isAuthenticated,state.onboardingCompleted,state.currentUser?.id,refreshCommunityUsers,refreshSwapRequests]);
 
       React.useEffect(() => {
         saveState(state);
@@ -2901,36 +2399,37 @@
       if (redirect) return null;
 
       const toggleLanguage = () => setState(current => ({ ...current, language: current.language === "zh" ? "en" : "zh" }));
-      const demoLogin = () => { setState(current => loginAsDemoUser(current)); navigate("#/discover"); };
-      const emailLogin = async (email,password) => { const account=await loginWithEmail(email,password); setState(current => loginAsDemoUser(current)); navigate("#/discover"); return account; };
-      const signup = () => {
+      const emailLogin = async (email,password) => { const account=await loginWithEmail(email,password);const backendUser=await loadBackendUser();setState(current=>normalizeState({...current,isAuthenticated:true,currentUser:backendUser,onboardingCompleted:backendUser.onboardingCompleted,onboardingStep:backendUser.onboardingCompleted?"complete":"profile",privacySettings:{...current.privacySettings,profileVisibility:backendUser.profileVisibility||"community"},session:{loggedIn:true,mode:"backend"}}));navigate(backendUser.onboardingCompleted?"#/discover":"#/onboarding/profile");return account; };
+      const signup = async (email,password) => {
+        const account=await registerWithEmail(email,password);await loadSkillCatalog();
         const newUser = {
-          id: "local-user", name: "", age: 18, city: "", languages: ["zh"], avatar: "",
-          bio: { zh: "", en: "" }, skillsOffered: [], skillsWanted: []
+          id: account.id, email:account.email, isAdmin:false, name: "", age: 18, city: "", countryId:"cn",cityId:"tianjin",languages: ["zh"], avatar: "",
+          bio: { zh: "", en: "" }, skillsOffered: [], skillsWanted: [],onboardingCompleted:false
         };
-        setState(current => normalizeState({ ...current, isAuthenticated: true, currentUser: newUser, onboardingCompleted: false, onboardingStep: "profile" }));
+        setState(current => normalizeState({ ...current, isAuthenticated: true, currentUser: newUser, onboardingCompleted: false, onboardingStep: "profile",session:{loggedIn:true,mode:"backend"} }));
         navigate("#/onboarding/profile");
+        return account;
       };
 
-      if (route.name === "landing") return <LandingPage language={language} onLanguage={toggleLanguage} onDemo={demoLogin}/>;
+      if (route.name === "landing") return <LandingPage language={language} onLanguage={toggleLanguage}/>;
 
       let page;
-      if (route.name === "login") page = <LoginPage language={language} onLogin={emailLogin} onDemo={demoLogin}/>;
+      if (route.name === "login") page = <LoginPage language={language} onLogin={emailLogin}/>;
       else if (route.name === "signup") page = <SignupPage language={language} onSignup={signup}/>;
       else if (route.name === "onboarding-profile") page = <ProfileOnboardingPage state={state} language={language} updateState={updateState}/>;
       else if (route.name === "onboarding-share") page = <SkillOnboardingPage key="share-skills" state={state} language={language} updateState={updateState}/>;
       else if (route.name === "onboarding-learn") page = <SkillOnboardingPage key="learn-skills" state={state} language={language} updateState={updateState} wanted/>;
       else if (route.name === "onboarding-complete") page = <OnboardingCompletePage state={state} language={language} updateState={updateState}/>;
-      else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState} communityUsers={communityUsers} directoryStatus={directoryStatus}/>;
       else if (route.name === "search") page = <SearchPage route={route} state={state} language={language} updateState={updateState}/>;
-      else if (route.name === "matches") page = <MatchesPage route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "matches") page = <MatchesPage route={route} state={state} language={language} updateState={updateState} communityUsers={communityUsers} swapRequests={swapRequests} requestsStatus={requestsStatus} refreshSwapRequests={refreshSwapRequests}/>;
       else if (route.name === "chat") page = <ChatListPage state={state} language={language}/>;
       else if (route.name === "chat-room") page = <ChatRoomPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "skill-test") page = <SkillTestSelectPage state={state} language={language}/>;
       else if (route.name === "skill-test-skill") page = <SkillTestRunPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings") page = <SettingsHome route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings-section") page = <SettingsSectionPage route={route} state={state} language={language} updateState={updateState}/>;
-      else if (route.name === "person") page = <PersonProfilePage route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "person") page = <PersonProfilePage route={route} state={state} language={language} updateState={updateState} refreshSwapRequests={refreshSwapRequests}/>;
       else page = <NotFoundPage language={language}/>;
 
       const publicOrOnboarding = ["login","signup"].includes(route.name) || route.name.startsWith("onboarding-");

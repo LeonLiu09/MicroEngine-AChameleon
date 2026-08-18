@@ -1,46 +1,61 @@
 # SkillSwap v4.2
 
-一个可直接演示的双语技能交换前端：分享自己会的技能、按地点发现伙伴、发起技能交换、与已连接伙伴聊天，并通过自适应测评认证技能水平。
+一个带 Python/SQLite 后端的双语技能交换应用：分享自己会的技能、按地点发现伙伴、发起技能交换、与已连接伙伴聊天，并通过自适应测评认证技能水平。
 
 在线演示：[https://leonliu09.github.io/MicroEngine-SkillSwap20/](https://leonliu09.github.io/MicroEngine-SkillSwap20/)
 
 ## 本地运行
 
-项目无需安装第三方依赖，使用 Python 3.10+ 自带的 HTTP 与 SQLite 模块即可运行。v4.2 产品代码位于根目录的 `v4.2.html`；`index.html` 作为历史版本保留。在仓库目录启动服务：
+项目无需安装第三方依赖，使用 Python 3.10+ 自带的 HTTP 与 SQLite 模块即可运行。v4.2 产品代码位于根目录的 `v4.2.html`；`index.html` 会自动跳转到该入口。在仓库目录启动服务：
 
 ```bash
 python server.py
 ```
 
-然后打开 `http://127.0.0.1:4173/`。服务首次启动会自动创建 `data/skillswap.db`、账号表和会话表，并写入以下本地演示账号：
+然后打开 `http://127.0.0.1:4173/`。服务首次启动会分别创建账号数据库 `data/skillswap.db` 和技能目录数据库 `data/skills.db`，预置 28 项技能，并写入以下管理员账号：
 
 ```text
 邮箱：daniel@example.com
 密码：SkillSwap123!
 ```
 
-邮箱登录已经连接后端；“体验 Daniel 演示账号”按钮仍可在不登录的情况下体验 Discover、Search、Matches、Chat、技能测评与 Settings。创建账号流程暂时保持原有本地演示行为。
+邮箱注册、登录、个人资料、“能教/想学”技能、综合搜索、交换请求和 Daniel 的技能目录管理均已连接后端。登录页的 Daniel 按钮只预填邮箱，仍必须输入真实密码。开发验收请以服务提供的 `v4.2.html` 为入口；GitHub Pages 只托管静态页面，不能运行本次 Python 后端。
 
-可通过环境变量 `SKILLSWAP_HOST`、`SKILLSWAP_PORT`、`SKILLSWAP_DB_PATH`、`SKILLSWAP_DEMO_EMAIL` 和 `SKILLSWAP_DEMO_PASSWORD` 覆盖默认配置。生产环境启用 HTTPS 时还应设置 `SKILLSWAP_SECURE_COOKIE=1`。
+可通过环境变量 `SKILLSWAP_HOST`、`SKILLSWAP_PORT`、`SKILLSWAP_DB_PATH`、`SKILLSWAP_SKILLS_DB_PATH`、`SKILLSWAP_ADMIN_EMAIL` 和 `SKILLSWAP_ADMIN_PASSWORD` 覆盖默认配置；旧的 `SKILLSWAP_DEMO_*` 变量仍兼容。命令行也支持 `--db` 和 `--skills-db`。生产环境启用 HTTPS 时还应设置 `SKILLSWAP_SECURE_COOKIE=1`。
+
+## 后端接口
+
+- 认证：`POST /api/auth/register`、`POST /api/auth/login`、`POST /api/auth/logout`、`GET /api/auth/me`
+- 当前用户：`GET/PUT /api/users/me/profile`、`GET/PUT /api/users/me/skills`
+- 技能目录：`GET /api/skills`、`GET /api/skills/{id}`；管理员可通过 `POST/PUT/DELETE` 新增、编辑、停用或恢复
+- 综合搜索：`GET /api/search?q=&level=&country=&city=&lang=&sort=&limit=&offset=`
+- 交换请求：`POST/GET /api/swap-requests`，以及 `accept`、`reject`、`cancel`、`complete` 状态操作
+- 社区统计：公开只读 `GET /api/community/stats`，返回今日登录、真实用户、今日完成交换与热门想学技能
+
+除注册、登录、健康检查和社区统计外，接口均要求有效会话。运行测试：
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## 功能亮点
 
 - 中文默认界面与完整英文切换，选择会保存在浏览器中。
 - 玫瑰色两行技能流：28 个技能、33/40 秒反向流动，悬停/焦点暂停并尊重减少动态效果。
-- Discover 使用固定演示社区数据（128 在线、3,842 用户、今日 46 次交换）和本周热门技能趋势（摄影 128、英语 96、Python 74、UI 设计 63、视频剪辑 51）。
+- Discover、搜索和推荐只显示 SQLite 中资料完整且社区可见的真实账号；无结果时显示正式空状态，不回退模拟人物。
 - Search 将关键词搜索与筛选控件分成两个独立区域；国家、城市、语言、水平和排序使用支持键盘操作的自定义下拉。城市依赖国家，切换国家会清空城市；关键词通过按钮或 Enter 提交，其余筛选即时更新。
-- Matches 使用带数量的互补匹配、收藏的人与交换请求三标签页；标签保存在 Hash URL 中，并支持就地收藏、发起交换和取消待回应请求。
-- Chat 仅显示已连接伙伴，支持本地消息记录、最新消息排序、表情输入和模拟回复；视频、拍照与图片按钮提供明确的开发中反馈。
+- Matches 使用带数量的互补匹配、收藏的人与交换请求三标签页；请求按收到/发出分组，显示时间、状态及接受、拒绝、取消和双方确认完成操作。
+- Chat 仅解析由真实交换请求建立连接的后端用户 ID；消息内容暂保存在本地，视频、拍照与图片按钮提供明确的开发中反馈。
 - 技能测评覆盖 Python、摄影、英语、吉他、化学、烹饪、健身与视频剪辑，根据答题结果动态调整难度，并把客观评级与自评并列展示。
-- Settings 以分组列表呈现资料、技能、通知、隐私、收藏、帮助反馈与登出；可约时间/地点使用按周日程，可点选小时格或新增连续时段并高亮显示；所有状态保存在本地 `skillswap-mvp-v1` 命名空间。
+- Settings 以分组列表呈现资料、技能、通知、隐私、收藏、帮助反馈与登出；账号资料与技能保存到后端，界面偏好保存在本地 `skillswap-mvp-v1` 命名空间。
 - 本地头像仅接受 JPEG、PNG、WebP，原文件上限 5 MB；保存前裁切为 256×256 JPEG 预览数据。
-- 桌面/平板使用五项胶囊气泡导航，移动端使用五项底部导航；Hash 路由和本地状态均可恢复，“重置演示”只删除 SkillSwap 自己的数据。
+- 桌面/平板使用五项胶囊气泡导航，移动端使用五项底部导航；Hash 路由和本地状态均可恢复，“重置本地数据”只删除 SkillSwap 自己的数据。
 - 内置自测页：`http://localhost:4173/v4.2.html?selftest=1`。
 - 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0`、`v3.0` 保留历史基线，当前正式版本为 `v4.2`。
 
 ## 技术结构
 
-前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器。后端使用 Python 标准库 HTTP 服务与 SQLite，提供邮箱密码登录、当前会话和退出登录接口；密码以 PBKDF2-SHA256 哈希保存，会话使用 HttpOnly、SameSite Cookie。静态 CDN 失败时仍保留可读回退页面，运行时错误由恢复界面接管。
+前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器。后端使用 Python 标准库 HTTP 服务和两个独立 SQLite 数据库；密码以 PBKDF2-SHA256 哈希保存，会话使用 HttpOnly、SameSite Cookie。技能删除采用停用隐藏，用户技能写入前会验证技能仍然启用。静态 CDN 失败时仍保留可读回退页面，运行时错误由恢复界面接管。
 
 ---
 

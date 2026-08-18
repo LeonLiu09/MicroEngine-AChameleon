@@ -1,4 +1,5 @@
 from contextlib import closing
+from datetime import datetime, timezone
 import http.client
 import json
 import sqlite3
@@ -19,7 +20,7 @@ class AuthenticationDatabaseTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_startup_creates_schema_and_demo_account(self):
+    def test_startup_creates_schema_and_admin_account(self):
         self.assertTrue(self.db_path.exists())
         with closing(sqlite3.connect(self.db_path)) as connection:
             tables = {
@@ -32,7 +33,7 @@ class AuthenticationDatabaseTests(unittest.TestCase):
                 "SELECT email, password_hash FROM users WHERE email = ?",
                 ("daniel@example.com",),
             ).fetchone()
-        self.assertTrue({"users", "sessions"}.issubset(tables))
+        self.assertTrue({"users", "sessions", "login_events", "swap_requests"}.issubset(tables))
         self.assertEqual(account[0], "daniel@example.com")
         self.assertNotEqual(account[1], "SkillSwap123!")
 
@@ -72,8 +73,13 @@ class AuthenticationHttpTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp_dir.name) / "skillswap-http.db"
+        self.skills_db_path = Path(self.temp_dir.name) / "skills-http.db"
         server.initialize_database(self.db_path)
-        config = server.ServerConfig(db_path=self.db_path)
+        server.initialize_skill_database(self.skills_db_path)
+        server.seed_admin_user_skills(self.db_path)
+        config = server.ServerConfig(
+            db_path=self.db_path, skills_db_path=self.skills_db_path
+        )
         self.httpd = server.ThreadingHTTPServer(
             ("127.0.0.1", 0), server.make_handler(config)
         )
@@ -124,6 +130,9 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertEqual(status, 204)
         status, _, _ = self.request("GET", "/api/auth/me", headers={"Cookie": cookie})
         self.assertEqual(status, 401)
+        status, _, response_body = self.request("GET", "/api/community/stats")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(response_body)["onlineToday"], 1)
 
     def test_invalid_password_returns_generic_unauthorized_error(self):
         body = json.dumps({"email": "daniel@example.com", "password": "wrong"})
@@ -136,6 +145,561 @@ class AuthenticationHttpTests(unittest.TestCase):
         payload = json.loads(response_body)
         self.assertEqual(status, 401)
         self.assertEqual(payload["error"], "invalid_credentials")
+
+    def test_root_serves_backend_integrated_v42_frontend(self):
+        status, _, response_body = self.request("GET", "/")
+        page = response_body.decode("utf-8")
+        self.assertEqual(status, 200)
+        self.assertIn('registerWithEmail', page)
+        self.assertIn('/api/search?', page)
+        self.assertIn('SkillCatalogAdmin', page)
+        self.assertIn('/api/community/stats', page)
+        self.assertIn('loadSwapRequests', page)
+        self.assertNotIn('MOCK_USERS', page)
+        self.assertNotIn('DEMO_USER', page)
+
+        status, _, response_body = self.request("GET", "/index.html")
+        legacy_page = response_body.decode("utf-8")
+        self.assertEqual(status, 200)
+        self.assertIn('v4.2.html', legacy_page)
+        self.assertNotIn('MOCK_USERS', legacy_page)
+
+
+class SkillDatabaseTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        root = Path(self.temp_dir.name)
+        self.account_db = root / "accounts.db"
+        self.skills_db = root / "skills.db"
+        server.initialize_database(self.account_db)
+        server.initialize_skill_database(self.skills_db)
+        server.seed_admin_user_skills(self.account_db)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_skill_database_is_separate_seeded_and_idempotent(self):
+        self.assertNotEqual(self.account_db, self.skills_db)
+        server.initialize_skill_database(self.skills_db)
+        with closing(sqlite3.connect(self.skills_db)) as connection:
+            count = connection.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
+        with closing(sqlite3.connect(self.account_db)) as connection:
+            skill_table = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='skills'"
+            ).fetchone()
+        self.assertEqual(count, 28)
+        self.assertIsNone(skill_table)
+
+    def test_bilingual_skill_search_and_soft_delete(self):
+        self.assertEqual(
+            server.list_skills(self.skills_db, query="PY")[0]["id"], "python"
+        )
+        self.assertEqual(
+            server.list_skills(self.skills_db, query="摄影")[0]["id"],
+            "photography",
+        )
+        server.deactivate_skill(self.skills_db, "python")
+        self.assertEqual(server.list_skills(self.skills_db, query="python"), [])
+        inactive = server.list_skills(
+            self.skills_db, query="python", include_inactive=True
+        )
+        self.assertFalse(inactive[0]["isActive"])
+
+    def test_replacing_user_skills_rejects_inactive_skill(self):
+        user = server.register_user(self.account_db, "learner@example.com", "Password123!")
+        server.deactivate_skill(self.skills_db, "python")
+        with self.assertRaises(server.ApiProblem) as problem:
+            server.replace_user_skills(
+                self.account_db,
+                self.skills_db,
+                user["id"],
+                {
+                    "skillsOffered": [
+                        {"skillId": "python", "level": "beginner", "desc": {}}
+                    ],
+                    "skillsWanted": [
+                        {"skillId": "cooking", "level": "beginner", "desc": {}}
+                    ],
+                },
+            )
+        self.assertEqual(problem.exception.code, "invalid_skill")
+
+
+class SkillHttpTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        root = Path(self.temp_dir.name)
+        self.db_path = root / "accounts.db"
+        self.skills_db_path = root / "skills.db"
+        server.initialize_database(self.db_path)
+        server.initialize_skill_database(self.skills_db_path)
+        server.seed_admin_user_skills(self.db_path)
+        config = server.ServerConfig(self.db_path, self.skills_db_path)
+        self.httpd = server.ThreadingHTTPServer(
+            ("127.0.0.1", 0), server.make_handler(config)
+        )
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+        self.host, self.port = self.httpd.server_address
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        self.thread.join(timeout=2)
+        self.temp_dir.cleanup()
+
+    def request(self, method, path, payload=None, cookie=""):
+        connection = http.client.HTTPConnection(self.host, self.port, timeout=5)
+        body = json.dumps(payload) if payload is not None else None
+        headers = {}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        if cookie:
+            headers["Cookie"] = cookie
+        try:
+            connection.request(method, path, body=body, headers=headers)
+            response = connection.getresponse()
+            raw = response.read()
+            decoded = json.loads(raw) if raw else None
+            return response.status, dict(response.getheaders()), decoded
+        finally:
+            connection.close()
+
+    def login(self, email="daniel@example.com", password="SkillSwap123!"):
+        status, headers, payload = self.request(
+            "POST", "/api/auth/login", {"email": email, "password": password}
+        )
+        self.assertEqual(status, 200, payload)
+        return headers["Set-Cookie"].split(";", 1)[0]
+
+    def register(self, email):
+        status, headers, payload = self.request(
+            "POST", "/api/auth/register", {"email": email, "password": "Password123!"}
+        )
+        self.assertEqual(status, 201, payload)
+        return headers["Set-Cookie"].split(";", 1)[0], payload["user"]
+
+    def complete_member(self, email, name, offered="photography", wanted="chemistry"):
+        cookie, user = self.register(email)
+        status, _, payload = self.request(
+            "PUT",
+            "/api/users/me/profile",
+            {
+                "name": name,
+                "age": 21,
+                "countryId": "cn",
+                "cityId": "tianjin",
+                "languages": ["zh", "en"],
+                "bio": {"zh": "真实技能交换用户", "en": "A real skill swap member"},
+                "avatarDataUrl": "",
+                "profileVisibility": "community",
+                "onboardingCompleted": True,
+            },
+            cookie,
+        )
+        self.assertEqual(status, 200, payload)
+        status, _, payload = self.request(
+            "PUT",
+            "/api/users/me/skills",
+            {
+                "skillsOffered": [{"skillId": offered, "level": "advanced", "desc": {}}],
+                "skillsWanted": [{"skillId": wanted, "level": "beginner", "desc": {}}],
+            },
+            cookie,
+        )
+        self.assertEqual(status, 200, payload)
+        return cookie, user
+
+    def test_skill_endpoints_require_login_and_admin_for_writes(self):
+        status, _, _ = self.request("GET", "/api/skills")
+        self.assertEqual(status, 401)
+        user_cookie, _ = self.register("member@example.com")
+        status, _, payload = self.request(
+            "POST",
+            "/api/skills",
+            {
+                "id": "woodworking",
+                "category": "creative",
+                "names": {"zh": "木工", "en": "Woodworking"},
+            },
+            user_cookie,
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(payload["error"], "admin_required")
+
+    def test_admin_can_create_update_deactivate_and_restore_skill(self):
+        cookie = self.login()
+        create_payload = {
+            "id": "woodworking",
+            "category": "creative",
+            "names": {"zh": "木工", "en": "Woodworking"},
+        }
+        status, _, payload = self.request(
+            "POST", "/api/skills", create_payload, cookie
+        )
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["skill"]["isActive"])
+
+        status, _, payload = self.request(
+            "POST", "/api/skills", create_payload, cookie
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(payload["error"], "skill_exists")
+
+        updated = {
+            **create_payload,
+            "names": {"zh": "基础木工", "en": "Practical Woodworking"},
+        }
+        status, _, payload = self.request(
+            "PUT", "/api/skills/woodworking", updated, cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["skill"]["names"]["zh"], "基础木工")
+
+        status, _, _ = self.request(
+            "DELETE", "/api/skills/woodworking", cookie=cookie
+        )
+        self.assertEqual(status, 204)
+        status, _, payload = self.request("GET", "/api/skills?q=wood", cookie=cookie)
+        self.assertEqual(payload["skills"], [])
+
+        updated["isActive"] = True
+        status, _, payload = self.request(
+            "PUT", "/api/skills/woodworking", updated, cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["skill"]["isActive"])
+
+    def test_registration_profile_skills_and_real_user_search(self):
+        member_cookie, member = self.register("teacher@example.com")
+        profile = {
+            "name": "Real Teacher",
+            "age": 22,
+            "countryId": "cn",
+            "cityId": "beijing",
+            "languages": ["zh", "en"],
+            "bio": {"zh": "教 Python", "en": "I teach Python"},
+            "avatarDataUrl": "",
+            "profileVisibility": "community",
+            "onboardingCompleted": True,
+        }
+        status, _, _ = self.request(
+            "PUT", "/api/users/me/profile", profile, member_cookie
+        )
+        self.assertEqual(status, 200)
+        status, _, _ = self.request(
+            "PUT",
+            "/api/users/me/skills",
+            {
+                "skillsOffered": [
+                    {
+                        "skillId": "python",
+                        "level": "intermediate",
+                        "desc": {"zh": "Python 入门", "en": "Python basics"},
+                    }
+                ],
+                "skillsWanted": [
+                    {
+                        "skillId": "cooking",
+                        "level": "beginner",
+                        "desc": {"zh": "家常菜", "en": "Home cooking"},
+                    }
+                ],
+            },
+            member_cookie,
+        )
+        self.assertEqual(status, 200)
+
+        admin_cookie = self.login()
+        status, _, payload = self.request(
+            "GET", "/api/search?q=PY&country=cn&lang=en", cookie=admin_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["skills"][0]["id"], "python")
+        self.assertEqual([user["id"] for user in payload["users"]], [member["id"]])
+
+        status, _, payload = self.request(
+            "GET", "/api/search?q=cooking", cookie=admin_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertNotIn(member["id"], [user["id"] for user in payload["users"]])
+
+    def test_search_excludes_private_and_incomplete_profiles(self):
+        private_cookie, _ = self.register("private@example.com")
+        profile = {
+            "name": "Private Teacher",
+            "age": 20,
+            "countryId": "cn",
+            "cityId": "tianjin",
+            "languages": ["zh"],
+            "bio": {"zh": "摄影", "en": "Photography"},
+            "avatarDataUrl": "",
+            "profileVisibility": "private",
+            "onboardingCompleted": True,
+        }
+        self.request("PUT", "/api/users/me/profile", profile, private_cookie)
+        self.request(
+            "PUT",
+            "/api/users/me/skills",
+            {
+                "skillsOffered": [
+                    {"skillId": "photography", "level": "advanced", "desc": {}}
+                ],
+                "skillsWanted": [
+                    {"skillId": "python", "level": "beginner", "desc": {}}
+                ],
+            },
+            private_cookie,
+        )
+        incomplete_cookie, _ = self.register("incomplete@example.com")
+        self.request(
+            "PUT",
+            "/api/users/me/skills",
+            {
+                "skillsOffered": [
+                    {"skillId": "photography", "level": "advanced", "desc": {}}
+                ],
+                "skillsWanted": [
+                    {"skillId": "python", "level": "beginner", "desc": {}}
+                ],
+            },
+            incomplete_cookie,
+        )
+        status, _, payload = self.request(
+            "GET", "/api/search?q=photography", cookie=self.login()
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["users"], [])
+
+    def test_search_pagination_reports_total_and_has_more(self):
+        for index in range(2):
+            cookie, _ = self.register(f"paged-{index}@example.com")
+            self.request(
+                "PUT",
+                "/api/users/me/profile",
+                {
+                    "name": f"Paged Teacher {index}",
+                    "age": 20 + index,
+                    "countryId": "cn",
+                    "cityId": "tianjin",
+                    "languages": ["zh"],
+                    "bio": {"zh": "摄影", "en": "Photography"},
+                    "avatarDataUrl": "",
+                    "profileVisibility": "community",
+                    "onboardingCompleted": True,
+                },
+                cookie,
+            )
+            self.request(
+                "PUT",
+                "/api/users/me/skills",
+                {
+                    "skillsOffered": [
+                        {"skillId": "photography", "level": "advanced", "desc": {}}
+                    ],
+                    "skillsWanted": [
+                        {"skillId": "python", "level": "beginner", "desc": {}}
+                    ],
+                },
+                cookie,
+            )
+
+        admin_cookie = self.login()
+        status, _, first = self.request(
+            "GET", "/api/search?q=photography&limit=1&offset=0", cookie=admin_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(len(first["users"]), 1)
+        self.assertEqual(first["pagination"]["totalUsers"], 2)
+        self.assertTrue(first["pagination"]["hasMore"])
+
+        status, _, second = self.request(
+            "GET", "/api/search?q=photography&limit=1&offset=1", cookie=admin_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(len(second["users"]), 1)
+        self.assertFalse(second["pagination"]["hasMore"])
+
+    def test_swap_request_lifecycle_requires_both_completion_confirmations(self):
+        target_cookie, target = self.complete_member(
+            "swap-target@example.com", "Swap Target"
+        )
+        requester_cookie = self.login()
+        request_payload = {
+            "targetUserId": target["id"],
+            "offeredSkillId": "chemistry",
+            "requestedSkillId": "photography",
+            "meetingPolicy": "public-place",
+        }
+        status, _, created = self.request(
+            "POST", "/api/swap-requests", request_payload, requester_cookie
+        )
+        self.assertEqual(status, 201, created)
+        item = created["request"]
+        request_id = item["id"]
+        self.assertEqual(item["status"], "pending")
+        self.assertTrue(item["createdAt"].endswith("+00:00"))
+
+        status, _, duplicate = self.request(
+            "POST", "/api/swap-requests", request_payload, requester_cookie
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(duplicate["error"], "request_exists")
+
+        status, _, reversed_duplicate = self.request(
+            "POST",
+            "/api/swap-requests",
+            {
+                "targetUserId": "1",
+                "offeredSkillId": "photography",
+                "requestedSkillId": "chemistry",
+                "meetingPolicy": "public-place",
+            },
+            target_cookie,
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(reversed_duplicate["error"], "request_exists")
+
+        status, _, sent = self.request(
+            "GET", "/api/swap-requests", cookie=requester_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(sent["sent"][0]["counterpart"]["id"], target["id"])
+        status, _, received = self.request(
+            "GET", "/api/swap-requests", cookie=target_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(received["received"][0]["direction"], "received")
+
+        status, _, forbidden = self.request(
+            "POST", f"/api/swap-requests/{request_id}/accept", cookie=requester_cookie
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(forbidden["error"], "request_forbidden")
+
+        status, _, accepted = self.request(
+            "POST", f"/api/swap-requests/{request_id}/accept", cookie=target_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(accepted["request"]["status"], "accepted")
+
+        status, _, first_confirmation = self.request(
+            "POST", f"/api/swap-requests/{request_id}/complete", cookie=requester_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(first_confirmation["request"]["status"], "accepted")
+        self.assertIsNotNone(first_confirmation["request"]["requesterCompletedAt"])
+        self.assertIsNone(first_confirmation["request"]["targetCompletedAt"])
+
+        status, _, stats = self.request("GET", "/api/community/stats")
+        self.assertEqual(status, 200)
+        self.assertEqual(stats["swapsCompletedToday"], 0)
+
+        status, _, completed = self.request(
+            "POST", f"/api/swap-requests/{request_id}/complete", cookie=target_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(completed["request"]["status"], "completed")
+        self.assertIsNotNone(completed["request"]["completedAt"])
+
+        status, _, stats = self.request("GET", "/api/community/stats")
+        self.assertEqual(status, 200)
+        self.assertEqual(stats["registeredUsers"], 2)
+        self.assertEqual(stats["onlineToday"], 2)
+        self.assertEqual(stats["swapsCompletedToday"], 1)
+        trend = {item["skillId"]: item["wantCount"] for item in stats["trendingSkills"]}
+        self.assertEqual(trend["chemistry"], 1)
+
+    def test_private_requester_cannot_create_swap_request(self):
+        requester_cookie, _ = self.complete_member(
+            "private-requester@example.com", "Private Requester"
+        )
+        status, _, profile_payload = self.request(
+            "GET", "/api/users/me/profile", cookie=requester_cookie
+        )
+        self.assertEqual(status, 200)
+        private_profile = {
+            **profile_payload["profile"],
+            "profileVisibility": "private",
+            "onboardingCompleted": True,
+        }
+        status, _, _ = self.request(
+            "PUT", "/api/users/me/profile", private_profile, requester_cookie
+        )
+        self.assertEqual(status, 200)
+        status, _, payload = self.request(
+            "POST",
+            "/api/swap-requests",
+            {
+                "targetUserId": "1",
+                "offeredSkillId": "photography",
+                "requestedSkillId": "chemistry",
+                "meetingPolicy": "public-place",
+            },
+            requester_cookie,
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(payload["error"], "profile_unavailable")
+
+    def test_swap_requests_can_be_rejected_or_cancelled(self):
+        target_cookie, target = self.complete_member(
+            "request-actions@example.com", "Request Actions"
+        )
+        requester_cookie = self.login()
+        payload = {
+            "targetUserId": target["id"],
+            "offeredSkillId": "chemistry",
+            "requestedSkillId": "photography",
+        }
+        status, _, created = self.request(
+            "POST", "/api/swap-requests", payload, requester_cookie
+        )
+        self.assertEqual(status, 201)
+        request_id = created["request"]["id"]
+        status, _, rejected = self.request(
+            "POST", f"/api/swap-requests/{request_id}/reject", cookie=target_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(rejected["request"]["status"], "rejected")
+
+        status, _, created = self.request(
+            "POST", "/api/swap-requests", payload, requester_cookie
+        )
+        self.assertEqual(status, 201)
+        request_id = created["request"]["id"]
+        status, _, cancelled = self.request(
+            "POST", f"/api/swap-requests/{request_id}/cancel", cookie=requester_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(cancelled["request"]["status"], "cancelled")
+
+    def test_community_stats_use_shanghai_day_boundary_and_unique_logins(self):
+        now = datetime(2026, 8, 18, 16, 30, tzinfo=timezone.utc)
+        start_epoch, _, start_iso, _ = server._shanghai_day_bounds(now)
+        with closing(sqlite3.connect(self.db_path)) as connection, connection:
+            user_id = connection.execute(
+                "SELECT id FROM users WHERE email='daniel@example.com'"
+            ).fetchone()[0]
+            connection.execute("DELETE FROM sessions")
+            connection.execute("DELETE FROM login_events")
+            connection.executemany(
+                "INSERT INTO login_events(session_token_hash,user_id,created_at) VALUES(?,?,?)",
+                [
+                    ("same-user-1", user_id, start_epoch + 10),
+                    ("same-user-2", user_id, start_epoch + 20),
+                    ("previous-day", user_id, start_epoch - 10),
+                ],
+            )
+            connection.execute(
+                """INSERT INTO swap_requests
+                   (requester_id,target_user_id,offered_skill_id,requested_skill_id,
+                    status,created_at,requester_completed_at,target_completed_at,completed_at)
+                   VALUES(?,?,?,?,?,?,?,?,?)""",
+                (user_id, user_id + 1, "chemistry", "photography", "completed", start_iso, start_iso, start_iso, start_iso),
+            )
+        stats = server.community_stats(self.db_path, self.skills_db_path, now=now)
+        self.assertEqual(stats["onlineToday"], 1)
+        self.assertEqual(stats["swapsCompletedToday"], 1)
 
 
 if __name__ == "__main__":
