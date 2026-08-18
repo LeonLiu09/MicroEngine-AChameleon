@@ -6,13 +6,22 @@
 
 ## 本地运行
 
-项目无需安装依赖，v4.2 产品代码位于根目录的 `v4.2.html`；`index.html` 作为历史版本保留。为保证 CDN 与 Hash 路由正常工作，请在仓库目录运行静态服务器：
+项目无需安装第三方依赖，使用 Python 3.10+ 自带的 HTTP 与 SQLite 模块即可运行。v4.2 产品代码位于根目录的 `v4.2.html`；`index.html` 作为历史版本保留。在仓库目录启动服务：
 
 ```bash
-python3 -m http.server 4173
+python server.py
 ```
 
-然后打开 `http://localhost:4173/v4.2.html`。首页保留登录/创建账号入口；使用 Daniel 演示账号可体验 Discover、Search、Matches、Chat、技能测评与 Settings。
+然后打开 `http://127.0.0.1:4173/`。服务首次启动会自动创建 `data/skillswap.db`、账号表和会话表，并写入以下本地演示账号：
+
+```text
+邮箱：daniel@example.com
+密码：SkillSwap123!
+```
+
+邮箱登录已经连接后端；“体验 Daniel 演示账号”按钮仍可在不登录的情况下体验 Discover、Search、Matches、Chat、技能测评与 Settings。创建账号流程暂时保持原有本地演示行为。
+
+可通过环境变量 `SKILLSWAP_HOST`、`SKILLSWAP_PORT`、`SKILLSWAP_DB_PATH`、`SKILLSWAP_DEMO_EMAIL` 和 `SKILLSWAP_DEMO_PASSWORD` 覆盖默认配置。生产环境启用 HTTPS 时还应设置 `SKILLSWAP_SECURE_COOKIE=1`。
 
 ## 功能亮点
 
@@ -31,7 +40,7 @@ python3 -m http.server 4173
 
 ## 技术结构
 
-React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 通过固定版本 CDN 载入，无构建工具、无后端、无包管理器。静态 CDN 失败时仍保留可读回退页面，运行时错误由恢复界面接管。
+前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器。后端使用 Python 标准库 HTTP 服务与 SQLite，提供邮箱密码登录、当前会话和退出登录接口；密码以 PBKDF2-SHA256 哈希保存，会话使用 HttpOnly、SameSite Cookie。静态 CDN 失败时仍保留可读回退页面，运行时错误由恢复界面接管。
 
 ---
 

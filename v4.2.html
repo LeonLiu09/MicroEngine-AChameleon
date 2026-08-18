@@ -640,7 +640,10 @@
         email: "邮箱",
         password: "密码",
         confirmPassword: "确认密码",
-        mockLogin: "登录演示账号",
+        mockLogin: "登录",
+        loginBusy: "正在登录…",
+        loginInvalid: "邮箱或密码不正确。",
+        loginUnavailable: "暂时无法连接登录服务，请确认后端已启动。",
         noAccount: "还没有账号？",
         haveAccount: "已经有账号？",
         signupIntro: "创建一个只保存在本机的演示资料。",
@@ -791,7 +794,10 @@
         email: "Email",
         password: "Password",
         confirmPassword: "Confirm password",
-        mockLogin: "Log in to demo",
+        mockLogin: "Log in",
+        loginBusy: "Logging in…",
+        loginInvalid: "The email or password is incorrect.",
+        loginUnavailable: "The login service is unavailable. Make sure the backend is running.",
         noAccount: "New to SkillSwap?",
         haveAccount: "Already have an account?",
         signupIntro: "Create a demo profile stored only on this device.",
@@ -1320,6 +1326,34 @@
     /* 4. State and helper functions */
     function cloneData(value) {
       return JSON.parse(JSON.stringify(value));
+    }
+
+    async function loginWithEmail(email,password){
+      let response;
+      try{
+        response=await fetch("/api/auth/login",{
+          method:"POST",
+          credentials:"same-origin",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({email,password})
+        });
+      }catch(error){
+        const unavailable=new Error("Login service unavailable"); unavailable.code="unavailable"; throw unavailable;
+      }
+      let payload={};
+      try{payload=await response.json();}catch(error){/* A non-JSON error is treated as an unavailable backend. */}
+      if(!response.ok){
+        const failure=new Error(payload.message||"Login failed");
+        failure.code=response.status===401?"invalid_credentials":"unavailable";
+        throw failure;
+      }
+      if(!payload.user){const failure=new Error("Invalid login response");failure.code="unavailable";throw failure;}
+      return payload.user;
+    }
+
+    async function logoutEmailSession(){
+      try{await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin"});}
+      catch(error){console.warn("SkillSwap session logout",error);}
     }
 
     const DEFAULT_NOTIFICATIONS = Object.freeze({swapRequests:true,favoriteActivity:true,sessionReminders:true});
@@ -2514,9 +2548,10 @@
       return <aside className="auth-art"><p className="eyebrow">SKILLSWAP · 2026</p><h1>{t(language,"slogan")}</h1><p>{t(language,"localNotice")}</p></aside>;
     }
 
-    function LoginPage({ language, onDemo }) {
-      const [email,setEmail]=React.useState("daniel@example.com"); const [password,setPassword]=React.useState("password");
-      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"welcomeBack")}</h1><p className="muted">{t(language,"loginIntro")}</p><form className="auth-form" onSubmit={event=>{event.preventDefault();onDemo();}}><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={email} onChange={event=>setEmail(event.target.value)} required/></label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={password} onChange={event=>setPassword(event.target.value)} required/></label><Button type="submit">{t(language,"mockLogin")}</Button></form><div className="divider">OR</div><Button variant="rose" onClick={onDemo}>✦ {t(language,"tryDemo")}</Button><p className="muted" style={{marginTop:18}}>{t(language,"noAccount")} <button type="button" className="brand" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</button></p></section></main>;
+    function LoginPage({ language, onLogin, onDemo }) {
+      const [email,setEmail]=React.useState("daniel@example.com"); const [password,setPassword]=React.useState(""); const [busy,setBusy]=React.useState(false); const [error,setError]=React.useState("");
+      const submit=async event=>{event.preventDefault();if(busy)return;setBusy(true);setError("");try{await onLogin(email,password);}catch(failure){setError(failure.code==="invalid_credentials"?"loginInvalid":"loginUnavailable");setBusy(false);}};
+      return <main className="auth-layout"><AuthArt language={language}/><section className="auth-card glass"><p className="eyebrow">SKILLSWAP</p><h1>{t(language,"welcomeBack")}</h1><p className="muted">{t(language,"loginIntro")}</p><form className="auth-form" onSubmit={submit}><label className="field"><span>{t(language,"email")}</span><input className="input" type="email" value={email} autoComplete="email" onChange={event=>{setEmail(event.target.value);setError("");}} required disabled={busy}/></label><label className="field"><span>{t(language,"password")}</span><input className="input" type="password" value={password} autoComplete="current-password" onChange={event=>{setPassword(event.target.value);setError("");}} required disabled={busy}/></label>{error&&<p className="form-error" role="alert">{t(language,error)}</p>}<Button type="submit" disabled={busy}>{t(language,busy?"loginBusy":"mockLogin")}</Button></form><div className="divider">OR</div><Button variant="rose" onClick={onDemo} disabled={busy}>✦ {t(language,"tryDemo")}</Button><p className="muted" style={{marginTop:18}}>{t(language,"noAccount")} <button type="button" className="brand" onClick={()=>navigate("#/signup")}>{t(language,"signup")}</button></p></section></main>;
     }
 
     function SignupPage({ language, onSignup }) {
@@ -2654,7 +2689,7 @@
       {id:"support",title:{zh:"支持",en:"Support"},description:{zh:"获得帮助或管理当前会话",en:"Get help or manage this session"},rows:["help","logout"]}
     ]);
     function SettingsHome({route,state,language,updateState}){
-      const logout=()=>{if(window.confirm(t(language,"logoutConfirm"))){updateState(logoutState(state));navigate("#/");}};
+      const logout=()=>{if(window.confirm(t(language,"logoutConfirm"))){void logoutEmailSession();updateState(logoutState(state));navigate("#/");}};
       const savedRow=SETTINGS_ROWS.find(([id])=>id===route.query.saved);
       const rowById=id=>SETTINGS_ROWS.find(([rowId])=>rowId===id);
       return <main className="page">{savedRow&&<p className="notice" role="status" aria-live="polite">{t(language,"settingsSaved",{section:t(language,savedRow[1])})}</p>}<header className="page-head"><div><p className="eyebrow">SKILLSWAP SETTINGS</p><h1 className="page-title">{t(language,"settings")}</h1><p className="page-subtitle">{language==="zh"?"把资料、时间和偏好放在更清楚的位置，快速找到要改的内容。":"Your profile, schedule, and preferences—organized so everything is easy to find."}</p></div></header><div className="settings-layout"><aside className="settings-profile-card glass"><Avatar user={state.currentUser} size="large"/><div><p className="eyebrow">{language==="zh"?"当前资料":"CURRENT PROFILE"}</p><h1>{state.currentUser.name}</h1><p className="muted">{locationLabel(state.currentUser,language)}</p></div><Button variant="light" onClick={()=>navigate(`#/people/${state.currentUser.id}`)}>{t(language,"viewProfile")}</Button></aside><div className="settings-groups">{SETTINGS_GROUPS.map(group=><section className="settings-group glass" key={group.id}><header className="settings-group-head"><h2>{localized(group.title,language)}</h2><p>{localized(group.description,language)}</p></header><ul className="settings-menu">{group.rows.map(id=>{const [,title,description]=rowById(id);return <li key={id}><button className={`settings-menu-row ${id==="logout"?"danger":""}`} type="button" onClick={()=>id==="logout"?logout():navigate(`#/settings/${id}`)}><span className="settings-menu-copy"><strong>{t(language,title)}</strong><small>{localized(description,language)}</small></span><span className="settings-menu-arrow" aria-hidden="true">→</span></button></li>;})}</ul></section>)}</div></div></main>;
@@ -2867,6 +2902,7 @@
 
       const toggleLanguage = () => setState(current => ({ ...current, language: current.language === "zh" ? "en" : "zh" }));
       const demoLogin = () => { setState(current => loginAsDemoUser(current)); navigate("#/discover"); };
+      const emailLogin = async (email,password) => { const account=await loginWithEmail(email,password); setState(current => loginAsDemoUser(current)); navigate("#/discover"); return account; };
       const signup = () => {
         const newUser = {
           id: "local-user", name: "", age: 18, city: "", languages: ["zh"], avatar: "",
@@ -2879,7 +2915,7 @@
       if (route.name === "landing") return <LandingPage language={language} onLanguage={toggleLanguage} onDemo={demoLogin}/>;
 
       let page;
-      if (route.name === "login") page = <LoginPage language={language} onDemo={demoLogin}/>;
+      if (route.name === "login") page = <LoginPage language={language} onLogin={emailLogin} onDemo={demoLogin}/>;
       else if (route.name === "signup") page = <SignupPage language={language} onSignup={signup}/>;
       else if (route.name === "onboarding-profile") page = <ProfileOnboardingPage state={state} language={language} updateState={updateState}/>;
       else if (route.name === "onboarding-share") page = <SkillOnboardingPage key="share-skills" state={state} language={language} updateState={updateState}/>;
