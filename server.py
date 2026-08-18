@@ -1768,9 +1768,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
                         self.config.chat_notifier.wait(generation, wait_seconds)
                         result = chat_events(self.config.db_path, user["id"], after_id)
                     self._send_json(HTTPStatus.OK, result)
-            elif path in {"/", "/v4.2.html"}:
-                self._send_static(APP_ROOT / "v4.2.html", "text/html; charset=utf-8")
-            elif path == "/index.html":
+            elif path in {"/", "/index.html"}:
                 self._send_static(APP_ROOT / "index.html", "text/html; charset=utf-8")
             elif path in FONT_ASSETS:
                 self._send_static(FONT_ASSETS[path], "font/ttf")
@@ -1791,10 +1789,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
                 return
             self._send_not_found(path.startswith("/api/"), head=True)
             return
-        if path in {"/", "/v4.2.html"}:
-            self._send_static(APP_ROOT / "v4.2.html", "text/html; charset=utf-8", head=True)
-            return
-        if path == "/index.html":
+        if path in {"/", "/index.html"}:
             self._send_static(APP_ROOT / "index.html", "text/html; charset=utf-8", head=True)
             return
         if path in FONT_ASSETS:

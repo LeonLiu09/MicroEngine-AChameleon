@@ -236,7 +236,7 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["user"]["email"], "second@example.com")
 
-    def test_root_serves_backend_integrated_v42_frontend(self):
+    def test_root_and_index_serve_current_frontend(self):
         status, _, response_body = self.request("GET", "/")
         page = response_body.decode("utf-8")
         self.assertEqual(status, 200)
@@ -261,10 +261,15 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertNotIn('DEMO_USER', page)
 
         status, _, response_body = self.request("GET", "/index.html")
-        legacy_page = response_body.decode("utf-8")
+        index_page = response_body.decode("utf-8")
         self.assertEqual(status, 200)
-        self.assertIn('v4.2.html', legacy_page)
-        self.assertNotIn('MOCK_USERS', legacy_page)
+        self.assertEqual(index_page, page)
+        self.assertIn('SkillSwap v5.3', index_page)
+        self.assertNotIn('v4.2.html', index_page)
+        self.assertNotIn('MOCK_USERS', index_page)
+
+        status, _, _ = self.request("GET", "/v4.2.html")
+        self.assertEqual(status, 404)
 
 
 class SkillDatabaseTests(unittest.TestCase):
