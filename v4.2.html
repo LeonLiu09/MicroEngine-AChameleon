@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e89bb1">
-  <meta name="description" content="SkillSwap v5.2 — 学你所爱，分享你所会。">
-  <meta name="application-version" content="v5.2">
-  <title>SkillSwap v5.2</title>
+  <meta name="description" content="SkillSwap v5.3 — 学你所爱，分享你所会。">
+  <meta name="application-version" content="v5.3">
+  <title>SkillSwap v5.3</title>
   <style>
     @font-face {
       font-family: "HarmonyOS Sans SC";
@@ -612,9 +612,16 @@
       font-weight: 700; line-height: 1.12; letter-spacing: 0;
     }
     .hero-title { font-size: clamp(52px, 7.2vw, 92px); line-height: 1.04; letter-spacing: 0; }
+    .hero-title.slogan-title {
+      font-size: clamp(44px, 5.5vw, 74px); line-height: 1.08; white-space: normal; text-wrap: balance;
+    }
+    .hero-title.slogan-title span { margin-left: 0; text-wrap: balance; }
+    .hero-title.slogan-title.is-compact { font-size: clamp(40px, 4.8vw, 64px); }
     .gallery-date { font-size: clamp(50px, 6.2vw, 78px); line-height: 1.02; letter-spacing: 0; }
     .page-title { font-size: clamp(40px, 6vw, 70px); }
     .auth-art h1 { font-size: clamp(44px, 6vw, 68px); }
+    .auth-art .auth-slogan-title { font-size: clamp(34px, 4.2vw, 52px); line-height: 1.15; text-wrap: balance; }
+    .auth-art .auth-slogan-title.is-compact { font-size: clamp(30px, 3.8vw, 46px); }
     .auth-card h1 { font-size: clamp(36px, 4.5vw, 54px); }
     .profile-hero h1 { font-size: clamp(36px, 5vw, 58px); }
     .settings-profile-card h1 { font-size: clamp(32px, 4vw, 44px); }
@@ -677,9 +684,13 @@
 
     @media (max-width: 767px) {
       .hero-title { font-size: clamp(46px, 13vw, 66px); line-height: 1.08; white-space: normal; }
+      .hero-title.slogan-title { font-size: clamp(36px, 10.5vw, 54px); }
+      .hero-title.slogan-title.is-compact { font-size: clamp(33px, 9vw, 46px); }
       .page-title { font-size: clamp(38px, 11vw, 50px); line-height: 1.14; }
       .section-title { font-size: clamp(26px, 8vw, 34px); }
       .auth-art h1 { font-size: clamp(40px, 12vw, 56px); }
+      .auth-art .auth-slogan-title { font-size: clamp(34px, 9.5vw, 48px); }
+      .auth-art .auth-slogan-title.is-compact { font-size: clamp(31px, 8.5vw, 42px); }
       .auth-card h1 { font-size: clamp(34px, 10vw, 46px); }
       .bottom-link { min-height: 60px; padding-block: 7px; gap: 3px; line-height: 1.25; }
       .bottom-link span:last-child { display: block; padding-block: 2px; }
@@ -723,6 +734,63 @@
     const DEFAULT_LANGUAGE = "zh";
     const USER_TAB_HEADER = "X-SkillSwap-Tab-Id";
     const USER_TAB_STORAGE_KEY = "skillswap-user-tab-id";
+    const HERO_SLOGAN_LIBRARY = [
+      {
+        zh: {
+          title: ["每个人都会你不会的事。", "20 分钟，找到那个人。"],
+          subtitle: "AI 为你匹配合适的技能伙伴，把想学的内容拆成一次真实、高效的微学习。"
+        },
+        en: {
+          title: ["Everyone knows something you don't.", "Find them in 20 minutes."],
+          subtitle: "AI matches you with the right skill partner and turns what you want to learn into one focused, real-world session."
+        }
+      },
+      {
+        zh: { title: ["用 20 分钟，", "交换一种可能。"], subtitle: "教会别人一件小事，也从别人那里学会一件新事。" },
+        en: { title: ["Trade 20 minutes", "for a new possibility."], subtitle: "Teach one small thing you know—and learn something new from someone else." }
+      },
+      {
+        zh: { title: ["你教我一招，", "我带你更进一步。"], subtitle: "SkillSwap20 用 AI 连接互补技能，让每一次交流都有明确目标和真实收获。" },
+        en: { title: ["Show me what you know.", "I'll help you grow."], subtitle: "SkillSwap20 uses AI to connect complementary skills and give every exchange a clear goal and a real outcome." }
+      },
+      {
+        zh: { title: ["你想学什么，", "AI 知道该找谁。"], subtitle: "告诉我们你的目标，SkillLoop 会找到合适的人，并为你们设计一场 20 分钟学习会话。" },
+        en: { title: ["Tell AI what you want to learn.", "We'll find who can teach it."], subtitle: "Share your goal, and SkillLoop will find the right person and design a focused 20-minute session for you both." }
+      },
+      {
+        zh: { title: ["学会一件事，", "不必等一整天。"], subtitle: "把大目标变成 20 分钟的小进步，与真正懂它的人一起完成。" },
+        en: { title: ["Learning something new", "shouldn't take all day."], subtitle: "Turn a big goal into one 20-minute win—with someone who already knows how." }
+      },
+      {
+        zh: { title: ["在这里，每个人都是老师，", "也是学生。"], subtitle: "分享你会的，学习你想要的，让技能在人与人之间持续流动。" },
+        en: { title: ["Here, everyone is a teacher—", "and a learner."], subtitle: "Share what you know, learn what you need, and keep skills moving from person to person." }
+      },
+      {
+        zh: { title: ["别只搜索答案，", "找到会答案的人。"], subtitle: "与真实的人连接，在一次有目标的 20 分钟交流中学会真正有用的技能。" },
+        en: { title: ["Don't just search for answers.", "Meet the person who knows them."], subtitle: "Connect with real people and learn a useful skill through one focused 20-minute exchange." }
+      },
+      {
+        zh: { title: ["20 分钟，", "从“我想学”到“我会了”。"], subtitle: "AI 拆解目标、匹配伙伴、规划会话，让你的下一步立刻发生。" },
+        en: { title: ["From “I want to” to “I can”", "in 20 minutes."], subtitle: "AI breaks down your goal, matches your partner, and plans the session—so progress starts now." }
+      },
+      {
+        zh: { title: ["把你会的，", "传给下一个人。"], subtitle: "学习、分享、再传递——每一次 20 分钟交流，都让社区变得更有能力。" },
+        en: { title: ["Pass what you know", "to the next person."], subtitle: "Learn, share, and pass it on—every 20-minute exchange makes the community more capable." }
+      },
+      {
+        zh: { title: ["小时间，", "大交换。"], subtitle: "用 20 分钟分享一种技能，认识一个人，打开一种新的可能。" },
+        en: { title: ["Small moments.", "Big exchanges."], subtitle: "Share a skill, meet a person, and unlock a new possibility—all in 20 minutes." }
+      }
+    ];
+    const ACTIVE_HERO_SLOGAN_INDEX = Math.floor(Math.random() * HERO_SLOGAN_LIBRARY.length);
+
+    function getHeroSlogan(language) {
+      return HERO_SLOGAN_LIBRARY[ACTIVE_HERO_SLOGAN_INDEX][language === "en" ? "en" : "zh"];
+    }
+
+    function isCompactHeroSlogan(slogan, language) {
+      return slogan.title.join("").length > (language === "en" ? 48 : 22);
+    }
 
     function createUserTabId() {
       if (window.crypto?.randomUUID) return window.crypto.randomUUID().replaceAll("-", "");
@@ -803,7 +871,7 @@
         whyMatch: "为什么适合交换",
         demoLabel: "真实社区数据",
         localNotice: "账号、资料与交换请求由本地后端保存。",
-        landingEyebrow: "技能交换社区 · v5.2",
+        landingEyebrow: "技能交换社区 · v5.3",
         landingTitleA: "交换技能，",
         landingTitleB: "遇见同路人。",
         landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
@@ -958,7 +1026,7 @@
         whyMatch: "Why you match",
         demoLabel: "Live community data",
         localNotice: "Accounts, profiles, and swap requests are stored by the local backend.",
-        landingEyebrow: "Skill exchange community · v5.2",
+        landingEyebrow: "Skill exchange community · v5.3",
         landingTitleA: "Trade skills,",
         landingTitleB: "meet your people.",
         landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
@@ -1870,6 +1938,7 @@
     test("matching requires an explicit real-user directory",()=>{const self=normalizeUser({id:"1",name:"Self",cityId:"tianjin",countryId:"cn",languages:["zh"],skillsOffered:[{skillId:"chemistry",level:"advanced"}],skillsWanted:[{skillId:"photography",level:"beginner"}]});const peer=normalizeUser({id:"2",name:"Peer",cityId:"tianjin",countryId:"cn",languages:["zh"],skillsOffered:[{skillId:"photography",level:"advanced"}],skillsWanted:[{skillId:"chemistry",level:"beginner"}]});assert(findComplementaryMatches(self).length===0,"Implicit users were used");assert(findComplementaryMatches(self,[peer]).length===1,"Explicit user directory was ignored");});
     test("request time formatter returns visible text",()=>{assert(formatRequestTime("2026-08-18T08:00:00+00:00","zh",new Date("2026-08-18T12:00:00+08:00")).length>0,"Request time missing");});
     test("skill catalog retains 28 assessed skills",()=>{assert(SKILL_TEST_COVERED.length===28,"Expected 28 assessed skills");});
+    test("hero slogan library keeps 10 bilingual pairs",()=>{assert(HERO_SLOGAN_LIBRARY.length===10,"Expected 10 slogans");assert(HERO_SLOGAN_LIBRARY.every(item=>item.zh?.title?.length===2&&item.zh?.subtitle&&item.en?.title?.length===2&&item.en?.subtitle),"Incomplete bilingual slogan");assert(ACTIVE_HERO_SLOGAN_INDEX>=0&&ACTIVE_HERO_SLOGAN_INDEX<HERO_SLOGAN_LIBRARY.length,"Random slogan index out of range");});
 
     function runSelfTests() {
       return TEST_CASES.map(({ name, run }) => {
@@ -2165,11 +2234,13 @@
     /* 10. Page components */
     function LandingPage({ language, onLanguage }) {
       const brandMarks=[{id:"skill",name:"Skill"},{id:"swap",name:"Swap"},{id:"twenty",name:"20"}];
-      return <div className="landing-shell"><header className="landing-nav"><BrandWordmark language={language} onClick={()=>navigate("#/")}/><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{brandMarks.map(mark=><Avatar user={mark} key={mark.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
+      const slogan=getHeroSlogan(language);const compact=isCompactHeroSlogan(slogan,language);
+      return <div className="landing-shell"><header className="landing-nav"><BrandWordmark language={language} onClick={()=>navigate("#/")}/><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className={`hero-title slogan-title ${compact?"is-compact":""}`}>{slogan.title[0]}<span>{slogan.title[1]}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{slogan.subtitle}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{brandMarks.map(mark=><Avatar user={mark} key={mark.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
     }
 
     function AuthArt({ language }) {
-      return <aside className="auth-art"><p className="eyebrow">SKILLSWAP · 2026</p><h1>{t(language,"slogan")}</h1><p>{t(language,"localNotice")}</p></aside>;
+      const slogan=getHeroSlogan(language);const compact=isCompactHeroSlogan(slogan,language);
+      return <aside className="auth-art"><p className="eyebrow">SKILLSWAP · 2026</p><h1 className={`auth-slogan-title ${compact?"is-compact":""}`}>{slogan.title.join(" ")}</h1><p>{slogan.subtitle}</p></aside>;
     }
 
     function LoginPage({ language, onLogin }) {
