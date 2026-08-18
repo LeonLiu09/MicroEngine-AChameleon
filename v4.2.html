@@ -4,17 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e89bb1">
-  <meta name="description" content="SkillSwap v5.0 — 学你所爱，分享你所会。">
-  <meta name="application-version" content="v5.0">
-  <title>SkillSwap v5.0</title>
+  <meta name="description" content="SkillSwap v5.2 — 学你所爱，分享你所会。">
+  <meta name="application-version" content="v5.2">
+  <title>SkillSwap v5.2</title>
   <style>
+    @font-face {
+      font-family: "HarmonyOS Sans SC";
+      src: url("./assets/fonts/HarmonyOS_Sans_SC_Regular.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "HarmonyOS Sans SC";
+      src: url("./assets/fonts/HarmonyOS_Sans_SC_Medium.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 500 600;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "HarmonyOS Sans SC";
+      src: url("./assets/fonts/HarmonyOS_Sans_SC_Bold.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 700 900;
+      font-display: swap;
+    }
+
     /* 1. Design tokens */
     :root {
       --ink: #181818; --paper: #fff9fa; --deep-rose: #b85f7d; --rose: #d97091;
       --soft-rose: #eba0b5; --blush: #f7dce3; --tag-cream: #f5dfe5; --glass: rgba(255,255,255,.58);
       --line: rgba(255,255,255,.66); --muted: rgba(24,24,24,.64); --focus: #6f2243;
       --danger: #7e1838; --success: #17633c; --shadow: 0 26px 80px rgba(77,28,48,.16);
-      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font: "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
     }
 
     /* 2. Reset / base */
@@ -26,7 +48,8 @@
         radial-gradient(circle at 8% 12%, rgba(255,249,250,.76), transparent 22%),
         radial-gradient(circle at 88% 18%, rgba(255,255,255,.48), transparent 28%),
         linear-gradient(145deg, #b75f7d 0%, #e99bb1 42%, #f5cbd5 72%, #d67e9a 100%);
-      background-attachment: fixed;
+      background-attachment: fixed; font-weight: 400; font-kerning: normal; font-synthesis: none;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
     }
     body::before {
       content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .17;
@@ -63,14 +86,10 @@
     }
     .brand { border: 0; background: transparent; font-weight: 850; font-size: 21px; letter-spacing: -.04em; }
     .brand-dot { color: var(--deep-rose); }
-    .pill-logo {
-      width: 52px; height: 52px; flex: 0 0 52px; padding: 0; display: grid; place-items: center; overflow: hidden;
-      border: 0; border-radius: 50%; background: var(--deep-rose); color: white; box-shadow: 0 14px 34px rgba(111,34,67,.2);
-      animation: pill-logo-enter .52s cubic-bezier(.22,1,.36,1) both;
+    .site-wordmark {
+      min-height: 52px; padding: 0 3px; flex: 0 0 auto; display: inline-flex; align-items: center;
+      line-height: 1.2; white-space: nowrap;
     }
-    .pill-logo-mark { display: block; font-size: 18px; font-weight: 900; letter-spacing: 0; transition: transform .52s cubic-bezier(.22,1,.36,1); }
-    .pill-logo .brand-dot { color: var(--blush); }
-    .pill-logo:hover .pill-logo-mark, .pill-logo:focus-visible .pill-logo-mark { transform: rotate(360deg); }
     .top-nav {
       height: 54px; margin-left: auto; padding: 5px; display: flex; align-items: stretch; gap: 8px; overflow: hidden;
       border: 1px solid rgba(255,255,255,.74); border-radius: 999px; background: rgba(255,249,250,.62);
@@ -99,9 +118,9 @@
       border-radius: 50%; background: white; transform: translateX(-50%);
     }
     .header-actions { display: flex; align-items: center; gap: 8px; }
+    .site-header:not(.has-navigation) .header-actions { margin-left: auto; }
     .lang-toggle, .icon-btn { min-width: 44px; min-height: 44px; border: 1px solid rgba(24,24,24,.12); border-radius: 999px; background: rgba(255,255,255,.74); color: var(--ink); font-weight: 800; }
     .site-header .lang-toggle { width: 52px; height: 52px; border: 0; background: rgba(255,255,255,.9); box-shadow: 0 14px 34px rgba(77,28,48,.14); }
-    @keyframes pill-logo-enter { from { opacity: 0; transform: scale(.55) rotate(-18deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
     @keyframes pill-nav-enter { from { opacity: 0; clip-path: inset(0 100% 0 0 round 999px); } to { opacity: 1; clip-path: inset(0 0 0 0 round 999px); } }
     .page { width: min(1180px, 100%); margin: 0 auto; }
     .page-head { margin: 0 0 30px; display: flex; align-items: end; justify-content: space-between; gap: 20px; }
@@ -436,7 +455,7 @@
       body { background-attachment:scroll; }
       .app-shell, .landing-shell { padding:12px 14px calc(92px + env(safe-area-inset-bottom)); }
       .site-header { position:relative; top:0; margin-bottom:22px; min-height:48px; }
-      .pill-logo { width:48px; height:48px; flex-basis:48px; }
+      .site-wordmark { min-height:48px; padding:0; font-size:20px; }
       .site-header .lang-toggle { width:48px; height:48px; min-width:48px; min-height:48px; }
       .top-nav { display:none; } .header-actions { margin-left:auto; }
       .hero-grid, .auth-layout { grid-template-columns:1fr; }
@@ -580,6 +599,99 @@
       .chat-send-btn { order:3; }
       .test-option { padding:14px 15px; }
     }
+
+    /* 14. Local typography preview — HarmonyOS Sans SC */
+    body { font-size: 15px; line-height: 1.58; letter-spacing: .005em; }
+    h1, h2, h3, p { overflow-wrap: break-word; }
+    h1, h2, h3 { font-weight: 700; }
+    b, strong { font-weight: 600; }
+    .brand, .site-wordmark { font-weight: 700; }
+    .hero-title, .page-title, .auth-art h1, .auth-card h1,
+    .profile-hero h1, .settings-profile-card h1, .availability-head h1,
+    .static-fallback h1, .boot-shell h1, .recovery h1 {
+      font-weight: 700; line-height: 1.12; letter-spacing: 0;
+    }
+    .hero-title { font-size: clamp(52px, 7.2vw, 92px); line-height: 1.04; letter-spacing: 0; }
+    .gallery-date { font-size: clamp(50px, 6.2vw, 78px); line-height: 1.02; letter-spacing: 0; }
+    .page-title { font-size: clamp(40px, 6vw, 70px); }
+    .auth-art h1 { font-size: clamp(44px, 6vw, 68px); }
+    .auth-card h1 { font-size: clamp(36px, 4.5vw, 54px); }
+    .profile-hero h1 { font-size: clamp(36px, 5vw, 58px); }
+    .settings-profile-card h1 { font-size: clamp(32px, 4vw, 44px); }
+    .availability-head h1 { font-size: clamp(36px, 5vw, 58px); }
+    .section-title, .black-card h2, .match-panel-head h2,
+    .modal-head h2, .test-intro h2, .test-result h2,
+    .test-question-card h2, .skill-search-results h2, .starter-card h2,
+    .availability-option-card h2, .settings-choice-head h2 {
+      font-weight: 700; line-height: 1.3; letter-spacing: 0;
+    }
+    .section-title { font-size: clamp(27px, 3.6vw, 40px); }
+    .black-card h2 { font-size: 27px; }
+    .modal-head h2 { font-size: 28px; }
+    .user-name, .contact-main h3, .chat-preview h3, .chat-room-header h2,
+    .profile-skill h3, .admin-skill-row h3 {
+      font-weight: 700; line-height: 1.35; letter-spacing: 0;
+    }
+    .btn, .nav-link, .bottom-link, .lang-toggle, .icon-btn,
+    .select-trigger-value, .select-option, .field label, .field-label,
+    .mini-pill, .match-badge, .contact-status, .match-tab,
+    .settings-menu-copy strong, .choice-card, .test-option,
+    .skill-tag, .test-result-badge, .skill-badge-verified {
+      font-weight: 600; line-height: 1.4; letter-spacing: 0;
+    }
+    .eyebrow, .fallback-kicker, .mini-heading, .select-trigger-label {
+      font-weight: 600; line-height: 1.45; letter-spacing: .08em;
+    }
+    .page-subtitle, .section-note, .muted, .user-meta, .user-bio,
+    .contact-main p, .chat-preview p, .chat-room-header p,
+    .settings-menu-copy small, .settings-choice-head p,
+    .avatar-upload-copy small, .test-question-meta {
+      font-weight: 400; line-height: 1.6; letter-spacing: 0;
+    }
+    .hero-lead, .page-subtitle, .user-bio, .confirm-copy,
+    .test-intro p, .test-result p { line-height: 1.65; }
+    .site-header { min-height: 60px; }
+    .top-nav { height: 60px; padding: 6px; }
+    .nav-link { height: 46px; padding-inline: 19px; overflow: hidden; }
+    .nav-label-stack { margin-block: -4px; padding-block: 4px; }
+    .btn { min-height: 48px; padding-block: 12px; }
+    .btn-small { min-height: 42px; padding-block: 9px; }
+    .input, .select, .textarea { min-height: 52px; line-height: 1.5; }
+    .select-trigger { min-height: 62px; padding-block: 10px; }
+    .select-trigger-copy { gap: 4px; }
+    .select-trigger-label { font-size: 11px; }
+    .select-trigger-value { font-size: 14px; }
+    .select-option { min-height: 46px; padding-block: 11px; }
+    .skill-tag { min-height: 44px; padding-block: 11px; }
+    .mini-pill { padding-block: 8px; }
+    .match-badge { min-height: 36px; padding-block: 8px; }
+    .match-tab { min-height: 62px; padding-block: 10px; }
+    .settings-menu-row { min-height: 82px; padding-block: 16px; }
+    .choice-card { min-height: 64px; padding-block: 14px; }
+    .settings-action-card.btn { min-height: 68px; padding-block: 15px; }
+    .chat-list-item { padding-block: 18px; }
+    .chat-room-header { padding-block: 16px; }
+    .chat-bubble { line-height: 1.55; }
+    .chat-text-input { min-height: 50px; line-height: 1.45; }
+    .test-option { padding-block: 17px; }
+
+    @media (max-width: 767px) {
+      .hero-title { font-size: clamp(46px, 13vw, 66px); line-height: 1.08; white-space: normal; }
+      .page-title { font-size: clamp(38px, 11vw, 50px); line-height: 1.14; }
+      .section-title { font-size: clamp(26px, 8vw, 34px); }
+      .auth-art h1 { font-size: clamp(40px, 12vw, 56px); }
+      .auth-card h1 { font-size: clamp(34px, 10vw, 46px); }
+      .bottom-link { min-height: 60px; padding-block: 7px; gap: 3px; line-height: 1.25; }
+      .bottom-link span:last-child { display: block; padding-block: 2px; }
+    }
+
+    @media (max-width: 520px) {
+      .hero-title { font-size: clamp(44px, 12.5vw, 58px); }
+      .page-title { font-size: clamp(36px, 10.5vw, 44px); }
+      .nav-link, .btn, .skill-tag, .mini-pill, .match-badge { word-break: keep-all; }
+      .settings-menu-row { min-height: 78px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior:auto; }
       *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
@@ -691,7 +803,7 @@
         whyMatch: "为什么适合交换",
         demoLabel: "真实社区数据",
         localNotice: "账号、资料与交换请求由本地后端保存。",
-        landingEyebrow: "技能交换社区 · v5.0",
+        landingEyebrow: "技能交换社区 · v5.2",
         landingTitleA: "交换技能，",
         landingTitleB: "遇见同路人。",
         landingLead: "把你会的分享出去，把一直想学的带回来。SkillSwap 为每一次互相成就找到合适的人。",
@@ -846,7 +958,7 @@
         whyMatch: "Why you match",
         demoLabel: "Live community data",
         localNotice: "Accounts, profiles, and swap requests are stored by the local backend.",
-        landingEyebrow: "Skill exchange community · v5.0",
+        landingEyebrow: "Skill exchange community · v5.2",
         landingTitleA: "Trade skills,",
         landingTitleB: "meet your people.",
         landingLead: "Share what you know and bring home something you've always wanted to learn. SkillSwap finds the right person for a mutual win.",
@@ -1915,6 +2027,10 @@
       ];
     }
 
+    function BrandWordmark({ language, onClick }) {
+      return <button className="brand site-wordmark" type="button" onClick={onClick} aria-label={language === "zh" ? "SkillSwap 首页" : "SkillSwap home"} title="SkillSwap">SkillSwap<span className="brand-dot">.</span></button>;
+    }
+
     function Navigation({ language, routeName }) {
       return <nav className="top-nav" aria-label={t(language,"primaryNavigation")}>{navItems(language).map(item => {
         const active = routeName === item.route || item.route === "settings" && routeName === "settings-section" || item.route === "chat" && routeName === "chat-room";
@@ -1929,8 +2045,8 @@
     function AppShell({ children, language, routeName, onLanguage, showNavigation = true }) {
       return (
         <div className="app-shell">
-          <header className="site-header">
-            <button className="pill-logo" type="button" onClick={() => navigate(showNavigation ? "#/discover" : "#/")} aria-label={language === "zh" ? "SkillSwap 首页" : "SkillSwap home"} title="SkillSwap"><span className="pill-logo-mark">S<span className="brand-dot">.</span></span></button>
+          <header className={`site-header ${showNavigation ? "has-navigation" : "no-navigation"}`}>
+            <BrandWordmark language={language} onClick={() => navigate(showNavigation ? "#/discover" : "#/")}/>
             {showNavigation && <Navigation language={language} routeName={routeName} />}
             <div className="header-actions"><button className="lang-toggle" type="button" onClick={onLanguage} aria-label={language === "zh" ? "Switch to English" : "切换到中文"}>{language === "zh" ? "EN" : "中"}</button></div>
           </header>
@@ -2049,7 +2165,7 @@
     /* 10. Page components */
     function LandingPage({ language, onLanguage }) {
       const brandMarks=[{id:"skill",name:"Skill"},{id:"swap",name:"Swap"},{id:"twenty",name:"20"}];
-      return <div className="landing-shell"><header className="landing-nav"><button className="brand" type="button" onClick={()=>navigate("#/")}>SkillSwap<span className="brand-dot">.</span></button><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{brandMarks.map(mark=><Avatar user={mark} key={mark.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
+      return <div className="landing-shell"><header className="landing-nav"><BrandWordmark language={language} onClick={()=>navigate("#/")}/><div className="landing-actions"><button className="lang-toggle" type="button" onClick={onLanguage}>{language==="zh"?"EN":"中"}</button><Button small variant="light" onClick={()=>navigate("#/login")}>{t(language,"login")}</Button><Button small onClick={()=>navigate("#/signup")}>{t(language,"signup")}</Button></div></header><main><div className="hero-grid"><section className="hero-copy glass"><div><p className="eyebrow">{t(language,"landingEyebrow")}</p><h1 className="hero-title">{t(language,"landingTitleA")}<span>{t(language,"landingTitleB")}</span></h1></div><div className="hero-bottom"><p className="hero-lead">{t(language,"landingLead")}</p></div></section><aside className="hero-side"><section className="gallery-card"><p className="gallery-date">Skill<span>Swap</span></p><div className="gallery-orbit" aria-hidden="true"/><div className="avatar-stack">{brandMarks.map(mark=><Avatar user={mark} key={mark.id}/>)}</div></section><CommunityStats language={language}/></aside></div><SkillMarquee language={language}/></main></div>;
     }
 
     function AuthArt({ language }) {

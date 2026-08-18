@@ -33,6 +33,14 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from zoneinfo import ZoneInfo
 
 APP_ROOT = Path(__file__).resolve().parent
+FONT_ASSETS = {
+    f"/assets/fonts/{name}": APP_ROOT / "assets" / "fonts" / name
+    for name in (
+        "HarmonyOS_Sans_SC_Regular.ttf",
+        "HarmonyOS_Sans_SC_Medium.ttf",
+        "HarmonyOS_Sans_SC_Bold.ttf",
+    )
+}
 DEFAULT_DB_PATH = APP_ROOT / "data" / "skillswap.db"
 DEFAULT_SKILLS_DB_PATH = APP_ROOT / "data" / "skills.db"
 SESSION_COOKIE = "skillswap_session"
@@ -1764,6 +1772,8 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
                 self._send_static(APP_ROOT / "v4.2.html", "text/html; charset=utf-8")
             elif path == "/index.html":
                 self._send_static(APP_ROOT / "index.html", "text/html; charset=utf-8")
+            elif path in FONT_ASSETS:
+                self._send_static(FONT_ASSETS[path], "font/ttf")
             else:
                 self._send_not_found(path.startswith("/api/"))
         except ApiProblem as problem:
@@ -1786,6 +1796,9 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             return
         if path == "/index.html":
             self._send_static(APP_ROOT / "index.html", "text/html; charset=utf-8", head=True)
+            return
+        if path in FONT_ASSETS:
+            self._send_static(FONT_ASSETS[path], "font/ttf", head=True)
             return
         self._send_not_found(path.startswith("/api/"), head=True)
 
