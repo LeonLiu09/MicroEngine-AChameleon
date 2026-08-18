@@ -5,6 +5,7 @@ import json
 import sqlite3
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -43,6 +44,29 @@ class AuthenticationDatabaseTests(unittest.TestCase):
         with closing(sqlite3.connect(self.db_path)) as connection:
             count = connection.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         self.assertEqual(count, 1)
+
+    def test_v4_migration_creates_backup_and_preserves_existing_data(self):
+        with closing(sqlite3.connect(self.db_path)) as connection, connection:
+            connection.execute("DROP TABLE chat_messages")
+            connection.execute(
+                "UPDATE users SET display_name='Preserved Daniel' WHERE email='daniel@example.com'"
+            )
+        backup = server.initialize_database(self.db_path)
+        self.assertIsNotNone(backup)
+        self.assertTrue(backup.exists())
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            name = connection.execute(
+                "SELECT display_name FROM users WHERE email='daniel@example.com'"
+            ).fetchone()[0]
+            chat_table = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chat_messages'"
+            ).fetchone()
+            version = connection.execute(
+                "SELECT MAX(version) FROM schema_migrations"
+            ).fetchone()[0]
+        self.assertEqual(name, "Preserved Daniel")
+        self.assertIsNotNone(chat_table)
+        self.assertEqual(version, 4)
 
     def test_valid_email_login_is_case_insensitive(self):
         user = server.authenticate_user(
@@ -221,6 +245,9 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertIn('admin-dashboard', page)
         self.assertIn('/api/community/stats', page)
         self.assertIn('loadSwapRequests', page)
+        self.assertIn('/api/chat/events?', page)
+        self.assertIn('sendBackendChatMessage', page)
+        self.assertNotIn('CHAT_REPLIES', page)
         self.assertNotIn('MOCK_USERS', page)
         self.assertNotIn('DEMO_USER', page)
 
@@ -801,6 +828,262 @@ class SkillHttpTests(unittest.TestCase):
         stats = server.community_stats(self.db_path, self.skills_db_path, now=now)
         self.assertEqual(stats["onlineToday"], 1)
         self.assertEqual(stats["swapsCompletedToday"], 1)
+
+
+class ChatHttpTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.temp_dir.name) / "chat.db"
+        self.skills_db_path = Path(self.temp_dir.name) / "skills.db"
+        server.initialize_database(self.db_path)
+        server.initialize_skill_database(self.skills_db_path)
+        config = server.ServerConfig(self.db_path, self.skills_db_path)
+        self.httpd = server.ThreadingHTTPServer(
+            ("127.0.0.1", 0), server.make_handler(config)
+        )
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+        self.host, self.port = self.httpd.server_address
+        self.first_cookie, self.first_id = self.login(
+            "daniel@example.com", "SkillSwap123!"
+        )
+        self.second_cookie, self.second_id = self.register("chat-peer@example.com")
+        self.third_cookie, self.third_id = self.register("not-connected@example.com")
+        self.connect(self.first_id, self.second_id)
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        self.thread.join(timeout=2)
+        self.temp_dir.cleanup()
+
+    def request(self, method, path, payload=None, cookie="", timeout=5):
+        connection = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
+        body = json.dumps(payload) if payload is not None else None
+        headers = {"Cookie": cookie} if cookie else {}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        try:
+            connection.request(method, path, body=body, headers=headers)
+            response = connection.getresponse()
+            raw = response.read()
+            return response.status, json.loads(raw) if raw else None
+        finally:
+            connection.close()
+
+    def login(self, email, password):
+        status, payload = self.request(
+            "POST", "/api/auth/login", {"email": email, "password": password}
+        )
+        self.assertEqual(status, 200, payload)
+        user = server.authenticate_user(self.db_path, email, password)
+        token = server.create_session(self.db_path, user["id"])
+        return f"{server.SESSION_COOKIE}={token}", user["id"]
+
+    def register(self, email):
+        status, payload = self.request(
+            "POST",
+            "/api/auth/register",
+            {"email": email, "password": "Password123!"},
+        )
+        self.assertEqual(status, 201, payload)
+        user = server.authenticate_user(self.db_path, email, "Password123!")
+        token = server.create_session(self.db_path, user["id"])
+        return f"{server.SESSION_COOKIE}={token}", user["id"]
+
+    def connect(self, first_id, second_id, status="accepted"):
+        now = server.utc_now_iso()
+        with closing(server.connect_database(self.db_path)) as connection, connection:
+            connection.execute(
+                """INSERT INTO swap_requests
+                   (requester_id,target_user_id,offered_skill_id,requested_skill_id,
+                    status,created_at,accepted_at)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (first_id, second_id, "chemistry", "photography", status, now, now),
+            )
+
+    def send(self, cookie, recipient_id, text, client_id):
+        return self.request(
+            "POST",
+            "/api/chat/messages",
+            {
+                "recipientUserId": recipient_id,
+                "text": text,
+                "clientMessageId": client_id,
+            },
+            cookie,
+        )
+
+    def test_chat_endpoints_require_login_and_partner_access(self):
+        status, payload = self.request("GET", "/api/chat/conversations")
+        self.assertEqual(status, 401)
+        status, payload = self.send(
+            self.first_cookie, self.third_id, "hello", "notconnected0001"
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(payload["error"], "chat_not_connected")
+        status, payload = self.send(
+            self.first_cookie, self.first_id, "hello", "selfmessage000001"
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"], "self_message")
+
+    def test_send_is_idempotent_and_rejects_conflicting_retry(self):
+        client_id = "idempotentmessage01"
+        status, first = self.send(self.first_cookie, self.second_id, "  hello  ", client_id)
+        self.assertEqual(status, 201)
+        self.assertEqual(first["message"]["text"], "hello")
+        status, duplicate = self.send(
+            self.first_cookie, self.second_id, "hello", client_id
+        )
+        self.assertEqual(status, 200)
+        self.assertFalse(duplicate["created"])
+        self.assertEqual(duplicate["message"]["id"], first["message"]["id"])
+        status, conflict = self.send(
+            self.first_cookie, self.second_id, "different", client_id
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(conflict["error"], "client_message_id_conflict")
+
+    def test_message_validation_and_inactive_recipient(self):
+        status, _ = self.send(
+            self.first_cookie, self.second_id, "   ", "emptymessage00001"
+        )
+        self.assertEqual(status, 400)
+        status, _ = self.send(
+            self.first_cookie, self.second_id, "x" * 2001, "toolongmessage001"
+        )
+        self.assertEqual(status, 400)
+        with closing(server.connect_database(self.db_path)) as connection, connection:
+            connection.execute(
+                "UPDATE users SET is_active=0 WHERE id=?", (self.second_id,)
+            )
+        status, payload = self.send(
+            self.first_cookie, self.second_id, "hello", "inactiveuser00001"
+        )
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"], "user_not_found")
+
+    def test_history_order_pagination_and_conversation_preview(self):
+        ids = []
+        for index in range(3):
+            status, payload = self.send(
+                self.first_cookie,
+                self.second_id,
+                f"message {index}",
+                f"orderedmessage{index:04d}",
+            )
+            self.assertEqual(status, 201)
+            ids.append(payload["message"]["id"])
+        status, history = self.request(
+            "GET",
+            f"/api/chat/messages?peerId={self.second_id}&limit=2",
+            cookie=self.first_cookie,
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual([item["id"] for item in history["messages"]], ids[1:])
+        self.assertTrue(history["hasMore"])
+        status, older = self.request(
+            "GET",
+            f"/api/chat/messages?peerId={self.second_id}&beforeId={history['nextBeforeId']}&limit=2",
+            cookie=self.first_cookie,
+        )
+        self.assertEqual([item["id"] for item in older["messages"]], ids[:1])
+        status, conversations = self.request(
+            "GET", "/api/chat/conversations", cookie=self.second_cookie
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(conversations["conversations"][0]["lastMessage"]["text"], "message 2")
+
+    def test_expired_messages_are_hidden_and_physically_purged_on_send(self):
+        with closing(server.connect_database(self.db_path)) as connection, connection:
+            connection.execute(
+                """INSERT INTO chat_messages
+                   (sender_id,recipient_id,body,client_message_id,created_at)
+                   VALUES (?,?,?,?,?)""",
+                (
+                    self.first_id,
+                    self.second_id,
+                    "expired",
+                    "expiredmessage001",
+                    int(time.time()) - server.CHAT_RETENTION_SECONDS - 5,
+                ),
+            )
+        status, history = self.request(
+            "GET",
+            f"/api/chat/messages?peerId={self.second_id}",
+            cookie=self.first_cookie,
+        )
+        self.assertEqual(history["messages"], [])
+        self.send(self.first_cookie, self.second_id, "fresh", "freshmessage00001")
+        with closing(server.connect_database(self.db_path)) as connection:
+            expired = connection.execute(
+                "SELECT COUNT(*) FROM chat_messages WHERE body='expired'"
+            ).fetchone()[0]
+        self.assertEqual(expired, 0)
+
+    def test_message_history_survives_server_restart(self):
+        status, sent = self.send(
+            self.first_cookie,
+            self.second_id,
+            "persist after restart",
+            "restartmessage001",
+        )
+        self.assertEqual(status, 201)
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        self.thread.join(timeout=2)
+
+        server.initialize_database(self.db_path)
+        config = server.ServerConfig(self.db_path, self.skills_db_path)
+        self.httpd = server.ThreadingHTTPServer(
+            ("127.0.0.1", 0), server.make_handler(config)
+        )
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+        self.host, self.port = self.httpd.server_address
+
+        status, history = self.request(
+            "GET",
+            f"/api/chat/messages?peerId={self.second_id}",
+            cookie=self.first_cookie,
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(history["messages"][-1]["id"], sent["message"]["id"])
+        self.assertEqual(history["messages"][-1]["text"], "persist after restart")
+
+    def test_long_poll_wakes_for_new_message_and_times_out_empty(self):
+        started = threading.Event()
+        result = {}
+
+        def poll():
+            started.set()
+            result["response"] = self.request(
+                "GET", "/api/chat/events?afterId=0&wait=2", cookie=self.second_cookie
+            )
+
+        thread = threading.Thread(target=poll)
+        thread.start()
+        started.wait(1)
+        time.sleep(0.1)
+        self.send(self.first_cookie, self.second_id, "wake", "longpollmessage01")
+        thread.join(timeout=2)
+        self.assertFalse(thread.is_alive())
+        status, payload = result["response"]
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["messages"][0]["text"], "wake")
+
+        after_id = payload["cursor"]
+        started_at = time.monotonic()
+        status, timeout_payload = self.request(
+            "GET",
+            f"/api/chat/events?afterId={after_id}&wait=0.1",
+            cookie=self.second_cookie,
+        )
+        elapsed = time.monotonic() - started_at
+        self.assertEqual(status, 200)
+        self.assertEqual(timeout_payload["messages"], [])
+        self.assertGreaterEqual(elapsed, 0.08)
 
 
 if __name__ == "__main__":

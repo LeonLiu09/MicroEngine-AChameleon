@@ -19,7 +19,7 @@ python server.py
 密码：SkillSwap123!
 ```
 
-邮箱注册、登录、个人资料、“能教/想学”技能、综合搜索和交换请求均已连接后端。登录页的 Daniel 按钮只预填邮箱，仍必须输入真实密码。开发验收请以服务提供的 `v4.2.html` 为入口；GitHub Pages 只托管静态页面，不能运行本次 Python 后端。
+邮箱注册、登录、个人资料、“能教/想学”技能、综合搜索、交换请求和实时文字聊天均已连接后端。登录页的 Daniel 按钮只预填邮箱，仍必须输入真实密码。开发验收请以服务提供的 `v4.2.html` 为入口；GitHub Pages 只托管静态页面，不能运行 Python 后端，因此静态演示无法单独使用账号和聊天功能。
 
 可通过环境变量 `SKILLSWAP_HOST`、`SKILLSWAP_PORT`、`SKILLSWAP_DB_PATH`、`SKILLSWAP_SKILLS_DB_PATH`、`SKILLSWAP_ADMIN_EMAIL` 和 `SKILLSWAP_ADMIN_PASSWORD` 覆盖默认配置；旧的 `SKILLSWAP_DEMO_*` 变量仍兼容。命令行也支持 `--db` 和 `--skills-db`。生产环境启用 HTTPS 时还应设置 `SKILLSWAP_SECURE_COOKIE=1`。
 
@@ -30,6 +30,7 @@ python server.py
 - 技能目录：主站只读 `GET /api/skills`、`GET /api/skills/{id}`；管理员通过 `/api/admin/skills` 及 `/api/admin/skills/{id}` 新增、编辑、停用或恢复
 - 综合搜索：`GET /api/search?q=&level=&country=&city=&lang=&sort=&limit=&offset=`
 - 交换请求：`POST/GET /api/swap-requests`，以及 `accept`、`reject`、`cancel`、`complete` 状态操作
+- 实时聊天：`GET /api/chat/conversations`、`GET /api/chat/messages`、`GET /api/chat/events`、`POST /api/chat/messages`；仅已接受或已完成交换的双方可用
 - 社区统计：公开只读 `GET /api/community/stats`，返回今日登录、真实用户、今日完成交换与热门想学技能
 
 除注册、登录、健康检查和社区统计外，接口均要求有效会话。运行测试：
@@ -62,7 +63,7 @@ SKILLSWAP_ADMIN_SYNC=1
 - 强制结束普通或管理员登录会话。
 - 搜索和筛选用户、技能、会话与审计记录。
 
-后台不会返回密码哈希、密码盐、会话令牌哈希或 CSRF 哈希，也不提供任意 SQL 和原始表编辑。用户资料、技能和交换请求位于 SQLite；收藏、聊天内容、界面偏好和技能测评仍保存在各浏览器的 `localStorage`。
+后台不会返回密码哈希、密码盐、会话令牌哈希或 CSRF 哈希，也不提供任意 SQL 和原始表编辑。用户资料、技能、交换请求和最近 30 天文字消息位于 SQLite；收藏、界面偏好和技能测评保存在各浏览器标签页的本地状态中。
 
 ## 功能亮点
 
@@ -71,7 +72,7 @@ SKILLSWAP_ADMIN_SYNC=1
 - Discover、搜索和推荐只显示 SQLite 中资料完整且社区可见的真实账号；无结果时显示正式空状态，不回退模拟人物。
 - Search 将关键词搜索与筛选控件分成两个独立区域；国家、城市、语言、水平和排序使用支持键盘操作的自定义下拉。城市依赖国家，切换国家会清空城市；关键词通过按钮或 Enter 提交，其余筛选即时更新。
 - Matches 使用带数量的互补匹配、收藏的人与交换请求三标签页；请求按收到/发出分组，显示时间、状态及接受、拒绝、取消和双方确认完成操作。
-- Chat 仅解析由真实交换请求建立连接的后端用户 ID；消息内容暂保存在本地，视频、拍照与图片按钮提供明确的开发中反馈。
+- Chat 使用 SQLite 保存最近 30 天的真实账号文字消息，并通过最长 25 秒的 HTTP 长轮询即时续连；客户端消息 ID 可防止网络重试产生重复消息。仅已接受或已完成交换的双方可发送，视频、拍照与图片按钮仍提供明确的开发中反馈且不会上传媒体。
 - 技能测评覆盖 Python、摄影、英语、吉他、化学、烹饪、健身与视频剪辑，根据答题结果动态调整难度，并把客观评级与自评并列展示。
 - Settings 以分组列表呈现资料、技能、通知、隐私、收藏、帮助反馈与登出；账号资料与技能保存到后端，界面偏好保存在本地 `skillswap-mvp-v1` 命名空间。
 - 本地头像仅接受 JPEG、PNG、WebP，原文件上限 5 MB；保存前裁切为 256×256 JPEG 预览数据。
@@ -81,7 +82,7 @@ SKILLSWAP_ADMIN_SYNC=1
 
 ## 技术结构
 
-前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器；独立管理员后台使用原生 HTML、CSS 与 JavaScript。后端使用 Python 标准库 HTTP 服务和账号、技能两个 SQLite 数据库，启动时原生读取 `.env`。密码以 PBKDF2-SHA256 哈希保存，普通与管理员会话使用隔离的 HttpOnly Cookie，管理员写操作额外验证同源请求和 CSRF Token。技能删除采用停用隐藏，用户技能写入前会验证技能仍然启用；旧数据库升级前会自动备份并将旧 `is_admin` 权限迁移为角色。静态 CDN 失败时主站仍保留可读回退页面，运行时错误由恢复界面接管。
+前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器；独立管理员后台使用原生 HTML、CSS 与 JavaScript。后端使用 Python 标准库 HTTP 服务和账号、技能两个 SQLite 数据库，启动时原生读取 `.env`。密码以 PBKDF2-SHA256 哈希保存，普通与管理员会话使用隔离的 HttpOnly Cookie，管理员写操作额外验证同源请求和 CSRF Token。聊天使用 SQLite、线程条件通知和 HTTP 长轮询，不增加第三方依赖；数据库升级到 v4 时会先备份并新增消息表，不改写现有业务数据。技能删除采用停用隐藏，用户技能写入前会验证技能仍然启用；旧数据库升级前会自动备份并将旧 `is_admin` 权限迁移为角色。静态 CDN 失败时主站仍保留可读回退页面，运行时错误由恢复界面接管。
 
 ---
 

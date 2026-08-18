@@ -1297,6 +1297,10 @@
     async function loadSwapRequests(){return apiRequest("/api/swap-requests");}
     async function createBackendSwapRequest(payload){return (await apiRequest("/api/swap-requests",{method:"POST",body:JSON.stringify(payload)})).request;}
     async function actOnBackendSwapRequest(requestId,action){return (await apiRequest(`/api/swap-requests/${encodeURIComponent(requestId)}/${action}`,{method:"POST"})).request;}
+    async function loadChatConversations(){return apiRequest("/api/chat/conversations");}
+    async function loadChatMessages(peerId,beforeId=null,limit=50){const params=new URLSearchParams({peerId:String(peerId),limit:String(limit)});if(beforeId)params.set("beforeId",String(beforeId));return apiRequest(`/api/chat/messages?${params}`);}
+    async function pollChatEvents(afterId,signal){return apiRequest(`/api/chat/events?afterId=${encodeURIComponent(afterId)}&wait=25`,{signal});}
+    async function sendBackendChatMessage(recipientUserId,text,clientMessageId){return apiRequest("/api/chat/messages",{method:"POST",body:JSON.stringify({recipientUserId,text,clientMessageId})});}
 
     const DEFAULT_NOTIFICATIONS = Object.freeze({swapRequests:true,favoriteActivity:true,sessionReminders:true});
     const DEFAULT_PRIVACY = Object.freeze({profileVisibility:"community",showOnlineStatus:true,publicPlacesOnly:true});
@@ -1336,7 +1340,7 @@
       const currentUserId=currentUser?.id||"";
       const favorites=Array.isArray(value.favorites)?value.favorites.filter(item=>typeof item==="string"&&item!==currentUserId):[];
       const mode=loggedIn?"backend":"";
-      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,connections:Array.isArray(value.connections)?[...new Set(value.connections.filter(item=>typeof item==="string"&&item!==currentUserId))]:[],conversations:value.conversations&&typeof value.conversations==="object"?cloneData(value.conversations):{},skillAssessments:value.skillAssessments&&typeof value.skillAssessments==="object"?cloneData(value.skillAssessments):{},editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn,mode}};
+      return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,connections:Array.isArray(value.connections)?[...new Set(value.connections.filter(item=>typeof item==="string"&&item!==currentUserId))]:[],conversations:{},skillAssessments:value.skillAssessments&&typeof value.skillAssessments==="object"?cloneData(value.skillAssessments):{},editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn,mode}};
     }
 
     function loadState(storage = window.sessionStorage) {
@@ -2252,16 +2256,12 @@
 
     /* 14. Chat feature */
     const EMOJI_SET = Object.freeze(["😀","😂","😊","😍","🤔","👍","👏","🙏","💪","🎉","❤️","✨","🔥","✅","🤝","📚","🎵","📸","💻","🎨","🍳","🏸","⭐","🥳","😅","🤗","👀","💯","🎯","☕"]);
-    const CHAT_REPLIES = Object.freeze({ zh:["好的！","收到～","听起来不错！","我们可以约个时间细聊","没问题！","哈哈，可以呀","我也是这么想的","那太好了！","方便的时候告诉我你的时间～","期待我们的交换！"], en:["Sounds good!","Got it!","Great idea!","We can schedule a time to chat","No problem!","Haha, sure!","I was thinking the same","That's awesome!","Let me know your availability~","Looking forward to our swap!"] });
-
-    function appendChatMessage(state, userId, message) {
-      const conversation = state.conversations?.[userId] || { messages: [] };
-      const nextConversation = { messages: [...conversation.messages, message], lastMessage: message.text, lastMessageAt: message.at };
-      return { ...state, conversations: { ...state.conversations, [userId]: nextConversation } };
+    function mergeChatMessages(current=[],incoming=[]) {
+      const byId=new Map(current.map(message=>[String(message.id),message]));
+      incoming.forEach(message=>{if(message&&message.id!==undefined)byId.set(String(message.id),message);});
+      return [...byId.values()].sort((a,b)=>Number(a.id)-Number(b.id));
     }
-    function canChatWith(state, userId) {
-      return state.connections.includes(userId) && Boolean(getUserById(userId, state.currentUser));
-    }
+    function createClientMessageId(){return window.crypto?.randomUUID?.()||`msg_${Date.now()}_${Math.random().toString(36).slice(2,14)}`;}
     function formatChatTime(iso, language) {
       if (!iso) return "";
       const date = new Date(iso);
@@ -2271,43 +2271,51 @@
       return sameDay ? time : date.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" });
     }
 
-    function ChatListPage({ state, language }) {
-      const items = state.connections.map(id => ({ user: getUserById(id, state.currentUser), conversation: state.conversations?.[id] })).filter(item => item.user).sort((a,b)=>(b.conversation?.lastMessageAt||"").localeCompare(a.conversation?.lastMessageAt||""));
-      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP CHAT</p><h1 className="page-title">{t(language,"chatTitle")}</h1><p className="page-subtitle">{t(language,"chatEmptySub")}</p></div></header>{items.length?<div className="chat-list">{items.map(({user,conversation})=><button type="button" className="chat-list-item glass" key={user.id} onClick={()=>navigate(`#/chat/${user.id}`,{from:"#/chat"})}><Avatar user={user}/><div className="chat-preview"><h3>{user.name}</h3><p>{conversation?.lastMessage||t(language,"chatEmptySub")}</p></div><span className="chat-time">{formatChatTime(conversation?.lastMessageAt,language)}</span></button>)}</div>:<EmptyState title={t(language,"noConversations")} body={t(language,"chatEmpty")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</main>;
+    function ChatListPage({ language, conversations, chatStatus }) {
+      return <main className="page"><header className="page-head"><div><p className="eyebrow">SKILLSWAP CHAT</p><h1 className="page-title">{t(language,"chatTitle")}</h1><p className="page-subtitle">{chatStatus==="reconnecting"?(language==="zh"?"连接中断，正在自动重连…":"Connection lost. Reconnecting…"):t(language,"chatEmptySub")}</p></div></header>{conversations.length?<div className="chat-list">{conversations.map(conversation=>{const user=conversation.peer;const last=conversation.lastMessage;return <button type="button" className="chat-list-item glass" key={user.id} onClick={()=>navigate(`#/chat/${user.id}`,{from:"#/chat"})}><Avatar user={user}/><div className="chat-preview"><h3>{user.name}</h3><p>{last?.text||t(language,"chatEmptySub")}</p></div><span className="chat-time">{formatChatTime(last?.createdAt,language)}</span></button>;})}</div>:chatStatus==="loading"?<p className="notice" role="status">{language==="zh"?"正在加载会话…":"Loading conversations…"}</p>:<EmptyState title={t(language,"noConversations")} body={t(language,"chatEmpty")} actionLabel={t(language,"discover")} onAction={()=>navigate("#/discover")}/>}</main>;
     }
 
-    function ChatRoomPage({ route, state, language, updateState }) {
-      const user = getUserById(route.params.userId, state.currentUser);
+    function ChatRoomPage({ route, state, language, conversations, messagesByPeer, historyMeta, chatStatus, onLoadHistory, onSend }) {
+      const peerId=String(route.params.userId);
+      const serverConversation=conversations.find(item=>String(item.peer?.id)===peerId);
+      const user=serverConversation?.peer||getUserById(peerId,state.currentUser);
       const [text, setText] = React.useState("");
       const [showEmoji, setShowEmoji] = React.useState(false);
       const [toast, setToast] = React.useState("");
+      const [busy,setBusy]=React.useState(false);
+      const [error,setError]=React.useState("");
       const messagesEndRef = React.useRef(null);
-      const conversation = state.conversations?.[route.params.userId];
-      const isConnected = canChatWith(state, route.params.userId);
-      React.useEffect(()=>{ messagesEndRef.current?.scrollIntoView({ behavior:"smooth" }); },[conversation?.messages?.length]);
-      if (!isConnected) return <main className="page"><EmptyState title={t(language,"userNotFound")} body={t(language,"chatEmptySub")} actionLabel={t(language,"back")} onAction={()=>window.location.hash=route.query.from||"#/chat"}/></main>;
+      const pendingIdRef=React.useRef("");
+      const messages=messagesByPeer[peerId]||[];
+      const meta=historyMeta[peerId]||{};
+      const isConnected=Boolean(serverConversation)||state.connections.includes(peerId);
+      React.useEffect(()=>{if(isConnected)void onLoadHistory(peerId,null).catch(failure=>setError(failure.message));},[peerId,isConnected,onLoadHistory]);
+      React.useEffect(()=>{ messagesEndRef.current?.scrollIntoView({ behavior:"smooth" }); },[messages.length]);
+      if (!user&&chatStatus==="loading") return <main className="page"><p className="notice" role="status">{language==="zh"?"正在加载聊天…":"Loading chat…"}</p></main>;
+      if (!isConnected||!user) return <main className="page"><EmptyState title={t(language,"userNotFound")} body={t(language,"chatEmptySub")} actionLabel={t(language,"back")} onAction={()=>window.location.hash=route.query.from||"#/chat"}/></main>;
       const showToast = message => { setToast(message); window.setTimeout(()=>setToast(""), 1800); };
-      const send = () => {
+      const send = async () => {
         const trimmed = text.trim();
-        if (!trimmed) return;
-        const message = { from: state.currentUser.id, text: trimmed, at: new Date().toISOString() };
-        updateState(current => appendChatMessage(current, user.id, message));
-        setText(""); setShowEmoji(false);
-        const replyText = CHAT_REPLIES[language][Math.floor(Math.random()*CHAT_REPLIES[language].length)];
-        window.setTimeout(()=>{ updateState(current => appendChatMessage(current, user.id, { from: user.id, text: replyText, at: new Date().toISOString() })); }, 1200);
+        if (!trimmed||busy) return;
+        setBusy(true);setError("");
+        const clientMessageId=pendingIdRef.current||createClientMessageId();pendingIdRef.current=clientMessageId;
+        try{await onSend(peerId,trimmed,clientMessageId);setText("");setShowEmoji(false);pendingIdRef.current="";}
+        catch(failure){setError(failure.message||t(language,"requestFailed"));}
+        finally{setBusy(false);}
       };
       return <main className="page"><div className="button-row" style={{marginBottom:14}}><Button variant="light" small onClick={()=>window.location.hash=route.query.from||"#/chat"}>← {t(language,"chatTitle")}</Button></div><div className="chat-room">
-        <div className="chat-room-header glass"><Avatar user={user}/><div><h2>{user.name}</h2><p>{t(language,"connectedChat")}</p></div></div>
-        <div className="chat-messages" aria-live="polite">{(conversation?.messages||[]).map((message,index)=><div key={index} className={`chat-bubble ${message.from===state.currentUser.id?"sent":"received"}`}>{message.text}<div className="chat-bubble-time">{formatChatTime(message.at,language)}</div></div>)}<div ref={messagesEndRef}/></div>
+        <div className="chat-room-header glass"><Avatar user={user}/><div><h2>{user.name}</h2><p>{chatStatus==="reconnecting"?(language==="zh"?"正在自动重连…":"Reconnecting…"):t(language,"connectedChat")}</p></div></div>
+        <div className="chat-messages" aria-live="polite">{meta.hasMore&&<button type="button" className="button light small" disabled={meta.loading} onClick={()=>void onLoadHistory(peerId,meta.nextBeforeId).catch(failure=>setError(failure.message))}>{meta.loading?(language==="zh"?"加载中…":"Loading…"):(language==="zh"?"加载更早消息":"Load older messages")}</button>}{messages.map(message=><div key={message.id} className={`chat-bubble ${String(message.senderId)===String(state.currentUser.id)?"sent":"received"}`}>{message.text}<div className="chat-bubble-time">{formatChatTime(message.createdAt,language)}</div></div>)}<div ref={messagesEndRef}/></div>
         {toast&&<p className="notice" role="status" style={{marginTop:10}}>{t(language,"comingSoon")}: {toast}</p>}
+        {error&&<p className="form-error" role="alert" style={{marginTop:10}}>{error}</p>}
         {showEmoji&&<div className="emoji-picker">{EMOJI_SET.map(emoji=><button type="button" className="emoji-btn" key={emoji} onClick={()=>setText(current=>current+emoji)}>{emoji}</button>)}</div>}
         <div className="chat-input-area glass">
           <button type="button" className="chat-action-btn" aria-label={t(language,"videoCall")} title={t(language,"videoCall")} onClick={()=>showToast(t(language,"videoCall"))}>📹</button>
           <button type="button" className="chat-action-btn" aria-label={t(language,"takePhoto")} title={t(language,"takePhoto")} onClick={()=>showToast(t(language,"takePhoto"))}>📷</button>
           <button type="button" className="chat-action-btn" aria-label={t(language,"sendImage")} title={t(language,"sendImage")} onClick={()=>showToast(t(language,"sendImage"))}>🖼️</button>
           <button type="button" className="chat-action-btn" aria-label={t(language,"emoji")} title={t(language,"emoji")} onClick={()=>setShowEmoji(current=>!current)}>😊</button>
-          <input className="chat-text-input" value={text} placeholder={t(language,"chatPlaceholder")} onChange={event=>setText(event.target.value)} onKeyDown={event=>{if(event.key==="Enter")send();}} aria-label={t(language,"chatPlaceholder")}/>
-          <button type="button" className="chat-send-btn" onClick={send} disabled={!text.trim()} aria-label={t(language,"sendMessage")}>➤</button>
+          <input className="chat-text-input" maxLength="2000" value={text} placeholder={t(language,"chatPlaceholder")} onChange={event=>{setText(event.target.value);pendingIdRef.current="";setError("");}} onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();void send();}}} aria-label={t(language,"chatPlaceholder")}/>
+          <button type="button" className="chat-send-btn" onClick={()=>void send()} disabled={!text.trim()||busy} aria-label={t(language,"sendMessage")}>{busy?"…":"➤"}</button>
         </div>
       </div></main>;
     }
@@ -2400,6 +2408,11 @@
       const [directoryStatus,setDirectoryStatus]=React.useState("idle");
       const [swapRequests,setSwapRequests]=React.useState({received:[],sent:[]});
       const [requestsStatus,setRequestsStatus]=React.useState("idle");
+      const [chatConversations,setChatConversations]=React.useState([]);
+      const [chatMessagesByPeer,setChatMessagesByPeer]=React.useState({});
+      const [chatHistoryMeta,setChatHistoryMeta]=React.useState({});
+      const [chatStatus,setChatStatus]=React.useState("idle");
+      const chatCursorRef=React.useRef(0);
       const route = useHashRoute();
       const updateState = React.useCallback(next => {
         setState(current => normalizeState(typeof next === "function" ? next(current) : next));
@@ -2408,8 +2421,22 @@
 
       const refreshCommunityUsers=React.useCallback(async()=>{setDirectoryStatus("loading");try{const users=await loadAllBackendUsers();setCommunityUsers(users);setDirectoryStatus("ready");return users;}catch(error){setCommunityUsers([]);setDirectoryStatus("error");throw error;}},[]);
       const refreshSwapRequests=React.useCallback(async()=>{setRequestsStatus("loading");try{const payload=await loadSwapRequests();const all=[...(payload.received||[]),...(payload.sent||[])];all.forEach(item=>{if(item.counterpart)BACKEND_USERS.set(String(item.counterpart.id),normalizeUser(item.counterpart));});setSwapRequests(payload);setRequestsStatus("ready");const connected=[...new Set(all.filter(item=>["accepted","completed"].includes(item.status)&&item.counterpart).map(item=>String(item.counterpart.id)))];setState(current=>current.connections.join("|")===connected.join("|")?current:normalizeState({...current,connections:connected}));return payload;}catch(error){setSwapRequests({received:[],sent:[]});setRequestsStatus("error");throw error;}},[]);
+      const refreshChatConversations=React.useCallback(async()=>{const payload=await loadChatConversations();const conversations=(payload.conversations||[]).map(item=>{const peer=normalizeUser(item.peer);BACKEND_USERS.set(String(peer.id),peer);return {...item,peer};});setChatConversations(conversations);return conversations;},[]);
+      const applyChatMessages=React.useCallback(messages=>{if(!messages?.length||!state.currentUser?.id)return;const currentUserId=String(state.currentUser.id);setChatMessagesByPeer(current=>{const next={...current};messages.forEach(message=>{const peerId=String(message.senderId)===currentUserId?String(message.recipientId):String(message.senderId);next[peerId]=mergeChatMessages(next[peerId]||[],[message]);});return next;});setChatConversations(current=>{const next=current.map(item=>({...item}));messages.forEach(message=>{const peerId=String(message.senderId)===currentUserId?String(message.recipientId):String(message.senderId);const index=next.findIndex(item=>String(item.peer?.id)===peerId);if(index>=0&&(!next[index].lastMessage||Number(message.id)>=Number(next[index].lastMessage.id)))next[index]={...next[index],lastMessage:message};});return next.sort((a,b)=>Number(b.lastMessage?.id||0)-Number(a.lastMessage?.id||0));});},[state.currentUser?.id]);
+      const loadChatHistory=React.useCallback(async(peerId,beforeId=null)=>{setChatHistoryMeta(current=>({...current,[peerId]:{...(current[peerId]||{}),loading:true}}));try{const payload=await loadChatMessages(peerId,beforeId,50);if(payload.peer){const peer=normalizeUser(payload.peer);BACKEND_USERS.set(String(peer.id),peer);setChatConversations(current=>current.some(item=>String(item.peer?.id)===String(peerId))?current:[...current,{peer,lastMessage:null}]);}setChatMessagesByPeer(current=>({...current,[peerId]:mergeChatMessages(current[peerId]||[],payload.messages||[])}));setChatHistoryMeta(current=>({...current,[peerId]:{loading:false,hasMore:Boolean(payload.hasMore),nextBeforeId:payload.nextBeforeId||null}}));return payload;}catch(error){setChatHistoryMeta(current=>({...current,[peerId]:{...(current[peerId]||{}),loading:false}}));throw error;}},[]);
+      const sendChat=React.useCallback(async(peerId,text,clientMessageId)=>{const payload=await sendBackendChatMessage(peerId,text,clientMessageId);applyChatMessages([payload.message]);return payload.message;},[applyChatMessages]);
 
       React.useEffect(()=>{if(state.isAuthenticated&&state.onboardingCompleted&&state.session?.mode==="backend"){void refreshCommunityUsers().catch(()=>{});void refreshSwapRequests().catch(()=>{});}else{BACKEND_USERS.clear();setCommunityUsers([]);setSwapRequests({received:[],sent:[]});setDirectoryStatus("idle");setRequestsStatus("idle");}},[state.isAuthenticated,state.onboardingCompleted,state.currentUser?.id,refreshCommunityUsers,refreshSwapRequests]);
+
+      React.useEffect(()=>{if(state.isAuthenticated&&state.onboardingCompleted&&state.session?.mode==="backend")void refreshChatConversations().catch(()=>setChatStatus("reconnecting"));},[state.connections.join("|"),state.isAuthenticated,state.onboardingCompleted,refreshChatConversations]);
+
+      React.useEffect(()=>{
+        if(!state.isAuthenticated||!state.onboardingCompleted||state.session?.mode!=="backend"){setChatConversations([]);setChatMessagesByPeer({});setChatHistoryMeta({});setChatStatus("idle");chatCursorRef.current=0;return;}
+        let stopped=false;const controller=new AbortController();chatCursorRef.current=0;
+        const run=async()=>{setChatStatus("loading");try{await refreshChatConversations();}catch(error){if(!stopped)setChatStatus("reconnecting");}
+          while(!stopped){try{const payload=await pollChatEvents(chatCursorRef.current,controller.signal);if(stopped)return;chatCursorRef.current=Math.max(chatCursorRef.current,Number(payload.cursor||0));applyChatMessages(payload.messages||[]);setChatStatus("ready");}catch(error){if(stopped||controller.signal.aborted)return;setChatStatus("reconnecting");await new Promise(resolve=>window.setTimeout(resolve,1500));}}
+        };void run();return()=>{stopped=true;controller.abort();};
+      },[state.isAuthenticated,state.onboardingCompleted,state.currentUser?.id,refreshChatConversations,applyChatMessages]);
 
       React.useEffect(() => {
         saveState(state);
@@ -2452,8 +2479,8 @@
       else if (route.name === "discover") page = <DiscoverPage state={state} language={language} updateState={updateState} communityUsers={communityUsers} directoryStatus={directoryStatus}/>;
       else if (route.name === "search") page = <SearchPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "matches") page = <MatchesPage route={route} state={state} language={language} updateState={updateState} communityUsers={communityUsers} swapRequests={swapRequests} requestsStatus={requestsStatus} refreshSwapRequests={refreshSwapRequests}/>;
-      else if (route.name === "chat") page = <ChatListPage state={state} language={language}/>;
-      else if (route.name === "chat-room") page = <ChatRoomPage route={route} state={state} language={language} updateState={updateState}/>;
+      else if (route.name === "chat") page = <ChatListPage language={language} conversations={chatConversations} chatStatus={chatStatus}/>;
+      else if (route.name === "chat-room") page = <ChatRoomPage route={route} state={state} language={language} conversations={chatConversations} messagesByPeer={chatMessagesByPeer} historyMeta={chatHistoryMeta} chatStatus={chatStatus} onLoadHistory={loadChatHistory} onSend={sendChat}/>;
       else if (route.name === "skill-test") page = <SkillTestSelectPage state={state} language={language}/>;
       else if (route.name === "skill-test-skill") page = <SkillTestRunPage route={route} state={state} language={language} updateState={updateState}/>;
       else if (route.name === "settings") page = <SettingsHome route={route} state={state} language={language} updateState={updateState}/>;

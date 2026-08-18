@@ -47,12 +47,17 @@ MAX_JSON_BODY_BYTES = 6 * 1024 * 1024
 SKILL_CATEGORIES = {"technology", "creative", "academic", "sports", "lifestyle"}
 SKILL_LEVELS = {"complete-beginner", "beginner", "intermediate", "advanced"}
 SKILL_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 ADMIN_RATE_LIMIT_ATTEMPTS = 5
 ADMIN_RATE_LIMIT_WINDOW_SECONDS = 15 * 60
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 DOTENV_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 USER_TAB_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+CHAT_CLIENT_MESSAGE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+CHAT_RETENTION_SECONDS = 30 * 24 * 60 * 60
+CHAT_MESSAGE_MAX_LENGTH = 2000
+CHAT_LONG_POLL_MAX_SECONDS = 25
+CHAT_PAGE_MAX = 100
 
 SEED_SKILLS = (
     ("photography", "creative", "摄影", "Photography"),
@@ -227,6 +232,7 @@ def _needs_admin_migration(db_path: Path) -> bool:
                 session_columns
             )
             or not _table_exists(connection, "admin_audit_log")
+            or not _table_exists(connection, "chat_messages")
         )
 
 
@@ -409,6 +415,25 @@ def initialize_database(
                 ON swap_requests(requester_id,target_user_id,offered_skill_id,requested_skill_id)
                 WHERE status IN ('pending','accepted');
 
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                recipient_id INTEGER NOT NULL,
+                body TEXT NOT NULL,
+                client_message_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                CHECK (sender_id != recipient_id),
+                UNIQUE (sender_id, client_message_id),
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_sender_time
+                ON chat_messages(sender_id, created_at DESC, id DESC);
+            CREATE INDEX IF NOT EXISTS idx_chat_recipient_time
+                ON chat_messages(recipient_id, created_at DESC, id DESC);
+            CREATE INDEX IF NOT EXISTS idx_chat_created_at
+                ON chat_messages(created_at);
+
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
                 applied_at TEXT NOT NULL
@@ -476,6 +501,10 @@ def initialize_database(
         connection.execute(
             "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
             (CURRENT_SCHEMA_VERSION, utc_now_iso()),
+        )
+        connection.execute(
+            "DELETE FROM chat_messages WHERE created_at < ?",
+            (int(time.time()) - CHAT_RETENTION_SECONDS,),
         )
         existing = connection.execute(
             "SELECT id FROM users WHERE email = ?", (normalize_email(demo_email),)
@@ -1314,6 +1343,200 @@ def update_swap_request(
     return _serialize_swap_request(account_db, skills_db, updated, actor_id)
 
 
+def _chat_cutoff(now: int | None = None) -> int:
+    return (int(time.time()) if now is None else now) - CHAT_RETENTION_SECONDS
+
+
+def purge_expired_chat_messages(account_db: Path, *, now: int | None = None) -> int:
+    with closing(connect_database(account_db)) as connection, connection:
+        cursor = connection.execute(
+            "DELETE FROM chat_messages WHERE created_at < ?", (_chat_cutoff(now),)
+        )
+        return cursor.rowcount
+
+
+def _serialize_chat_message(row: sqlite3.Row) -> dict[str, Any]:
+    created_at = datetime.fromtimestamp(row["created_at"], timezone.utc).isoformat(
+        timespec="seconds"
+    )
+    return {
+        "id": row["id"],
+        "senderId": str(row["sender_id"]),
+        "recipientId": str(row["recipient_id"]),
+        "text": row["body"],
+        "clientMessageId": row["client_message_id"],
+        "createdAt": created_at,
+    }
+
+
+def _chat_peer(connection: sqlite3.Connection, user_id: int, peer_id: int) -> sqlite3.Row:
+    if peer_id == user_id:
+        raise ApiProblem(HTTPStatus.BAD_REQUEST, "self_message", "You cannot message yourself.")
+    peer = connection.execute(
+        "SELECT id FROM users WHERE id=? AND is_active=1 AND role='user'", (peer_id,)
+    ).fetchone()
+    if peer is None:
+        raise ApiProblem(HTTPStatus.NOT_FOUND, "user_not_found", "The requested user is unavailable.")
+    connected = connection.execute(
+        """SELECT 1 FROM swap_requests
+           WHERE status IN ('accepted','completed') AND (
+             (requester_id=? AND target_user_id=?) OR
+             (requester_id=? AND target_user_id=?)
+           ) LIMIT 1""",
+        (user_id, peer_id, peer_id, user_id),
+    ).fetchone()
+    if connected is None:
+        raise ApiProblem(
+            HTTPStatus.FORBIDDEN,
+            "chat_not_connected",
+            "Chat is available only to accepted or completed swap partners.",
+        )
+    return peer
+
+
+def list_chat_conversations(
+    account_db: Path, skills_db: Path, user_id: int
+) -> dict[str, Any]:
+    cutoff = _chat_cutoff()
+    with closing(connect_database(account_db)) as connection:
+        peer_rows = connection.execute(
+            """SELECT DISTINCT
+                     CASE WHEN requester_id=? THEN target_user_id ELSE requester_id END AS peer_id
+               FROM swap_requests
+               WHERE status IN ('accepted','completed')
+                 AND (requester_id=? OR target_user_id=?)""",
+            (user_id, user_id, user_id),
+        ).fetchall()
+        conversations: list[dict[str, Any]] = []
+        for peer_row in peer_rows:
+            peer_id = peer_row["peer_id"]
+            peer = _request_user_card(account_db, skills_db, peer_id)
+            if peer is None:
+                continue
+            latest = connection.execute(
+                """SELECT * FROM chat_messages
+                   WHERE created_at>=? AND (
+                     (sender_id=? AND recipient_id=?) OR
+                     (sender_id=? AND recipient_id=?)
+                   ) ORDER BY id DESC LIMIT 1""",
+                (cutoff, user_id, peer_id, peer_id, user_id),
+            ).fetchone()
+            conversations.append(
+                {
+                    "peer": peer,
+                    "lastMessage": _serialize_chat_message(latest) if latest else None,
+                }
+            )
+    conversations.sort(
+        key=lambda item: item["lastMessage"]["id"] if item["lastMessage"] else 0,
+        reverse=True,
+    )
+    return {"conversations": conversations}
+
+
+def list_chat_messages(
+    account_db: Path,
+    skills_db: Path,
+    user_id: int,
+    peer_id: int,
+    *,
+    before_id: int | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    with closing(connect_database(account_db)) as connection:
+        _chat_peer(connection, user_id, peer_id)
+        parameters: list[Any] = [_chat_cutoff(), user_id, peer_id, peer_id, user_id]
+        before_clause = ""
+        if before_id is not None:
+            before_clause = " AND id < ?"
+            parameters.append(before_id)
+        parameters.append(limit + 1)
+        rows = connection.execute(
+            f"""SELECT * FROM chat_messages
+                WHERE created_at>=? AND (
+                  (sender_id=? AND recipient_id=?) OR
+                  (sender_id=? AND recipient_id=?)
+                ){before_clause}
+                ORDER BY id DESC LIMIT ?""",
+            parameters,
+        ).fetchall()
+    has_more = len(rows) > limit
+    page = rows[:limit]
+    page.reverse()
+    peer = _request_user_card(account_db, skills_db, peer_id)
+    return {
+        "peer": peer,
+        "messages": [_serialize_chat_message(row) for row in page],
+        "hasMore": has_more,
+        "nextBeforeId": page[0]["id"] if has_more and page else None,
+    }
+
+
+def chat_events(account_db: Path, user_id: int, after_id: int) -> dict[str, Any]:
+    with closing(connect_database(account_db)) as connection:
+        rows = connection.execute(
+            """SELECT * FROM chat_messages
+               WHERE id>? AND created_at>=? AND (sender_id=? OR recipient_id=?)
+               ORDER BY id ASC LIMIT ?""",
+            (after_id, _chat_cutoff(), user_id, user_id, CHAT_PAGE_MAX),
+        ).fetchall()
+    messages = [_serialize_chat_message(row) for row in rows]
+    return {"messages": messages, "cursor": messages[-1]["id"] if messages else after_id}
+
+
+def create_chat_message(
+    account_db: Path, sender_id: int, payload: dict[str, Any]
+) -> tuple[dict[str, Any], bool]:
+    recipient_id = _parse_user_id(payload.get("recipientUserId"), "recipientUserId")
+    text = payload.get("text")
+    client_message_id = payload.get("clientMessageId")
+    if not isinstance(text, str):
+        raise ApiProblem(HTTPStatus.BAD_REQUEST, "invalid_message", "Message text is required.")
+    text = text.strip()
+    if not text or len(text) > CHAT_MESSAGE_MAX_LENGTH:
+        raise ApiProblem(
+            HTTPStatus.BAD_REQUEST,
+            "invalid_message",
+            f"Message text must contain 1 to {CHAT_MESSAGE_MAX_LENGTH} characters.",
+        )
+    if not isinstance(client_message_id, str) or not CHAT_CLIENT_MESSAGE_ID_PATTERN.fullmatch(
+        client_message_id
+    ):
+        raise ApiProblem(
+            HTTPStatus.BAD_REQUEST,
+            "invalid_client_message_id",
+            "clientMessageId must contain 16 to 64 letters, numbers, underscores, or hyphens.",
+        )
+    now = int(time.time())
+    with closing(connect_database(account_db)) as connection, connection:
+        _chat_peer(connection, sender_id, recipient_id)
+        connection.execute(
+            "DELETE FROM chat_messages WHERE created_at < ?", (_chat_cutoff(now),)
+        )
+        existing = connection.execute(
+            "SELECT * FROM chat_messages WHERE sender_id=? AND client_message_id=?",
+            (sender_id, client_message_id),
+        ).fetchone()
+        if existing is not None:
+            if existing["recipient_id"] != recipient_id or existing["body"] != text:
+                raise ApiProblem(
+                    HTTPStatus.CONFLICT,
+                    "client_message_id_conflict",
+                    "clientMessageId has already been used for a different message.",
+                )
+            return _serialize_chat_message(existing), False
+        cursor = connection.execute(
+            """INSERT INTO chat_messages
+               (sender_id,recipient_id,body,client_message_id,created_at)
+               VALUES (?,?,?,?,?)""",
+            (sender_id, recipient_id, text, client_message_id, now),
+        )
+        row = connection.execute(
+            "SELECT * FROM chat_messages WHERE id=?", (cursor.lastrowid,)
+        ).fetchone()
+    return _serialize_chat_message(row), True
+
+
 def _shanghai_day_bounds(now: datetime | None = None) -> tuple[int, int, str, str]:
     current = (now or datetime.now(timezone.utc)).astimezone(ZoneInfo("Asia/Shanghai"))
     start_local = current.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1390,6 +1613,29 @@ class AdminLoginRateLimiter:
             self._attempts.pop(key, None)
 
 
+class ChatNotifier:
+    """Wake long-poll requests after a message commits in this server process."""
+
+    def __init__(self) -> None:
+        self._condition = threading.Condition()
+        self._generation = 0
+
+    def snapshot(self) -> int:
+        with self._condition:
+            return self._generation
+
+    def notify(self) -> None:
+        with self._condition:
+            self._generation += 1
+            self._condition.notify_all()
+
+    def wait(self, generation: int, timeout: float) -> None:
+        with self._condition:
+            self._condition.wait_for(
+                lambda: self._generation != generation, timeout=timeout
+            )
+
+
 @dataclass(frozen=True)
 class ServerConfig:
     db_path: Path
@@ -1398,6 +1644,7 @@ class ServerConfig:
     admin_rate_limiter: AdminLoginRateLimiter = field(
         default_factory=AdminLoginRateLimiter, compare=False
     )
+    chat_notifier: ChatNotifier = field(default_factory=ChatNotifier, compare=False)
 
 
 class SkillSwapHandler(BaseHTTPRequestHandler):
@@ -1449,6 +1696,70 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             elif path == "/api/swap-requests":
                 user = self._require_user()
                 if user is not None: self._send_json(HTTPStatus.OK, list_swap_requests(self.config.db_path, self.config.skills_db_path, user["id"]))
+            elif path == "/api/chat/conversations":
+                user = self._require_user()
+                if user is not None:
+                    self._send_json(
+                        HTTPStatus.OK,
+                        list_chat_conversations(
+                            self.config.db_path, self.config.skills_db_path, user["id"]
+                        ),
+                    )
+            elif path == "/api/chat/messages":
+                user = self._require_user()
+                if user is not None:
+                    params = parse_qs(parsed.query)
+                    peer_id = _parse_user_id(params.get("peerId", [None])[0], "peerId")
+                    try:
+                        before_raw = params.get("beforeId", [""])[0]
+                        before_id = int(before_raw) if before_raw else None
+                        limit = int(params.get("limit", ["50"])[0])
+                    except ValueError as error:
+                        raise ApiProblem(
+                            HTTPStatus.BAD_REQUEST,
+                            "invalid_pagination",
+                            "beforeId and limit must be integers.",
+                        ) from error
+                    if before_id is not None and before_id <= 0:
+                        raise ApiProblem(HTTPStatus.BAD_REQUEST, "invalid_pagination", "beforeId must be positive.")
+                    limit = min(CHAT_PAGE_MAX, max(1, limit))
+                    self._send_json(
+                        HTTPStatus.OK,
+                        list_chat_messages(
+                            self.config.db_path,
+                            self.config.skills_db_path,
+                            user["id"],
+                            peer_id,
+                            before_id=before_id,
+                            limit=limit,
+                        ),
+                    )
+            elif path == "/api/chat/events":
+                user = self._require_user()
+                if user is not None:
+                    params = parse_qs(parsed.query)
+                    try:
+                        after_id = int(params.get("afterId", ["0"])[0])
+                        wait_seconds = float(params.get("wait", [str(CHAT_LONG_POLL_MAX_SECONDS)])[0])
+                    except ValueError as error:
+                        raise ApiProblem(
+                            HTTPStatus.BAD_REQUEST,
+                            "invalid_poll_parameters",
+                            "afterId and wait must be numeric.",
+                        ) from error
+                    if after_id < 0 or wait_seconds < 0:
+                        raise ApiProblem(
+                            HTTPStatus.BAD_REQUEST,
+                            "invalid_poll_parameters",
+                            "afterId and wait cannot be negative.",
+                        )
+                    wait_seconds = min(float(CHAT_LONG_POLL_MAX_SECONDS), wait_seconds)
+                    generation = self.config.chat_notifier.snapshot()
+                    result = chat_events(self.config.db_path, user["id"], after_id)
+                    if not result["messages"] and wait_seconds:
+                        self.config.chat_notifier.wait(generation, wait_seconds)
+                        result = chat_events(self.config.db_path, user["id"], after_id)
+                    self._send_json(HTTPStatus.OK, result)
             elif path in {"/", "/v4.2.html"}:
                 self._send_static(APP_ROOT / "v4.2.html", "text/html; charset=utf-8")
             elif path == "/index.html":
@@ -1498,6 +1809,20 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
                 if user is not None: payload = self._read_json_body()
                 if user is not None and payload is not None:
                     self._send_json(HTTPStatus.CREATED, {"request": create_swap_request(self.config.db_path, self.config.skills_db_path, user["id"], payload)})
+            elif path == "/api/chat/messages":
+                user, payload = self._require_user(), None
+                if user is not None:
+                    payload = self._read_json_body()
+                if user is not None and payload is not None:
+                    message, created = create_chat_message(
+                        self.config.db_path, user["id"], payload
+                    )
+                    if created:
+                        self.config.chat_notifier.notify()
+                    self._send_json(
+                        HTTPStatus.CREATED if created else HTTPStatus.OK,
+                        {"message": message, "created": created},
+                    )
             elif request_action:
                 user = self._require_user()
                 if user is not None:
