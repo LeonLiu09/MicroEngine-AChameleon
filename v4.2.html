@@ -609,6 +609,49 @@
     const STORAGE_KEY = "skillswap-mvp-v1";
     const STATE_VERSION = 2;
     const DEFAULT_LANGUAGE = "zh";
+    const USER_TAB_HEADER = "X-SkillSwap-Tab-Id";
+    const USER_TAB_STORAGE_KEY = "skillswap-user-tab-id";
+
+    function createUserTabId() {
+      if (window.crypto?.randomUUID) return window.crypto.randomUUID().replaceAll("-", "");
+      const bytes = new Uint8Array(16);
+      window.crypto.getRandomValues(bytes);
+      return Array.from(bytes, value => value.toString(16).padStart(2, "0")).join("");
+    }
+
+    let userTabId = window.sessionStorage.getItem(USER_TAB_STORAGE_KEY) || createUserTabId();
+    window.sessionStorage.setItem(USER_TAB_STORAGE_KEY, userTabId);
+    const userTabNonce = createUserTabId();
+    let resolveUserTabReady;
+    const userTabReady = new Promise(resolve => { resolveUserTabReady = resolve; });
+
+    if (window.BroadcastChannel) {
+      let duplicateTabId = false;
+      const userTabChannel = new BroadcastChannel("skillswap-user-tabs");
+      userTabChannel.addEventListener("message", event => {
+        const message = event.data || {};
+        if (message.type === "probe" && message.tabId === userTabId && message.nonce !== userTabNonce) {
+          userTabChannel.postMessage({type:"occupied",tabId:userTabId,target:message.nonce});
+        } else if (message.type === "occupied" && message.tabId === userTabId && message.target === userTabNonce) {
+          duplicateTabId = true;
+        }
+      });
+      userTabChannel.postMessage({type:"probe",tabId:userTabId,nonce:userTabNonce});
+      window.setTimeout(() => {
+        if (duplicateTabId) {
+          userTabId = createUserTabId();
+          window.sessionStorage.setItem(USER_TAB_STORAGE_KEY, userTabId);
+        }
+        resolveUserTabReady();
+      }, 60);
+    } else {
+      resolveUserTabReady();
+    }
+
+    async function userSessionHeaders(headers = {}) {
+      await userTabReady;
+      return {...headers,[USER_TAB_HEADER]:userTabId};
+    }
 
     /* 2. Translation dictionaries */
     const TRANSLATIONS = Object.freeze({
@@ -1202,7 +1245,7 @@
         response=await fetch("/api/auth/login",{
           method:"POST",
           credentials:"same-origin",
-          headers:{"Content-Type":"application/json"},
+          headers:await userSessionHeaders({"Content-Type":"application/json"}),
           body:JSON.stringify({email,password})
         });
       }catch(error){
@@ -1220,13 +1263,13 @@
     }
 
     async function logoutEmailSession(){
-      try{await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin"});}
+      try{await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin",headers:await userSessionHeaders()});}
       catch(error){console.warn("SkillSwap session logout",error);}
     }
 
     async function apiRequest(path,options={}){
       let response;
-      try{response=await fetch(path,{credentials:"same-origin",...options,headers:{...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});}
+      try{response=await fetch(path,{credentials:"same-origin",...options,headers:await userSessionHeaders({...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})})});}
       catch(error){const failure=new Error("Backend unavailable");failure.code="unavailable";throw failure;}
       let payload=null;
       if(response.status!==204){try{payload=await response.json();}catch(error){payload=null;}}
@@ -1296,7 +1339,7 @@
       return {...base,version:STATE_VERSION,language:["zh","en"].includes(value.language)?value.language:base.language,isAuthenticated:loggedIn,currentUser,onboardingCompleted:value.onboardingCompleted===true,onboardingStep:["profile","share","learn","complete"].includes(value.onboardingStep)?value.onboardingStep:base.onboardingStep,favorites,connections:Array.isArray(value.connections)?[...new Set(value.connections.filter(item=>typeof item==="string"&&item!==currentUserId))]:[],conversations:value.conversations&&typeof value.conversations==="object"?cloneData(value.conversations):{},skillAssessments:value.skillAssessments&&typeof value.skillAssessments==="object"?cloneData(value.skillAssessments):{},editedSkills:Array.isArray(value.editedSkills)?cloneData(value.editedSkills):[],recentSearches:Array.isArray(value.recentSearches)?[...new Set(value.recentSearches.filter(item=>typeof item==="string"))].slice(0,5):[],notificationSettings:{...base.notificationSettings,...Object.fromEntries(Object.entries(value.notificationSettings||{}).filter(([,item])=>typeof item==="boolean"))},privacySettings:{...base.privacySettings,...value.privacySettings},feedbackEntries:Array.isArray(value.feedbackEntries)?value.feedbackEntries.filter(item=>item&&typeof item==="object"):[],session:{loggedIn,mode}};
     }
 
-    function loadState(storage = window.localStorage) {
+    function loadState(storage = window.sessionStorage) {
       try {
         const raw = storage.getItem(STORAGE_KEY);
         if (!raw) return createInitialState();
@@ -1309,7 +1352,7 @@
       }
     }
 
-    function saveState(state, storage = window.localStorage) {
+    function saveState(state, storage = window.sessionStorage) {
       try {
         storage.setItem(STORAGE_KEY, JSON.stringify(normalizeState(state)));
         return true;
@@ -1355,7 +1398,7 @@
 
     function logoutState(state){return normalizeState({...createInitialState(),language:state.language,notificationSettings:state.notificationSettings,privacySettings:state.privacySettings,feedbackEntries:state.feedbackEntries});}
 
-    function clearDemoStorage(storage = window.localStorage) {
+    function clearDemoStorage(storage = window.sessionStorage) {
       try {
         storage.removeItem(STORAGE_KEY);
         return true;

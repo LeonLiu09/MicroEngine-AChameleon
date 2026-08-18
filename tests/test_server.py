@@ -147,6 +147,71 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertEqual(status, 401)
         self.assertEqual(payload["error"], "invalid_credentials")
 
+    def test_tabs_keep_independent_user_sessions(self):
+        server.register_user(self.db_path, "second@example.com", "Password123!")
+        first_tab = "a" * 32
+        second_tab = "b" * 32
+
+        status, first_headers, _ = self.request(
+            "POST",
+            "/api/auth/login",
+            json.dumps(
+                {"email": "daniel@example.com", "password": "SkillSwap123!"}
+            ),
+            {"Content-Type": "application/json", server.USER_TAB_HEADER: first_tab},
+        )
+        self.assertEqual(status, 200)
+        first_cookie = first_headers["Set-Cookie"].split(";", 1)[0]
+        self.assertTrue(first_cookie.startswith(f"{server.SESSION_COOKIE}_{first_tab}="))
+
+        status, second_headers, _ = self.request(
+            "POST",
+            "/api/auth/login",
+            json.dumps(
+                {"email": "second@example.com", "password": "Password123!"}
+            ),
+            {"Content-Type": "application/json", server.USER_TAB_HEADER: second_tab},
+        )
+        self.assertEqual(status, 200)
+        second_cookie = second_headers["Set-Cookie"].split(";", 1)[0]
+        all_cookies = f"{first_cookie}; {second_cookie}"
+
+        status, _, body = self.request(
+            "GET",
+            "/api/auth/me",
+            headers={"Cookie": all_cookies, server.USER_TAB_HEADER: first_tab},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["user"]["email"], "daniel@example.com")
+
+        status, _, body = self.request(
+            "GET",
+            "/api/auth/me",
+            headers={"Cookie": all_cookies, server.USER_TAB_HEADER: second_tab},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["user"]["email"], "second@example.com")
+
+        status, _, _ = self.request(
+            "POST",
+            "/api/auth/logout",
+            headers={"Cookie": all_cookies, server.USER_TAB_HEADER: first_tab},
+        )
+        self.assertEqual(status, 204)
+        status, _, _ = self.request(
+            "GET",
+            "/api/auth/me",
+            headers={"Cookie": all_cookies, server.USER_TAB_HEADER: first_tab},
+        )
+        self.assertEqual(status, 401)
+        status, _, body = self.request(
+            "GET",
+            "/api/auth/me",
+            headers={"Cookie": all_cookies, server.USER_TAB_HEADER: second_tab},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["user"]["email"], "second@example.com")
+
     def test_root_serves_backend_integrated_v42_frontend(self):
         status, _, response_body = self.request("GET", "/")
         page = response_body.decode("utf-8")

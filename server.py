@@ -36,8 +36,10 @@ APP_ROOT = Path(__file__).resolve().parent
 DEFAULT_DB_PATH = APP_ROOT / "data" / "skillswap.db"
 DEFAULT_SKILLS_DB_PATH = APP_ROOT / "data" / "skills.db"
 SESSION_COOKIE = "skillswap_session"
+USER_TAB_HEADER = "X-SkillSwap-Tab-Id"
 ADMIN_SESSION_COOKIE = "skillswap_admin_session"
 ADMIN_CSRF_COOKIE = "skillswap_admin_csrf"
+ADMIN_TAB_HEADER = "X-SkillSwap-Admin-Tab-Id"
 SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60
 PBKDF2_ITERATIONS = 600_000
@@ -50,6 +52,7 @@ ADMIN_RATE_LIMIT_ATTEMPTS = 5
 ADMIN_RATE_LIMIT_WINDOW_SECONDS = 15 * 60
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 DOTENV_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+USER_TAB_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 
 SEED_SKILLS = (
     ("photography", "creative", "摄影", "Photography"),
@@ -1487,9 +1490,9 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             if path == "/api/auth/login": self._handle_login()
             elif path == "/api/auth/register": self._handle_register()
             elif path == "/api/auth/logout":
-                delete_session(self.config.db_path, self._cookie_value(SESSION_COOKIE))
+                delete_session(self.config.db_path, self._user_session_token())
                 self.send_response(HTTPStatus.NO_CONTENT); self._send_security_headers()
-                self.send_header("Set-Cookie", self._expired_cookie(SESSION_COOKIE, "Lax")); self.send_header("Cache-Control", "no-store"); self.end_headers()
+                self.send_header("Set-Cookie", self._expired_cookie(self._user_session_cookie_name(), "Lax")); self.send_header("Cache-Control", "no-store"); self.end_headers()
             elif path == "/api/swap-requests":
                 user, payload = self._require_user(), None
                 if user is not None: payload = self._read_json_body()
@@ -1648,7 +1651,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
         )
 
     def _handle_me(self) -> None:
-        user = user_for_session(self.config.db_path, self._cookie_value(SESSION_COOKIE))
+        user = user_for_session(self.config.db_path, self._user_session_token())
         if user is None:
             self._send_json(
                 HTTPStatus.UNAUTHORIZED,
@@ -1658,7 +1661,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, {"user": public_user(user)})
 
     def _require_user(self) -> sqlite3.Row | None:
-        user = user_for_session(self.config.db_path, self._cookie_value(SESSION_COOKIE))
+        user = user_for_session(self.config.db_path, self._user_session_token())
         if user is None: self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "not_authenticated", "message": "Authentication required."})
         return user
 
@@ -1725,7 +1728,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
         admin = self._require_admin(write=True)
         if admin is None:
             return
-        token = self._cookie_value(ADMIN_SESSION_COOKIE)
+        token = self._admin_session_token()
         with closing(connect_database(self.config.db_path)) as connection, connection:
             _audit_event(
                 connection, admin, "admin.logout", "session", admin["public_id"]
@@ -1737,9 +1740,14 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             extra_headers=[
                 (
                     "Set-Cookie",
-                    self._expired_cookie(ADMIN_SESSION_COOKIE, "Strict"),
+                    self._expired_cookie(
+                        self._admin_session_cookie_name(), "Strict"
+                    ),
                 ),
-                ("Set-Cookie", self._expired_cookie(ADMIN_CSRF_COOKIE, "Strict")),
+                (
+                    "Set-Cookie",
+                    self._expired_cookie(self._admin_csrf_cookie_name(), "Strict"),
+                ),
             ],
         )
 
@@ -2293,7 +2301,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
         )
 
     def _require_admin(self, *, write: bool = False) -> sqlite3.Row | None:
-        token = self._cookie_value(ADMIN_SESSION_COOKIE)
+        token = self._admin_session_token()
         admin = admin_for_session(self.config.db_path, token)
         if admin is None:
             self._send_api_error(
@@ -2326,7 +2334,7 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             )
             return False
         csrf_header = self.headers.get("X-CSRF-Token", "")
-        csrf_cookie = self._cookie_value(ADMIN_CSRF_COOKIE)
+        csrf_cookie = self._cookie_value(self._admin_csrf_cookie_name())
         expected_hash = admin["csrf_token_hash"] or ""
         candidate_hash = hashlib.sha256(csrf_header.encode("utf-8")).hexdigest()
         if (
@@ -2482,14 +2490,29 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             return morsel.value if morsel else ""
         except Exception: return ""
 
+    def _user_tab_id(self) -> str:
+        value = self.headers.get(USER_TAB_HEADER, "").strip()
+        return value if USER_TAB_ID_PATTERN.fullmatch(value) else ""
+
+    def _user_session_cookie_name(self) -> str:
+        tab_id = self._user_tab_id()
+        return f"{SESSION_COOKIE}_{tab_id}" if tab_id else SESSION_COOKIE
+
+    def _user_session_token(self) -> str:
+        return self._cookie_value(self._user_session_cookie_name())
+
     def _session_cookie(self, token: str) -> str:
         return self._cookie_header(
-            SESSION_COOKIE, token, SESSION_TTL_SECONDS, "Lax", http_only=True
+            self._user_session_cookie_name(),
+            token,
+            SESSION_TTL_SECONDS,
+            "Lax",
+            http_only=True,
         )
 
     def _admin_session_cookie(self, token: str) -> str:
         return self._cookie_header(
-            ADMIN_SESSION_COOKIE,
+            self._admin_session_cookie_name(),
             token,
             ADMIN_SESSION_TTL_SECONDS,
             "Strict",
@@ -2498,12 +2521,27 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
 
     def _admin_csrf_cookie(self, token: str) -> str:
         return self._cookie_header(
-            ADMIN_CSRF_COOKIE,
+            self._admin_csrf_cookie_name(),
             token,
             ADMIN_SESSION_TTL_SECONDS,
             "Strict",
             http_only=False,
         )
+
+    def _admin_tab_id(self) -> str:
+        value = self.headers.get(ADMIN_TAB_HEADER, "").strip()
+        return value if USER_TAB_ID_PATTERN.fullmatch(value) else ""
+
+    def _admin_session_cookie_name(self) -> str:
+        tab_id = self._admin_tab_id()
+        return f"{ADMIN_SESSION_COOKIE}_{tab_id}" if tab_id else ADMIN_SESSION_COOKIE
+
+    def _admin_csrf_cookie_name(self) -> str:
+        tab_id = self._admin_tab_id()
+        return f"{ADMIN_CSRF_COOKIE}_{tab_id}" if tab_id else ADMIN_CSRF_COOKIE
+
+    def _admin_session_token(self) -> str:
+        return self._cookie_value(self._admin_session_cookie_name())
 
     def _cookie_header(
         self,
@@ -2528,7 +2566,14 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
 
     def _expired_cookie(self, name: str, same_site: str) -> str:
         return self._cookie_header(
-            name, "", 0, same_site, http_only=name != ADMIN_CSRF_COOKIE
+            name,
+            "",
+            0,
+            same_site,
+            http_only=not (
+                name == ADMIN_CSRF_COOKIE
+                or name.startswith(f"{ADMIN_CSRF_COOKIE}_")
+            ),
         )
 
     def _send_api_error(

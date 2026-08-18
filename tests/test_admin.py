@@ -396,7 +396,9 @@ class AdminHttpTests(unittest.TestCase):
         self.thread.join(timeout=2)
         self.temp_dir.cleanup()
 
-    def request(self, method, path, payload=None, cookie="", csrf="", origin=None):
+    def request(
+        self, method, path, payload=None, cookie="", csrf="", origin=None, tab_id=""
+    ):
         connection = http.client.HTTPConnection(self.host, self.port, timeout=10)
         headers = {"Accept": "application/json"}
         body = None
@@ -411,6 +413,8 @@ class AdminHttpTests(unittest.TestCase):
             headers["X-CSRF-Token"] = csrf
         if origin is not None:
             headers["Origin"] = origin
+        if tab_id:
+            headers[server.ADMIN_TAB_HEADER] = tab_id
         try:
             connection.request(method, path, body=body, headers=headers)
             response = connection.getresponse()
@@ -427,11 +431,14 @@ class AdminHttpTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def login_admin(self):
+    def login_admin(
+        self, email=ADMIN_EMAIL, password=ADMIN_PASSWORD, tab_id=""
+    ):
         status, headers, body = self.request(
             "POST",
             "/api/admin/auth/login",
-            {"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+            {"email": email, "password": password},
+            tab_id=tab_id,
         )
         self.assertEqual(status, 200, body)
         cookies = {}
@@ -441,7 +448,12 @@ class AdminHttpTests(unittest.TestCase):
                 name, cookie_value = name_value.split("=", 1)
                 cookies[name] = cookie_value
         cookie_header = "; ".join(f"{key}={value}" for key, value in cookies.items())
-        return cookie_header, cookies[server.ADMIN_CSRF_COOKIE], body
+        csrf_cookie_name = (
+            f"{server.ADMIN_CSRF_COOKIE}_{tab_id}"
+            if tab_id
+            else server.ADMIN_CSRF_COOKIE
+        )
+        return cookie_header, cookies[csrf_cookie_name], body
 
     def admin_request(self, method, path, payload=None, cookie=None, csrf=None):
         if cookie is None or csrf is None:
@@ -500,6 +512,65 @@ class AdminHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         status, _, _ = self.request("GET", "/api/admin/auth/me", cookie=cookie)
         self.assertEqual(status, 401)
+
+    def test_admin_tabs_keep_independent_sessions_and_csrf(self):
+        second = server.register_user(
+            self.db_path, "second-admin@example.com", "SecondAdmin123!"
+        )
+        with closing(server.connect_database(self.db_path)) as connection, connection:
+            connection.execute(
+                "UPDATE users SET role = 'superadmin' WHERE id = ?", (second["id"],)
+            )
+
+        first_tab = "c" * 32
+        second_tab = "d" * 32
+        first_cookie, first_csrf, first_login = self.login_admin(tab_id=first_tab)
+        second_cookie, second_csrf, second_login = self.login_admin(
+            "second-admin@example.com", "SecondAdmin123!", second_tab
+        )
+        all_cookies = f"{first_cookie}; {second_cookie}"
+        self.assertNotEqual(first_login["admin"]["email"], second_login["admin"]["email"])
+
+        status, _, first_me = self.request(
+            "GET", "/api/admin/auth/me", cookie=all_cookies, tab_id=first_tab
+        )
+        self.assertEqual(status, 200)
+        status, _, second_me = self.request(
+            "GET", "/api/admin/auth/me", cookie=all_cookies, tab_id=second_tab
+        )
+        self.assertEqual(status, 200)
+        self.assertNotEqual(first_me["admin"]["email"], second_me["admin"]["email"])
+
+        status, _, _ = self.request(
+            "POST",
+            "/api/admin/auth/logout",
+            {},
+            cookie=all_cookies,
+            csrf=first_csrf,
+            origin=self.origin,
+            tab_id=first_tab,
+        )
+        self.assertEqual(status, 200)
+        status, _, _ = self.request(
+            "GET", "/api/admin/auth/me", cookie=all_cookies, tab_id=first_tab
+        )
+        self.assertEqual(status, 401)
+        status, _, second_me = self.request(
+            "GET", "/api/admin/auth/me", cookie=all_cookies, tab_id=second_tab
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(second_me["admin"]["email"], "second-admin@example.com")
+
+        status, _, _ = self.request(
+            "POST",
+            "/api/admin/auth/logout",
+            {},
+            cookie=all_cookies,
+            csrf=second_csrf,
+            origin=self.origin,
+            tab_id=second_tab,
+        )
+        self.assertEqual(status, 200)
 
     def test_csrf_origin_and_self_protection(self):
         cookie, csrf, login = self.login_admin()
