@@ -12,14 +12,14 @@
 python server.py
 ```
 
-然后打开 `http://127.0.0.1:4173/`。服务首次启动会分别创建账号数据库 `data/skillswap.db` 和技能目录数据库 `data/skills.db`，预置 28 项技能，并写入以下管理员账号：
+然后打开 `http://127.0.0.1:4173/`。服务首次启动会分别创建账号数据库 `data/skillswap.db` 和技能目录数据库 `data/skills.db`，预置 28 项技能，并写入以下普通演示账号：
 
 ```text
 邮箱：daniel@example.com
 密码：SkillSwap123!
 ```
 
-邮箱注册、登录、个人资料、“能教/想学”技能、综合搜索、交换请求和 Daniel 的技能目录管理均已连接后端。登录页的 Daniel 按钮只预填邮箱，仍必须输入真实密码。开发验收请以服务提供的 `v4.2.html` 为入口；GitHub Pages 只托管静态页面，不能运行本次 Python 后端。
+邮箱注册、登录、个人资料、“能教/想学”技能、综合搜索和交换请求均已连接后端。登录页的 Daniel 按钮只预填邮箱，仍必须输入真实密码。开发验收请以服务提供的 `v4.2.html` 为入口；GitHub Pages 只托管静态页面，不能运行本次 Python 后端。
 
 可通过环境变量 `SKILLSWAP_HOST`、`SKILLSWAP_PORT`、`SKILLSWAP_DB_PATH`、`SKILLSWAP_SKILLS_DB_PATH`、`SKILLSWAP_ADMIN_EMAIL` 和 `SKILLSWAP_ADMIN_PASSWORD` 覆盖默认配置；旧的 `SKILLSWAP_DEMO_*` 变量仍兼容。命令行也支持 `--db` 和 `--skills-db`。生产环境启用 HTTPS 时还应设置 `SKILLSWAP_SECURE_COOKIE=1`。
 
@@ -27,7 +27,7 @@ python server.py
 
 - 认证：`POST /api/auth/register`、`POST /api/auth/login`、`POST /api/auth/logout`、`GET /api/auth/me`
 - 当前用户：`GET/PUT /api/users/me/profile`、`GET/PUT /api/users/me/skills`
-- 技能目录：`GET /api/skills`、`GET /api/skills/{id}`；管理员可通过 `POST/PUT/DELETE` 新增、编辑、停用或恢复
+- 技能目录：主站只读 `GET /api/skills`、`GET /api/skills/{id}`；管理员通过 `/api/admin/skills` 及 `/api/admin/skills/{id}` 新增、编辑、停用或恢复
 - 综合搜索：`GET /api/search?q=&level=&country=&city=&lang=&sort=&limit=&offset=`
 - 交换请求：`POST/GET /api/swap-requests`，以及 `accept`、`reject`、`cancel`、`complete` 状态操作
 - 社区统计：公开只读 `GET /api/community/stats`，返回今日登录、真实用户、今日完成交换与热门想学技能
@@ -37,6 +37,32 @@ python server.py
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## 本地管理员后台
+
+管理员后台位于 `http://127.0.0.1:4173/admin`，只接受服务器本机请求。先将 `.env.example` 复制为不会提交的 `.env`，填写以下配置并重启服务即可创建或更改管理员：
+
+```dotenv
+SKILLSWAP_ADMIN_EMAIL=admin@example.com
+SKILLSWAP_ADMIN_PASSWORD=请替换为至少12位的安全密码
+SKILLSWAP_ADMIN_NAME=超级管理员
+SKILLSWAP_ADMIN_SYNC=1
+```
+
+`.env` 已加入 `.gitignore`，真实密码不会提交到仓库；可提交的字段模板位于 `.env.example`。管理员邮箱与密码必须同时填写，密码长度为 12–128 位。`SKILLSWAP_ADMIN_SYNC=1` 时，重启会把邮箱、名称和密码同步到唯一的已配置超级管理员；存在多个超级管理员且新邮箱无法匹配时，服务会拒绝猜测，请改用后台编辑。如果邮箱已经属于普通用户，服务也会拒绝静默提权。
+
+终端中已有的 `SKILLSWAP_*` 环境变量优先于 `.env`；如果文件修改没有生效，请先清除同名终端变量。未启用 `SKILLSWAP_ADMIN_SYNC` 时保持原有幂等行为，重复启动不会覆盖已存在管理员的密码。现有旧数据库会在首次迁移前通过 SQLite Backup API 自动备份为 `skillswap.db.backup-时间戳`。
+
+后台提供以下能力：
+
+- 查看账号、活跃状态、角色、登录会话和操作审计概览。
+- 创建、编辑和删除普通用户或超级管理员。
+- 新增、编辑、停用和恢复全局技能目录。
+- 重置账号密码并同步撤销该账号的全部会话。
+- 强制结束普通或管理员登录会话。
+- 搜索和筛选用户、技能、会话与审计记录。
+
+后台不会返回密码哈希、密码盐、会话令牌哈希或 CSRF 哈希，也不提供任意 SQL 和原始表编辑。用户资料、技能和交换请求位于 SQLite；收藏、聊天内容、界面偏好和技能测评仍保存在各浏览器的 `localStorage`。
 
 ## 功能亮点
 
@@ -55,7 +81,7 @@ python -m unittest discover -s tests -v
 
 ## 技术结构
 
-前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器。后端使用 Python 标准库 HTTP 服务和两个独立 SQLite 数据库；密码以 PBKDF2-SHA256 哈希保存，会话使用 HttpOnly、SameSite Cookie。技能删除采用停用隐藏，用户技能写入前会验证技能仍然启用。静态 CDN 失败时仍保留可读回退页面，运行时错误由恢复界面接管。
+前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器；独立管理员后台使用原生 HTML、CSS 与 JavaScript。后端使用 Python 标准库 HTTP 服务和账号、技能两个 SQLite 数据库，启动时原生读取 `.env`。密码以 PBKDF2-SHA256 哈希保存，普通与管理员会话使用隔离的 HttpOnly Cookie，管理员写操作额外验证同源请求和 CSRF Token。技能删除采用停用隐藏，用户技能写入前会验证技能仍然启用；旧数据库升级前会自动备份并将旧 `is_admin` 权限迁移为角色。静态 CDN 失败时主站仍保留可读回退页面，运行时错误由恢复界面接管。
 
 ---
 

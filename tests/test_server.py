@@ -20,7 +20,7 @@ class AuthenticationDatabaseTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_startup_creates_schema_and_admin_account(self):
+    def test_startup_creates_schema_and_demo_account(self):
         self.assertTrue(self.db_path.exists())
         with closing(sqlite3.connect(self.db_path)) as connection:
             tables = {
@@ -30,12 +30,13 @@ class AuthenticationDatabaseTests(unittest.TestCase):
                 )
             }
             account = connection.execute(
-                "SELECT email, password_hash FROM users WHERE email = ?",
+                "SELECT email, password_hash, role FROM users WHERE email = ?",
                 ("daniel@example.com",),
             ).fetchone()
         self.assertTrue({"users", "sessions", "login_events", "swap_requests"}.issubset(tables))
         self.assertEqual(account[0], "daniel@example.com")
         self.assertNotEqual(account[1], "SkillSwap123!")
+        self.assertEqual(account[2], "user")
 
     def test_database_initialization_is_idempotent(self):
         server.initialize_database(self.db_path)
@@ -152,7 +153,7 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn('registerWithEmail', page)
         self.assertIn('/api/search?', page)
-        self.assertIn('SkillCatalogAdmin', page)
+        self.assertIn('admin-dashboard', page)
         self.assertIn('/api/community/stats', page)
         self.assertIn('loadSwapRequests', page)
         self.assertNotIn('MOCK_USERS', page)
@@ -231,7 +232,12 @@ class SkillHttpTests(unittest.TestCase):
         root = Path(self.temp_dir.name)
         self.db_path = root / "accounts.db"
         self.skills_db_path = root / "skills.db"
-        server.initialize_database(self.db_path)
+        server.initialize_database(
+            self.db_path,
+            admin_email="admin@example.com",
+            admin_password="SecureAdmin123!",
+            admin_name="Test Admin",
+        )
         server.initialize_skill_database(self.skills_db_path)
         server.seed_admin_user_skills(self.db_path)
         config = server.ServerConfig(self.db_path, self.skills_db_path)
@@ -248,14 +254,20 @@ class SkillHttpTests(unittest.TestCase):
         self.thread.join(timeout=2)
         self.temp_dir.cleanup()
 
-    def request(self, method, path, payload=None, cookie=""):
+    def request(self, method, path, payload=None, cookie="", csrf="", origin=""):
         connection = http.client.HTTPConnection(self.host, self.port, timeout=5)
         body = json.dumps(payload) if payload is not None else None
         headers = {}
         if body is not None:
             headers["Content-Type"] = "application/json"
+        elif method in {"POST", "PUT", "PATCH", "DELETE"}:
+            headers["Content-Type"] = "application/json"
         if cookie:
             headers["Cookie"] = cookie
+        if csrf:
+            headers["X-CSRF-Token"] = csrf
+        if origin:
+            headers["Origin"] = origin
         try:
             connection.request(method, path, body=body, headers=headers)
             response = connection.getresponse()
@@ -271,6 +283,30 @@ class SkillHttpTests(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
         return headers["Set-Cookie"].split(";", 1)[0]
+
+    def admin_auth(self):
+        with closing(server.connect_database(self.db_path)) as connection:
+            admin_id = connection.execute(
+                "SELECT id FROM users WHERE email = 'admin@example.com'"
+            ).fetchone()["id"]
+        token, csrf = server.create_admin_session(self.db_path, admin_id)
+        cookie = (
+            f"{server.ADMIN_SESSION_COOKIE}={token}; "
+            f"{server.ADMIN_CSRF_COOKIE}={csrf}"
+        )
+        return cookie, csrf
+
+    def admin_request(self, method, path, payload=None, cookie=None, csrf=None):
+        if cookie is None or csrf is None:
+            cookie, csrf = self.admin_auth()
+        return self.request(
+            method,
+            path,
+            payload,
+            cookie,
+            csrf,
+            f"http://{self.host}:{self.port}",
+        )
 
     def register(self, email):
         status, headers, payload = self.request(
@@ -310,7 +346,7 @@ class SkillHttpTests(unittest.TestCase):
         self.assertEqual(status, 200, payload)
         return cookie, user
 
-    def test_skill_endpoints_require_login_and_admin_for_writes(self):
+    def test_skill_endpoints_require_login_and_reject_main_site_writes(self):
         status, _, _ = self.request("GET", "/api/skills")
         self.assertEqual(status, 401)
         user_cookie, _ = self.register("member@example.com")
@@ -324,24 +360,24 @@ class SkillHttpTests(unittest.TestCase):
             },
             user_cookie,
         )
-        self.assertEqual(status, 403)
-        self.assertEqual(payload["error"], "admin_required")
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"], "not_found")
 
     def test_admin_can_create_update_deactivate_and_restore_skill(self):
-        cookie = self.login()
+        cookie, csrf = self.admin_auth()
         create_payload = {
             "id": "woodworking",
             "category": "creative",
             "names": {"zh": "木工", "en": "Woodworking"},
         }
-        status, _, payload = self.request(
-            "POST", "/api/skills", create_payload, cookie
+        status, _, payload = self.admin_request(
+            "POST", "/api/admin/skills", create_payload, cookie, csrf
         )
         self.assertEqual(status, 201)
         self.assertTrue(payload["skill"]["isActive"])
 
-        status, _, payload = self.request(
-            "POST", "/api/skills", create_payload, cookie
+        status, _, payload = self.admin_request(
+            "POST", "/api/admin/skills", create_payload, cookie, csrf
         )
         self.assertEqual(status, 409)
         self.assertEqual(payload["error"], "skill_exists")
@@ -350,22 +386,22 @@ class SkillHttpTests(unittest.TestCase):
             **create_payload,
             "names": {"zh": "基础木工", "en": "Practical Woodworking"},
         }
-        status, _, payload = self.request(
-            "PUT", "/api/skills/woodworking", updated, cookie
+        status, _, payload = self.admin_request(
+            "PUT", "/api/admin/skills/woodworking", updated, cookie, csrf
         )
         self.assertEqual(status, 200)
         self.assertEqual(payload["skill"]["names"]["zh"], "基础木工")
 
-        status, _, _ = self.request(
-            "DELETE", "/api/skills/woodworking", cookie=cookie
+        status, _, _ = self.admin_request(
+            "DELETE", "/api/admin/skills/woodworking", cookie=cookie, csrf=csrf
         )
         self.assertEqual(status, 204)
-        status, _, payload = self.request("GET", "/api/skills?q=wood", cookie=cookie)
+        status, _, payload = self.request("GET", "/api/skills?q=wood", cookie=self.login())
         self.assertEqual(payload["skills"], [])
 
         updated["isActive"] = True
-        status, _, payload = self.request(
-            "PUT", "/api/skills/woodworking", updated, cookie
+        status, _, payload = self.admin_request(
+            "PUT", "/api/admin/skills/woodworking", updated, cookie, csrf
         )
         self.assertEqual(status, 200)
         self.assertTrue(payload["skill"]["isActive"])

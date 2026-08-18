@@ -1,13 +1,20 @@
-"""SkillSwap development server with SQLite-backed auth, profiles, and skills."""
+"""SkillSwap server with profiles, skills, swaps, and local administration.
+
+The server uses only Python's standard library. It creates or migrates the account
+and skill databases, serves the user application, and exposes a loopback-only
+administrator dashboard with isolated authentication.
+"""
 
 from __future__ import annotations
 
 import argparse
+from collections.abc import MutableMapping
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
+import ipaddress
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,7 +25,9 @@ import re
 import secrets
 import sqlite3
 import sys
+import threading
 import time
+import uuid
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 from zoneinfo import ZoneInfo
@@ -27,12 +36,20 @@ APP_ROOT = Path(__file__).resolve().parent
 DEFAULT_DB_PATH = APP_ROOT / "data" / "skillswap.db"
 DEFAULT_SKILLS_DB_PATH = APP_ROOT / "data" / "skills.db"
 SESSION_COOKIE = "skillswap_session"
+ADMIN_SESSION_COOKIE = "skillswap_admin_session"
+ADMIN_CSRF_COOKIE = "skillswap_admin_csrf"
 SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
+ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60
 PBKDF2_ITERATIONS = 600_000
 MAX_JSON_BODY_BYTES = 6 * 1024 * 1024
 SKILL_CATEGORIES = {"technology", "creative", "academic", "sports", "lifestyle"}
 SKILL_LEVELS = {"complete-beginner", "beginner", "intermediate", "advanced"}
 SKILL_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+CURRENT_SCHEMA_VERSION = 3
+ADMIN_RATE_LIMIT_ATTEMPTS = 5
+ADMIN_RATE_LIMIT_WINDOW_SECONDS = 15 * 60
+EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+DOTENV_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 SEED_SKILLS = (
     ("photography", "creative", "摄影", "Photography"),
@@ -70,6 +87,85 @@ class ApiProblem(Exception):
     def __init__(self, status: HTTPStatus, code: str, message: str):
         super().__init__(message)
         self.status, self.code, self.message = status, code, message
+def _parse_dotenv_value(raw_value: str, *, line_number: int) -> str:
+    value = raw_value.strip()
+    if not value:
+        return ""
+    if value[0] not in {"'", '"'}:
+        return re.split(r"\s+#", value, maxsplit=1)[0].rstrip()
+
+    quote = value[0]
+    escaped = False
+    closing_index = None
+    for index in range(1, len(value)):
+        character = value[index]
+        if quote == '"' and character == "\\" and not escaped:
+            escaped = True
+            continue
+        if character == quote and not escaped:
+            closing_index = index
+            break
+        escaped = False
+    if closing_index is None:
+        raise ValueError(f"Invalid .env line {line_number}: unterminated quote")
+    trailing = value[closing_index + 1 :].strip()
+    if trailing and not trailing.startswith("#"):
+        raise ValueError(
+            f"Invalid .env line {line_number}: unexpected text after quoted value"
+        )
+    quoted_value = value[1:closing_index]
+    if quote == "'":
+        return quoted_value
+    try:
+        return json.loads(value[: closing_index + 1])
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"Invalid .env line {line_number}: invalid quoted value"
+        ) from error
+
+
+def load_dotenv(
+    dotenv_path: Path = APP_ROOT / ".env",
+    *,
+    environ: MutableMapping[str, str] | None = None,
+    override: bool = False,
+) -> dict[str, str]:
+    """Load SKILLSWAP_* settings without adding a third-party dependency."""
+    target = os.environ if environ is None else environ
+    if not dotenv_path.is_file():
+        return {}
+    loaded: dict[str, str] = {}
+    for line_number, raw_line in enumerate(
+        dotenv_path.read_text(encoding="utf-8-sig").splitlines(), start=1
+    ):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        key, separator, raw_value = line.partition("=")
+        key = key.strip()
+        if not separator or not DOTENV_KEY_PATTERN.fullmatch(key):
+            raise ValueError(f"Invalid .env line {line_number}: expected KEY=VALUE")
+        if not key.startswith("SKILLSWAP_"):
+            continue
+        value = _parse_dotenv_value(raw_value, line_number=line_number)
+        loaded[key] = value
+        if override or key not in target:
+            target[key] = value
+    return loaded
+
+
+def env_flag(name: str, *, default: bool = False) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return default
+    normalized = raw_value.strip().casefold()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be one of: 1, 0, true, false, yes, no, on, off")
 
 
 def utc_now_iso() -> str:
@@ -104,14 +200,110 @@ def connect_database(db_path: Path) -> sqlite3.Connection:
     return connection
 
 
+def _table_exists(connection: sqlite3.Connection, table: str) -> bool:
+    return connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+    ).fetchone() is not None
+
+
+def _column_names(connection: sqlite3.Connection, table: str) -> set[str]:
+    if not _table_exists(connection, table):
+        return set()
+    return {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+
+
+def _needs_admin_migration(db_path: Path) -> bool:
+    if not db_path.exists() or db_path.stat().st_size == 0:
+        return False
+    with closing(connect_database(db_path)) as connection:
+        user_columns = _column_names(connection, "users")
+        session_columns = _column_names(connection, "sessions")
+        return bool(user_columns and session_columns) and (
+            "role" not in user_columns
+            or not {"public_id", "purpose", "csrf_token_hash"}.issubset(
+                session_columns
+            )
+            or not _table_exists(connection, "admin_audit_log")
+        )
+
+
+def backup_database(db_path: Path) -> Path:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    backup_path = db_path.with_name(f"{db_path.name}.backup-{timestamp}")
+    with closing(connect_database(db_path)) as source, closing(
+        sqlite3.connect(backup_path)
+    ) as destination:
+        source.backup(destination)
+    return backup_path
+
+
+def _audit_event(
+    connection: sqlite3.Connection,
+    actor: sqlite3.Row | dict[str, Any] | None,
+    action: str,
+    target_type: str,
+    target_id: str,
+    details: dict[str, Any] | None = None,
+) -> None:
+    actor_id = actor["id"] if actor is not None else None
+    actor_email = actor["email"] if actor is not None else "system"
+    connection.execute(
+        """
+        INSERT INTO admin_audit_log
+            (actor_user_id, actor_email, action, target_type, target_id,
+             details_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            actor_id,
+            actor_email,
+            action,
+            target_type,
+            target_id,
+            json.dumps(details or {}, ensure_ascii=False, sort_keys=True),
+            utc_now_iso(),
+        ),
+    )
+
+
+def validate_email(value: str) -> bool:
+    normalized = normalize_email(value)
+    return 3 <= len(normalized) <= 254 and EMAIL_PATTERN.fullmatch(normalized) is not None
+
+
+def validate_password_for_role(password: str, role: str) -> bool:
+    minimum = 12 if role == "superadmin" else 8
+    return minimum <= len(password) <= 128
+
+
+def is_loopback_address(value: str) -> bool:
+    try:
+        address = ipaddress.ip_address(value.split("%", 1)[0])
+    except ValueError:
+        return False
+    if address.is_loopback:
+        return True
+    return bool(
+        isinstance(address, ipaddress.IPv6Address)
+        and address.ipv4_mapped
+        and address.ipv4_mapped.is_loopback
+    )
+
+
 def initialize_database(
     db_path: Path,
     *,
-    admin_email: str = "daniel@example.com",
-    admin_password: str = "SkillSwap123!",
-) -> None:
-    """Initialize the account database and upgrade older checkouts in place."""
+    demo_email: str = "daniel@example.com",
+    demo_password: str = "SkillSwap123!",
+    admin_email: str | None = None,
+    admin_password: str | None = None,
+    admin_name: str = "超级管理员",
+    admin_sync: bool = False,
+) -> Path | None:
+    """Initialize or migrate the account database without discarding user data."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
+    needs_migration = _needs_admin_migration(db_path)
+    backup_path = backup_database(db_path) if needs_migration else None
     with closing(connect_database(db_path)) as connection, connection:
         connection.executescript(
             """
@@ -123,14 +315,19 @@ def initialize_database(
                 password_hash TEXT NOT NULL,
                 display_name TEXT NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
-                is_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_admin IN (0, 1)),
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user'
+                    CHECK (role IN ('user', 'superadmin'))
             );
             CREATE TABLE IF NOT EXISTS sessions (
                 token_hash TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 created_at INTEGER NOT NULL,
                 expires_at INTEGER NOT NULL,
+                public_id TEXT,
+                purpose TEXT NOT NULL DEFAULT 'user'
+                    CHECK (purpose IN ('user', 'admin')),
+                csrf_token_hash TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS login_events (
@@ -208,31 +405,97 @@ def initialize_database(
             CREATE UNIQUE INDEX IF NOT EXISTS idx_swap_requests_active_unique
                 ON swap_requests(requester_id,target_user_id,offered_skill_id,requested_skill_id)
                 WHERE status IN ('pending','accepted');
+
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                applied_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS admin_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_user_id INTEGER,
+                actor_email TEXT NOT NULL,
+                action TEXT NOT NULL,
+                target_type TEXT NOT NULL,
+                target_id TEXT NOT NULL,
+                details_json TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+            CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+            CREATE INDEX IF NOT EXISTS idx_audit_created_at
+                ON admin_audit_log(created_at DESC);
             """
         )
+        user_columns = _column_names(connection, "users")
+        if "role" not in user_columns:
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user' "
+                "CHECK (role IN ('user', 'superadmin'))"
+            )
+        if "is_admin" in user_columns:
+            connection.execute(
+                "UPDATE users SET role = 'superadmin' WHERE is_admin = 1"
+            )
+        session_columns = _column_names(connection, "sessions")
+        if "public_id" not in session_columns:
+            connection.execute("ALTER TABLE sessions ADD COLUMN public_id TEXT")
+        if "purpose" not in session_columns:
+            connection.execute(
+                "ALTER TABLE sessions ADD COLUMN purpose TEXT NOT NULL DEFAULT 'user' "
+                "CHECK (purpose IN ('user', 'admin'))"
+            )
+        if "csrf_token_hash" not in session_columns:
+            connection.execute("ALTER TABLE sessions ADD COLUMN csrf_token_hash TEXT")
         connection.execute(
             """INSERT OR IGNORE INTO login_events(session_token_hash,user_id,created_at)
-               SELECT token_hash,user_id,created_at FROM sessions"""
+               SELECT token_hash,user_id,created_at FROM sessions
+               WHERE purpose = 'user'"""
         )
-        columns = {row["name"] for row in connection.execute("PRAGMA table_info(users)")}
-        if "is_admin" not in columns:
+        missing_public_ids = connection.execute(
+            "SELECT token_hash FROM sessions WHERE public_id IS NULL OR public_id = ''"
+        ).fetchall()
+        for row in missing_public_ids:
             connection.execute(
-                "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
+                "UPDATE sessions SET public_id = ? WHERE token_hash = ?",
+                (uuid.uuid4().hex, row["token_hash"]),
             )
-        normalized = normalize_email(admin_email)
-        demo = connection.execute("SELECT id FROM users WHERE email = ?", (normalized,)).fetchone()
-        if demo is None:
-            salt, digest = hash_password(admin_password)
-            cursor = connection.execute(
-                """INSERT INTO users
-                   (email,password_salt,password_hash,display_name,is_admin,created_at)
-                   VALUES (?,?,?,?,1,?)""",
-                (normalized, salt, digest, "Daniel Liu", utc_now_iso()),
+        connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_public_id "
+            "ON sessions(public_id)"
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
+            (1, utc_now_iso()),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
+            (CURRENT_SCHEMA_VERSION, utc_now_iso()),
+        )
+        existing = connection.execute(
+            "SELECT id FROM users WHERE email = ?", (normalize_email(demo_email),)
+        ).fetchone()
+        if existing is None:
+            salt, password_digest = hash_password(demo_password)
+            connection.execute(
+                """
+                INSERT INTO users
+                    (email, password_salt, password_hash, display_name, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    normalize_email(demo_email),
+                    salt,
+                    password_digest,
+                    "Daniel Liu",
+                    utc_now_iso(),
+                ),
             )
-            demo_user_id = cursor.lastrowid
-        else:
-            demo_user_id = demo["id"]
-            connection.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (demo_user_id,))
+        demo_user_id = connection.execute(
+            "SELECT id FROM users WHERE email = ?", (normalize_email(demo_email),)
+        ).fetchone()["id"]
         connection.execute(
             """INSERT INTO user_profiles
                (user_id,age,country_id,city_id,languages_json,bio_zh,bio_en,
@@ -246,6 +509,109 @@ def initialize_database(
                 utc_now_iso(),
             ),
         )
+        has_admin_email = bool(admin_email and admin_email.strip())
+        has_admin_password = bool(admin_password)
+        if has_admin_email != has_admin_password:
+            raise ValueError(
+                "SKILLSWAP_ADMIN_EMAIL and SKILLSWAP_ADMIN_PASSWORD must be set together"
+            )
+        if has_admin_email and has_admin_password:
+            normalized_admin_email = normalize_email(admin_email or "")
+            clean_admin_name = admin_name.strip()
+            if not validate_email(normalized_admin_email):
+                raise ValueError("SKILLSWAP_ADMIN_EMAIL is invalid")
+            if not clean_admin_name or len(clean_admin_name) > 80:
+                raise ValueError("SKILLSWAP_ADMIN_NAME must be 1-80 characters")
+            if not validate_password_for_role(admin_password or "", "superadmin"):
+                raise ValueError(
+                    "SKILLSWAP_ADMIN_PASSWORD must be 12-128 characters"
+                )
+            existing_admin = connection.execute(
+                """
+                SELECT id, email, role, display_name, password_salt, password_hash
+                FROM users WHERE email = ?
+                """,
+                (normalized_admin_email,),
+            ).fetchone()
+            if existing_admin is not None and existing_admin["role"] != "superadmin":
+                raise ValueError(
+                    "Admin email already belongs to a regular user; refusing privilege escalation"
+                )
+            if existing_admin is None and admin_sync:
+                configured_admins = connection.execute(
+                    """
+                    SELECT id, email, role, display_name, password_salt, password_hash
+                    FROM users WHERE role = 'superadmin' ORDER BY id
+                    """
+                ).fetchall()
+                if len(configured_admins) == 1:
+                    existing_admin = configured_admins[0]
+                elif len(configured_admins) > 1:
+                    raise ValueError(
+                        "SKILLSWAP_ADMIN_SYNC cannot choose between multiple "
+                        "superadmins; use an existing admin email or the admin dashboard"
+                    )
+            if existing_admin is None:
+                salt, password_digest = hash_password(admin_password or "")
+                cursor = connection.execute(
+                    """
+                    INSERT INTO users
+                        (email, password_salt, password_hash, display_name,
+                         is_active, created_at, role)
+                    VALUES (?, ?, ?, ?, 1, ?, 'superadmin')
+                    """,
+                    (
+                        normalized_admin_email,
+                        salt,
+                        password_digest,
+                        clean_admin_name,
+                        utc_now_iso(),
+                    ),
+                )
+                _audit_event(
+                    connection,
+                    None,
+                    "admin.bootstrap",
+                    "user",
+                    str(cursor.lastrowid),
+                    {"email": normalized_admin_email},
+                )
+            elif admin_sync:
+                changed_fields: list[str] = []
+                updates: dict[str, str] = {}
+                if existing_admin["email"] != normalized_admin_email:
+                    updates["email"] = normalized_admin_email
+                    changed_fields.append("email")
+                if existing_admin["display_name"] != clean_admin_name:
+                    updates["display_name"] = clean_admin_name
+                    changed_fields.append("displayName")
+                if not verify_password(
+                    admin_password or "",
+                    existing_admin["password_salt"],
+                    existing_admin["password_hash"],
+                ):
+                    salt, password_digest = hash_password(admin_password or "")
+                    updates["password_salt"] = salt
+                    updates["password_hash"] = password_digest
+                    changed_fields.append("password")
+                if updates:
+                    assignments = ", ".join(f"{column} = ?" for column in updates)
+                    connection.execute(
+                        f"UPDATE users SET {assignments} WHERE id = ?",
+                        (*updates.values(), existing_admin["id"]),
+                    )
+                    _audit_event(
+                        connection,
+                        None,
+                        "admin.config_sync",
+                        "user",
+                        str(existing_admin["id"]),
+                        {
+                            "changedFields": changed_fields,
+                            "email": normalized_admin_email,
+                        },
+                    )
+    return backup_path
 
 
 def initialize_skill_database(db_path: Path) -> None:
@@ -313,8 +679,11 @@ def authenticate_user(db_path: Path, email: str, password: str) -> sqlite3.Row |
         return None
     with closing(connect_database(db_path)) as connection:
         user = connection.execute(
-            """SELECT id,email,password_salt,password_hash,display_name,is_admin
-               FROM users WHERE email = ? AND is_active = 1""",
+            """
+            SELECT id, email, password_salt, password_hash, display_name, role
+            FROM users
+            WHERE email = ? AND is_active = 1
+            """,
             (normalize_email(email),),
         ).fetchone()
     if user is None:
@@ -336,8 +705,8 @@ def register_user(db_path: Path, email: str, password: str) -> sqlite3.Row:
         with closing(connect_database(db_path)) as connection, connection:
             cursor = connection.execute(
                 """INSERT INTO users
-                   (email,password_salt,password_hash,display_name,is_admin,created_at)
-                   VALUES (?,?,?,?,0,?)""",
+                   (email,password_salt,password_hash,display_name,created_at,role)
+                   VALUES (?,?,?,?,?,'user')""",
                 (normalized, salt, digest, parts[0][:80], now),
             )
             user_id = cursor.lastrowid
@@ -346,7 +715,7 @@ def register_user(db_path: Path, email: str, password: str) -> sqlite3.Row:
                 (user_id, json.dumps(["zh"]), now),
             )
             return connection.execute(
-                "SELECT id,email,display_name,is_admin FROM users WHERE id = ?", (user_id,)
+                "SELECT id,email,display_name,role FROM users WHERE id = ?", (user_id,)
             ).fetchone()
     except sqlite3.IntegrityError as error:
         raise ApiProblem(HTTPStatus.CONFLICT, "email_exists", "An account with this email already exists.") from error
@@ -357,7 +726,8 @@ def public_user(user: sqlite3.Row) -> dict[str, Any]:
         "id": str(user["id"]),
         "email": user["email"],
         "displayName": user["display_name"],
-        "isAdmin": bool(user["is_admin"]),
+        "role": user["role"],
+        "isAdmin": user["role"] == "superadmin",
     }
 
 
@@ -368,8 +738,12 @@ def create_session(db_path: Path, user_id: int) -> str:
     with closing(connect_database(db_path)) as connection, connection:
         connection.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
         connection.execute(
-            "INSERT INTO sessions (token_hash,user_id,created_at,expires_at) VALUES (?,?,?,?)",
-            (token_hash, user_id, now, now + SESSION_TTL_SECONDS),
+            """
+            INSERT INTO sessions
+                (token_hash, user_id, created_at, expires_at, public_id, purpose)
+            VALUES (?, ?, ?, ?, ?, 'user')
+            """,
+            (token_hash, user_id, now, now + SESSION_TTL_SECONDS, uuid.uuid4().hex),
         )
         connection.execute(
             "INSERT INTO login_events (session_token_hash,user_id,created_at) VALUES (?,?,?)",
@@ -378,16 +752,72 @@ def create_session(db_path: Path, user_id: int) -> str:
     return token
 
 
+def create_admin_session(db_path: Path, user_id: int) -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    csrf_token = secrets.token_urlsafe(32)
+    now = int(time.time())
+    with closing(connect_database(db_path)) as connection, connection:
+        connection.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
+        connection.execute(
+            """
+            INSERT INTO sessions
+                (token_hash, user_id, created_at, expires_at, public_id,
+                 purpose, csrf_token_hash)
+            VALUES (?, ?, ?, ?, ?, 'admin', ?)
+            """,
+            (
+                hashlib.sha256(token.encode("ascii")).hexdigest(),
+                user_id,
+                now,
+                now + ADMIN_SESSION_TTL_SECONDS,
+                uuid.uuid4().hex,
+                hashlib.sha256(csrf_token.encode("ascii")).hexdigest(),
+            ),
+        )
+    return token, csrf_token
+
+
 def user_for_session(db_path: Path, token: str) -> sqlite3.Row | None:
     if not token:
         return None
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now = int(time.time())
+    with closing(connect_database(db_path)) as connection, connection:
+        user = connection.execute(
+            """
+            SELECT users.id, users.email, users.display_name, users.role
+            FROM sessions
+            JOIN users ON users.id = sessions.user_id
+            WHERE sessions.token_hash = ?
+              AND sessions.expires_at > ?
+              AND sessions.purpose = 'user'
+              AND users.is_active = 1
+            """,
+            (token_hash, now),
+        ).fetchone()
+    return user
+
+
+def admin_for_session(db_path: Path, token: str) -> sqlite3.Row | None:
+    if not token:
+        return None
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now = int(time.time())
     with closing(connect_database(db_path)) as connection:
         return connection.execute(
-            """SELECT u.id,u.email,u.display_name,u.is_admin
-               FROM sessions s JOIN users u ON u.id = s.user_id
-               WHERE s.token_hash = ? AND s.expires_at > ? AND u.is_active = 1""",
-            (token_hash, int(time.time())),
+            """
+            SELECT users.id, users.email, users.display_name, users.role,
+                   sessions.public_id, sessions.csrf_token_hash,
+                   sessions.created_at, sessions.expires_at
+            FROM sessions
+            JOIN users ON users.id = sessions.user_id
+            WHERE sessions.token_hash = ?
+              AND sessions.expires_at > ?
+              AND sessions.purpose = 'admin'
+              AND users.role = 'superadmin'
+              AND users.is_active = 1
+            """,
+            (token_hash, now),
         ).fetchone()
 
 
@@ -528,7 +958,7 @@ def _safe_json_list(value: str) -> list[str]:
 def get_profile(db_path: Path, user_id: int) -> dict[str, Any]:
     with closing(connect_database(db_path)) as connection:
         row = connection.execute(
-            """SELECT u.id,u.email,u.display_name,u.is_admin,u.created_at,
+            """SELECT u.id,u.email,u.display_name,u.role,u.created_at,
                       p.age,p.country_id,p.city_id,p.languages_json,p.bio_zh,p.bio_en,
                       p.avatar_data_url,p.profile_visibility,p.onboarding_completed
                FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=?""",
@@ -538,7 +968,7 @@ def get_profile(db_path: Path, user_id: int) -> dict[str, Any]:
         raise ApiProblem(HTTPStatus.NOT_FOUND, "user_not_found", "User not found.")
     return {
         "id": str(row["id"]), "email": row["email"], "name": row["display_name"],
-        "isAdmin": bool(row["is_admin"]), "age": row["age"] or 18,
+        "isAdmin": row["role"] == "superadmin", "age": row["age"] or 18,
         "countryId": row["country_id"] or "", "cityId": row["city_id"] or "",
         "languages": _safe_json_list(row["languages_json"] or "[]"),
         "bio": {"zh": row["bio_zh"] or "", "en": row["bio_en"] or ""},
@@ -663,7 +1093,7 @@ def search_catalog_and_users(account_db: Path, skills_db: Path, current_user_id:
             """SELECT u.id,u.display_name,u.created_at,p.age,p.country_id,p.city_id,
                       p.languages_json,p.bio_zh,p.bio_en,p.avatar_data_url
                FROM users u JOIN user_profiles p ON p.user_id=u.id
-               WHERE u.is_active=1 AND p.onboarding_completed=1
+               WHERE u.is_active=1 AND u.role='user' AND p.onboarding_completed=1
                  AND p.profile_visibility='community' AND u.id != ?""", (current_user_id,)
         ).fetchall()
         rows = connection.execute("SELECT * FROM user_skills ORDER BY id").fetchall()
@@ -713,7 +1143,7 @@ def _request_user_card(account_db: Path, skills_db: Path, user_id: int) -> dict[
             """SELECT u.id,u.display_name,u.created_at,p.age,p.country_id,p.city_id,
                       p.languages_json,p.bio_zh,p.bio_en,p.avatar_data_url
                FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id
-               WHERE u.id=? AND u.is_active=1""",
+               WHERE u.id=? AND u.is_active=1 AND u.role='user'""",
             (user_id,),
         ).fetchone()
         skill_rows = connection.execute(
@@ -777,13 +1207,13 @@ def create_swap_request(
     with closing(connect_database(account_db)) as connection:
         requester = connection.execute(
             """SELECT u.id FROM users u JOIN user_profiles p ON p.user_id=u.id
-               WHERE u.id=? AND u.is_active=1 AND p.onboarding_completed=1
+               WHERE u.id=? AND u.is_active=1 AND u.role='user' AND p.onboarding_completed=1
                  AND p.profile_visibility='community'""",
             (requester_id,),
         ).fetchone()
         target = connection.execute(
             """SELECT u.id FROM users u JOIN user_profiles p ON p.user_id=u.id
-               WHERE u.id=? AND u.is_active=1 AND p.onboarding_completed=1
+               WHERE u.id=? AND u.is_active=1 AND u.role='user' AND p.onboarding_completed=1
                  AND p.profile_visibility='community'""",
             (target_id,),
         ).fetchone()
@@ -892,10 +1322,13 @@ def _shanghai_day_bounds(now: datetime | None = None) -> tuple[int, int, str, st
 def community_stats(account_db: Path, skills_db: Path, *, now: datetime | None = None) -> dict[str, Any]:
     start_epoch, end_epoch, start_iso, end_iso = _shanghai_day_bounds(now)
     with closing(connect_database(account_db)) as connection:
-        registered = connection.execute("SELECT COUNT(*) FROM users WHERE is_active=1").fetchone()[0]
+        registered = connection.execute(
+            "SELECT COUNT(*) FROM users WHERE is_active=1 AND role='user'"
+        ).fetchone()[0]
         online_today = connection.execute(
             """SELECT COUNT(DISTINCT e.user_id) FROM login_events e JOIN users u ON u.id=e.user_id
-               WHERE e.created_at>=? AND e.created_at<? AND u.is_active=1""", (start_epoch, end_epoch)
+               WHERE e.created_at>=? AND e.created_at<? AND u.is_active=1
+                 AND u.role='user'""", (start_epoch, end_epoch)
         ).fetchone()[0]
         completed = connection.execute(
             """SELECT COUNT(*) FROM swap_requests
@@ -904,13 +1337,15 @@ def community_stats(account_db: Path, skills_db: Path, *, now: datetime | None =
         ).fetchone()[0]
         community_users = connection.execute(
             """SELECT COUNT(*) FROM users u JOIN user_profiles p ON p.user_id=u.id
-               WHERE u.is_active=1 AND p.onboarding_completed=1 AND p.profile_visibility='community'"""
+               WHERE u.is_active=1 AND u.role='user' AND p.onboarding_completed=1
+                 AND p.profile_visibility='community'"""
         ).fetchone()[0]
         trend_rows = connection.execute(
             """SELECT us.skill_id,COUNT(*) AS want_count
                FROM user_skills us JOIN users u ON u.id=us.user_id
                JOIN user_profiles p ON p.user_id=u.id
-               WHERE us.direction='want' AND u.is_active=1 AND p.onboarding_completed=1
+               WHERE us.direction='want' AND u.is_active=1 AND u.role='user'
+                 AND p.onboarding_completed=1
                  AND p.profile_visibility='community'
                GROUP BY us.skill_id ORDER BY want_count DESC,us.skill_id ASC"""
         ).fetchall()
@@ -926,11 +1361,40 @@ def community_stats(account_db: Path, skills_db: Path, *, now: datetime | None =
     }
 
 
+class AdminLoginRateLimiter:
+    def __init__(self) -> None:
+        self._attempts: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def is_blocked(self, key: str, now: float | None = None) -> bool:
+        current = now if now is not None else time.time()
+        cutoff = current - ADMIN_RATE_LIMIT_WINDOW_SECONDS
+        with self._lock:
+            recent = [item for item in self._attempts.get(key, []) if item > cutoff]
+            self._attempts[key] = recent
+            return len(recent) >= ADMIN_RATE_LIMIT_ATTEMPTS
+
+    def record_failure(self, key: str, now: float | None = None) -> None:
+        current = now if now is not None else time.time()
+        cutoff = current - ADMIN_RATE_LIMIT_WINDOW_SECONDS
+        with self._lock:
+            recent = [item for item in self._attempts.get(key, []) if item > cutoff]
+            recent.append(current)
+            self._attempts[key] = recent
+
+    def reset(self, key: str) -> None:
+        with self._lock:
+            self._attempts.pop(key, None)
+
+
 @dataclass(frozen=True)
 class ServerConfig:
     db_path: Path
     skills_db_path: Path = DEFAULT_SKILLS_DB_PATH
     secure_cookie: bool = False
+    admin_rate_limiter: AdminLoginRateLimiter = field(
+        default_factory=AdminLoginRateLimiter, compare=False
+    )
 
 
 class SkillSwapHandler(BaseHTTPRequestHandler):
@@ -939,6 +1403,14 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         parsed, path = urlsplit(self.path), urlsplit(self.path).path
+        if self._is_admin_path(path):
+            if not self._require_loopback(path.startswith("/api/")):
+                return
+            if path in {"/admin", "/admin/", "/admin.html"}:
+                self._send_static(APP_ROOT / "admin.html", "text/html; charset=utf-8")
+                return
+            self._dispatch_admin_get(path)
+            return
         try:
             if path == "/api/health":
                 self._send_json(HTTPStatus.OK, {"status": "ok"})
@@ -957,18 +1429,15 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
                 user = self._require_user()
                 if user is not None:
                     params = parse_qs(parsed.query)
-                    include = params.get("includeInactive", ["false"])[0].lower() == "true"
-                    if include and not user["is_admin"]:
-                        raise ApiProblem(HTTPStatus.FORBIDDEN, "admin_required", "Administrator access required.")
                     category, query = params.get("category", [""])[0], params.get("q", [""])[0]
                     if category and category not in SKILL_CATEGORIES:
                         raise ApiProblem(HTTPStatus.BAD_REQUEST, "invalid_category", "Unknown skill category.")
-                    self._send_json(HTTPStatus.OK, {"skills": list_skills(self.config.skills_db_path, query=query, category=category, include_inactive=include)})
+                    self._send_json(HTTPStatus.OK, {"skills": list_skills(self.config.skills_db_path, query=query, category=category)})
             elif path.startswith("/api/skills/"):
                 user = self._require_user()
                 if user is not None:
                     row = skill_by_id(self.config.skills_db_path, unquote(path.removeprefix("/api/skills/")))
-                    if row is None or not row["is_active"] and not user["is_admin"]:
+                    if row is None or not row["is_active"]:
                         raise ApiProblem(HTTPStatus.NOT_FOUND, "skill_not_found", "Skill not found.")
                     self._send_json(HTTPStatus.OK, {"skill": serialize_skill(row)})
             elif path == "/api/search":
@@ -988,25 +1457,39 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
-        if path in {"/", "/v4.2.html"}: self._send_static(APP_ROOT / "v4.2.html", "text/html; charset=utf-8", head=True)
-        elif path == "/index.html": self._send_static(APP_ROOT / "index.html", "text/html; charset=utf-8", head=True)
-        else: self._send_not_found(path.startswith("/api/"), head=True)
+        if self._is_admin_path(path):
+            if not self._require_loopback(path.startswith("/api/")):
+                return
+            if path in {"/admin", "/admin/", "/admin.html"}:
+                self._send_static(
+                    APP_ROOT / "admin.html", "text/html; charset=utf-8", head=True
+                )
+                return
+            self._send_not_found(path.startswith("/api/"), head=True)
+            return
+        if path in {"/", "/v4.2.html"}:
+            self._send_static(APP_ROOT / "v4.2.html", "text/html; charset=utf-8", head=True)
+            return
+        if path == "/index.html":
+            self._send_static(APP_ROOT / "index.html", "text/html; charset=utf-8", head=True)
+            return
+        self._send_not_found(path.startswith("/api/"), head=True)
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
+        if path.startswith("/api/admin/"):
+            if not self._require_loopback(True):
+                return
+            self._dispatch_admin_post(path)
+            return
         request_action = re.fullmatch(r"/api/swap-requests/(\d+)/(accept|reject|cancel|complete)", path)
         try:
             if path == "/api/auth/login": self._handle_login()
             elif path == "/api/auth/register": self._handle_register()
             elif path == "/api/auth/logout":
-                delete_session(self.config.db_path, self._session_token())
+                delete_session(self.config.db_path, self._cookie_value(SESSION_COOKIE))
                 self.send_response(HTTPStatus.NO_CONTENT); self._send_security_headers()
-                self.send_header("Set-Cookie", self._expired_cookie()); self.send_header("Cache-Control", "no-store"); self.end_headers()
-            elif path == "/api/skills":
-                user = self._require_admin()
-                if user is not None:
-                    payload = self._read_json_body()
-                    if payload is not None: self._send_json(HTTPStatus.CREATED, {"skill": create_skill(self.config.skills_db_path, payload)})
+                self.send_header("Set-Cookie", self._expired_cookie(SESSION_COOKIE, "Lax")); self.send_header("Cache-Control", "no-store"); self.end_headers()
             elif path == "/api/swap-requests":
                 user, payload = self._require_user(), None
                 if user is not None: payload = self._read_json_body()
@@ -1022,6 +1505,15 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
 
     def do_PUT(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
+        admin_skill_match = re.fullmatch(r"/api/admin/skills/([a-z0-9]+(?:-[a-z0-9]+)*)", path)
+        if path.startswith("/api/admin/"):
+            if not self._require_loopback(True):
+                return
+            if admin_skill_match:
+                self._handle_admin_update_skill(admin_skill_match.group(1))
+            else:
+                self._send_not_found(True)
+            return
         try:
             if path == "/api/users/me/profile":
                 user, payload = self._require_user(), None
@@ -1031,25 +1523,101 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
                 user, payload = self._require_user(), None
                 if user is not None: payload = self._read_json_body()
                 if user is not None and payload is not None: self._send_json(HTTPStatus.OK, replace_user_skills(self.config.db_path, self.config.skills_db_path, user["id"], payload))
-            elif path.startswith("/api/skills/"):
-                user, payload = self._require_admin(), None
-                if user is not None: payload = self._read_json_body()
-                if user is not None and payload is not None:
-                    sid = unquote(path.removeprefix("/api/skills/"))
-                    self._send_json(HTTPStatus.OK, {"skill": update_skill(self.config.skills_db_path, sid, payload)})
             else: self._send_not_found(path.startswith("/api/"))
         except ApiProblem as problem: self._send_problem(problem)
 
-    def do_DELETE(self) -> None:  # noqa: N802
+    def do_PATCH(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         path = urlsplit(self.path).path
-        try:
-            if path.startswith("/api/skills/"):
-                user = self._require_admin()
-                if user is not None:
-                    deactivate_skill(self.config.skills_db_path, unquote(path.removeprefix("/api/skills/")))
-                    self.send_response(HTTPStatus.NO_CONTENT); self._send_security_headers(); self.send_header("Cache-Control", "no-store"); self.end_headers()
-            else: self._send_not_found(path.startswith("/api/"))
-        except ApiProblem as problem: self._send_problem(problem)
+        if path.startswith("/api/admin/"):
+            if not self._require_loopback(True):
+                return
+            match = re.fullmatch(r"/api/admin/users/(\d+)", path)
+            if match:
+                self._handle_admin_update_user(int(match.group(1)))
+                return
+        self._send_not_found(path.startswith("/api/"))
+
+    def do_DELETE(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+        path = urlsplit(self.path).path
+        if path.startswith("/api/admin/"):
+            if not self._require_loopback(True):
+                return
+            skill_match = re.fullmatch(
+                r"/api/admin/skills/([a-z0-9]+(?:-[a-z0-9]+)*)", path
+            )
+            if skill_match:
+                self._handle_admin_deactivate_skill(skill_match.group(1))
+                return
+            user_match = re.fullmatch(r"/api/admin/users/(\d+)", path)
+            if user_match:
+                self._handle_admin_delete_user(int(user_match.group(1)))
+                return
+            session_match = re.fullmatch(
+                r"/api/admin/sessions/([A-Za-z0-9_-]{16,64})", path
+            )
+            if session_match:
+                self._handle_admin_revoke_session(session_match.group(1))
+                return
+        self._send_not_found(path.startswith("/api/"))
+
+    def _is_admin_path(self, path: str) -> bool:
+        return path in {"/admin", "/admin/", "/admin.html"} or path.startswith(
+            "/api/admin/"
+        )
+
+    def _require_loopback(self, api_request: bool) -> bool:
+        if is_loopback_address(self.client_address[0]):
+            return True
+        if api_request:
+            self._send_api_error(
+                HTTPStatus.FORBIDDEN,
+                "local_access_only",
+                "管理员后台仅允许从服务器本机访问。",
+            )
+        else:
+            body = "管理员后台仅允许从服务器本机访问。".encode("utf-8")
+            self.send_response(HTTPStatus.FORBIDDEN)
+            self._send_security_headers()
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        return False
+
+    def _dispatch_admin_get(self, path: str) -> None:
+        if path == "/api/admin/auth/me":
+            self._handle_admin_me()
+        elif path == "/api/admin/overview":
+            self._handle_admin_overview()
+        elif path == "/api/admin/users":
+            self._handle_admin_list_users()
+        elif path == "/api/admin/skills":
+            self._handle_admin_list_skills()
+        elif path == "/api/admin/sessions":
+            self._handle_admin_list_sessions()
+        elif path == "/api/admin/audit-logs":
+            self._handle_admin_list_audit_logs()
+        else:
+            self._send_not_found(True)
+
+    def _dispatch_admin_post(self, path: str) -> None:
+        if path == "/api/admin/auth/login":
+            self._handle_admin_login()
+            return
+        if path == "/api/admin/auth/logout":
+            self._handle_admin_logout()
+            return
+        if path == "/api/admin/users":
+            self._handle_admin_create_user()
+            return
+        if path == "/api/admin/skills":
+            self._handle_admin_create_skill()
+            return
+        password_match = re.fullmatch(r"/api/admin/users/(\d+)/password", path)
+        if password_match:
+            self._handle_admin_reset_password(int(password_match.group(1)))
+            return
+        self._send_not_found(True)
 
     def _handle_login(self) -> None:
         payload = self._read_json_body()
@@ -1058,8 +1626,13 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
         if not isinstance(email, str) or not isinstance(password, str):
             raise ApiProblem(HTTPStatus.BAD_REQUEST, "invalid_request", "Email and password are required.")
         user = authenticate_user(self.config.db_path, email, password)
-        if user is None: raise ApiProblem(HTTPStatus.UNAUTHORIZED, "invalid_credentials", "Invalid email or password.")
-        self._send_json(HTTPStatus.OK, {"user": public_user(user)}, extra_headers={"Set-Cookie": self._session_cookie(create_session(self.config.db_path, user["id"]))})
+        if user is None:
+            raise ApiProblem(HTTPStatus.UNAUTHORIZED, "invalid_credentials", "Invalid email or password.")
+        self._send_json(
+            HTTPStatus.OK,
+            {"user": public_user(user)},
+            extra_headers=[("Set-Cookie", self._session_cookie(create_session(self.config.db_path, user["id"])))],
+        )
 
     def _handle_register(self) -> None:
         payload = self._read_json_body()
@@ -1068,17 +1641,826 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
         if not isinstance(email, str) or not isinstance(password, str):
             raise ApiProblem(HTTPStatus.BAD_REQUEST, "invalid_request", "Email and password are required.")
         user = register_user(self.config.db_path, email, password)
-        self._send_json(HTTPStatus.CREATED, {"user": public_user(user)}, extra_headers={"Set-Cookie": self._session_cookie(create_session(self.config.db_path, user["id"]))})
+        self._send_json(
+            HTTPStatus.CREATED,
+            {"user": public_user(user)},
+            extra_headers=[("Set-Cookie", self._session_cookie(create_session(self.config.db_path, user["id"])))],
+        )
+
+    def _handle_me(self) -> None:
+        user = user_for_session(self.config.db_path, self._cookie_value(SESSION_COOKIE))
+        if user is None:
+            self._send_json(
+                HTTPStatus.UNAUTHORIZED,
+                {"error": "not_authenticated", "message": "Authentication required."},
+            )
+            return
+        self._send_json(HTTPStatus.OK, {"user": public_user(user)})
 
     def _require_user(self) -> sqlite3.Row | None:
-        user = user_for_session(self.config.db_path, self._session_token())
+        user = user_for_session(self.config.db_path, self._cookie_value(SESSION_COOKIE))
         if user is None: self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "not_authenticated", "message": "Authentication required."})
         return user
 
-    def _require_admin(self) -> sqlite3.Row | None:
-        user = self._require_user()
-        if user is not None and not user["is_admin"]: raise ApiProblem(HTTPStatus.FORBIDDEN, "admin_required", "Administrator access required.")
-        return user
+    def _handle_admin_login(self) -> None:
+        payload = self._read_json_body()
+        if payload is None:
+            return
+        email = payload.get("email")
+        password = payload.get("password")
+        if not isinstance(email, str) or not isinstance(password, str):
+            self._send_api_error(
+                HTTPStatus.BAD_REQUEST, "invalid_request", "请输入管理员邮箱和密码。"
+            )
+            return
+        normalized_email = normalize_email(email)
+        rate_key = f"{self.client_address[0]}|{normalized_email}"
+        limiter = self.config.admin_rate_limiter
+        if limiter.is_blocked(rate_key):
+            self._send_api_error(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "rate_limited",
+                "登录失败次数过多，请在 15 分钟后重试。",
+            )
+            return
+        user = authenticate_user(self.config.db_path, email, password)
+        if user is None or user["role"] != "superadmin":
+            limiter.record_failure(rate_key)
+            self._send_api_error(
+                HTTPStatus.UNAUTHORIZED,
+                "invalid_credentials",
+                "管理员邮箱或密码不正确。",
+            )
+            return
+        limiter.reset(rate_key)
+        token, csrf_token = create_admin_session(self.config.db_path, user["id"])
+        with closing(connect_database(self.config.db_path)) as connection, connection:
+            _audit_event(
+                connection,
+                user,
+                "admin.login",
+                "session",
+                "current",
+                {"ip": self.client_address[0]},
+            )
+        self._send_json(
+            HTTPStatus.OK,
+            {"admin": self._admin_public_user(user)},
+            extra_headers=[
+                ("Set-Cookie", self._admin_session_cookie(token)),
+                ("Set-Cookie", self._admin_csrf_cookie(csrf_token)),
+            ],
+        )
+
+    def _handle_admin_me(self) -> None:
+        admin = self._require_admin()
+        if admin is None:
+            return
+        self._send_json(
+            HTTPStatus.OK,
+            {"admin": self._admin_public_user(admin), "sessionId": admin["public_id"]},
+        )
+
+    def _handle_admin_logout(self) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        token = self._cookie_value(ADMIN_SESSION_COOKIE)
+        with closing(connect_database(self.config.db_path)) as connection, connection:
+            _audit_event(
+                connection, admin, "admin.logout", "session", admin["public_id"]
+            )
+        delete_session(self.config.db_path, token)
+        self._send_json(
+            HTTPStatus.OK,
+            {"ok": True},
+            extra_headers=[
+                (
+                    "Set-Cookie",
+                    self._expired_cookie(ADMIN_SESSION_COOKIE, "Strict"),
+                ),
+                ("Set-Cookie", self._expired_cookie(ADMIN_CSRF_COOKIE, "Strict")),
+            ],
+        )
+
+    def _handle_admin_overview(self) -> None:
+        admin = self._require_admin()
+        if admin is None:
+            return
+        now = int(time.time())
+        with closing(connect_database(self.config.db_path)) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM users) AS total_users,
+                    (SELECT COUNT(*) FROM users WHERE is_active = 1) AS active_users,
+                    (SELECT COUNT(*) FROM users
+                        WHERE role = 'superadmin' AND is_active = 1) AS active_admins,
+                    (SELECT COUNT(*) FROM sessions WHERE expires_at > ?) AS active_sessions,
+                    (SELECT COUNT(*) FROM admin_audit_log) AS audit_events
+                """,
+                (now,),
+            ).fetchone()
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "overview": {
+                    "totalUsers": row["total_users"],
+                    "activeUsers": row["active_users"],
+                    "activeAdmins": row["active_admins"],
+                    "activeSessions": row["active_sessions"],
+                    "auditEvents": row["audit_events"],
+                }
+            },
+        )
+
+    def _handle_admin_list_skills(self) -> None:
+        admin = self._require_admin()
+        if admin is None:
+            return
+        query = self._query_parameters()
+        category = self._query_value(query, "category")
+        if category and category not in SKILL_CATEGORIES:
+            self._send_api_error(
+                HTTPStatus.BAD_REQUEST, "invalid_category", "技能分类无效。"
+            )
+            return
+        items = list_skills(
+            self.config.skills_db_path,
+            query=self._query_value(query, "query"),
+            category=category,
+            include_inactive=True,
+        )
+        self._send_json(HTTPStatus.OK, {"skills": items})
+
+    def _handle_admin_create_skill(self) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            return
+        try:
+            skill = create_skill(self.config.skills_db_path, payload)
+        except ApiProblem as problem:
+            self._send_problem(problem)
+            return
+        self._audit_admin_skill(admin, "skill.create", skill["id"], skill)
+        self._send_json(HTTPStatus.CREATED, {"skill": skill})
+
+    def _handle_admin_update_skill(self, skill_id: str) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            return
+        try:
+            skill = update_skill(self.config.skills_db_path, skill_id, payload)
+        except ApiProblem as problem:
+            self._send_problem(problem)
+            return
+        self._audit_admin_skill(admin, "skill.update", skill_id, skill)
+        self._send_json(HTTPStatus.OK, {"skill": skill})
+
+    def _handle_admin_deactivate_skill(self, skill_id: str) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        try:
+            deactivate_skill(self.config.skills_db_path, skill_id)
+        except ApiProblem as problem:
+            self._send_problem(problem)
+            return
+        self._audit_admin_skill(admin, "skill.deactivate", skill_id)
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self._send_security_headers()
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
+    def _audit_admin_skill(
+        self,
+        admin: sqlite3.Row,
+        action: str,
+        skill_id: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        with closing(connect_database(self.config.db_path)) as connection, connection:
+            _audit_event(connection, admin, action, "skill", skill_id, details)
+
+    def _handle_admin_list_users(self) -> None:
+        admin = self._require_admin()
+        if admin is None:
+            return
+        query = self._query_parameters()
+        page, page_size = self._pagination(query)
+        search = self._query_value(query, "query").strip()
+        role = self._query_value(query, "role")
+        status = self._query_value(query, "status")
+        where: list[str] = []
+        parameters: list[Any] = []
+        if search:
+            where.append("(email LIKE ? OR display_name LIKE ?)")
+            pattern = f"%{search}%"
+            parameters.extend([pattern, pattern])
+        if role in {"user", "superadmin"}:
+            where.append("role = ?")
+            parameters.append(role)
+        if status in {"active", "inactive"}:
+            where.append("is_active = ?")
+            parameters.append(1 if status == "active" else 0)
+        where_sql = f" WHERE {' AND '.join(where)}" if where else ""
+        now = int(time.time())
+        with closing(connect_database(self.config.db_path)) as connection:
+            total = connection.execute(
+                f"SELECT COUNT(*) FROM users{where_sql}", parameters
+            ).fetchone()[0]
+            rows = connection.execute(
+                f"""
+                SELECT users.id, users.email, users.display_name, users.role,
+                       users.is_active, users.created_at,
+                       (SELECT COUNT(*) FROM sessions
+                        WHERE sessions.user_id = users.id
+                          AND sessions.expires_at > ?) AS active_session_count
+                FROM users{where_sql}
+                ORDER BY users.id DESC
+                LIMIT ? OFFSET ?
+                """,
+                [now, *parameters, page_size, (page - 1) * page_size],
+            ).fetchall()
+        self._send_json(
+            HTTPStatus.OK,
+            self._page_payload(
+                [self._admin_public_user(row) for row in rows], page, page_size, total
+            ),
+        )
+
+    def _handle_admin_create_user(self) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            return
+        validated = self._validated_new_user(payload)
+        if validated is None:
+            return
+        email, display_name, password, role, is_active = validated
+        salt, password_digest = hash_password(password)
+        try:
+            with closing(connect_database(self.config.db_path)) as connection, connection:
+                cursor = connection.execute(
+                    """
+                    INSERT INTO users
+                        (email, password_salt, password_hash, display_name,
+                         is_active, created_at, role)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        email,
+                        salt,
+                        password_digest,
+                        display_name,
+                        int(is_active),
+                        utc_now_iso(),
+                        role,
+                    ),
+                )
+                user_id = int(cursor.lastrowid)
+                _audit_event(
+                    connection,
+                    admin,
+                    "user.create",
+                    "user",
+                    str(user_id),
+                    {"email": email, "role": role, "isActive": is_active},
+                )
+                created = self._fetch_admin_user(connection, user_id)
+        except sqlite3.IntegrityError:
+            self._send_api_error(
+                HTTPStatus.CONFLICT, "email_exists", "该邮箱已存在。"
+            )
+            return
+        self._send_json(
+            HTTPStatus.CREATED, {"user": self._admin_public_user(created)}
+        )
+
+    def _handle_admin_update_user(self, user_id: int) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            return
+        allowed = {"email", "displayName", "role", "isActive"}
+        if not payload or not set(payload).issubset(allowed):
+            self._send_api_error(
+                HTTPStatus.BAD_REQUEST, "invalid_fields", "提交了不支持的用户字段。"
+            )
+            return
+        try:
+            with closing(connect_database(self.config.db_path)) as connection, connection:
+                target = connection.execute(
+                    "SELECT * FROM users WHERE id = ?", (user_id,)
+                ).fetchone()
+                if target is None:
+                    self._send_api_error(
+                        HTTPStatus.NOT_FOUND, "user_not_found", "用户不存在。"
+                    )
+                    return
+                email = payload.get("email", target["email"])
+                display_name = payload.get("displayName", target["display_name"])
+                role = payload.get("role", target["role"])
+                is_active = payload.get("isActive", bool(target["is_active"]))
+                if not isinstance(email, str) or not validate_email(email):
+                    self._send_api_error(
+                        HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_email", "邮箱格式不正确。"
+                    )
+                    return
+                if (
+                    not isinstance(display_name, str)
+                    or not display_name.strip()
+                    or len(display_name.strip()) > 80
+                ):
+                    self._send_api_error(
+                        HTTPStatus.UNPROCESSABLE_ENTITY,
+                        "invalid_display_name",
+                        "显示名称必须为 1-80 个字符。",
+                    )
+                    return
+                if role not in {"user", "superadmin"}:
+                    self._send_api_error(
+                        HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_role", "用户角色无效。"
+                    )
+                    return
+                if not isinstance(is_active, bool):
+                    self._send_api_error(
+                        HTTPStatus.UNPROCESSABLE_ENTITY,
+                        "invalid_status",
+                        "用户状态无效。",
+                    )
+                    return
+                if user_id == admin["id"] and (
+                    role != "superadmin" or not is_active
+                ):
+                    self._send_api_error(
+                        HTTPStatus.CONFLICT,
+                        "self_protection",
+                        "不能停用或降级当前管理员账户。",
+                    )
+                    return
+                removes_active_admin = (
+                    target["role"] == "superadmin"
+                    and bool(target["is_active"])
+                    and (role != "superadmin" or not is_active)
+                )
+                if removes_active_admin and self._active_admin_count(connection) <= 1:
+                    self._send_api_error(
+                        HTTPStatus.CONFLICT,
+                        "last_admin",
+                        "不能移除最后一个有效超级管理员。",
+                    )
+                    return
+                connection.execute(
+                    """
+                    UPDATE users
+                    SET email = ?, display_name = ?, role = ?, is_active = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        normalize_email(email),
+                        display_name.strip(),
+                        role,
+                        int(is_active),
+                        user_id,
+                    ),
+                )
+                _audit_event(
+                    connection,
+                    admin,
+                    "user.update",
+                    "user",
+                    str(user_id),
+                    {
+                        "email": normalize_email(email),
+                        "role": role,
+                        "isActive": is_active,
+                        "changedFields": sorted(payload),
+                    },
+                )
+                updated = self._fetch_admin_user(connection, user_id)
+        except sqlite3.IntegrityError:
+            self._send_api_error(
+                HTTPStatus.CONFLICT, "email_exists", "该邮箱已存在。"
+            )
+            return
+        self._send_json(HTTPStatus.OK, {"user": self._admin_public_user(updated)})
+
+    def _handle_admin_reset_password(self, user_id: int) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            return
+        password = payload.get("password")
+        with closing(connect_database(self.config.db_path)) as connection, connection:
+            target = connection.execute(
+                "SELECT id, email, role FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if target is None:
+                self._send_api_error(
+                    HTTPStatus.NOT_FOUND, "user_not_found", "用户不存在。"
+                )
+                return
+            if not isinstance(password, str) or not validate_password_for_role(
+                password, target["role"]
+            ):
+                minimum = 12 if target["role"] == "superadmin" else 8
+                self._send_api_error(
+                    HTTPStatus.UNPROCESSABLE_ENTITY,
+                    "invalid_password",
+                    f"密码必须为 {minimum}-128 个字符。",
+                )
+                return
+            salt, password_digest = hash_password(password)
+            connection.execute(
+                "UPDATE users SET password_salt = ?, password_hash = ? WHERE id = ?",
+                (salt, password_digest, user_id),
+            )
+            revoked = connection.execute(
+                "SELECT COUNT(*) FROM sessions WHERE user_id = ?", (user_id,)
+            ).fetchone()[0]
+            connection.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+            _audit_event(
+                connection,
+                admin,
+                "user.password_reset",
+                "user",
+                str(user_id),
+                {"email": target["email"], "revokedSessions": revoked},
+            )
+        self._send_json(HTTPStatus.OK, {"ok": True, "revokedSessions": revoked})
+
+    def _handle_admin_delete_user(self, user_id: int) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        if user_id == admin["id"]:
+            self._send_api_error(
+                HTTPStatus.CONFLICT, "self_protection", "不能删除当前管理员账户。"
+            )
+            return
+        with closing(connect_database(self.config.db_path)) as connection, connection:
+            target = connection.execute(
+                "SELECT id, email, role, is_active FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if target is None:
+                self._send_api_error(
+                    HTTPStatus.NOT_FOUND, "user_not_found", "用户不存在。"
+                )
+                return
+            if (
+                target["role"] == "superadmin"
+                and bool(target["is_active"])
+                and self._active_admin_count(connection) <= 1
+            ):
+                self._send_api_error(
+                    HTTPStatus.CONFLICT,
+                    "last_admin",
+                    "不能删除最后一个有效超级管理员。",
+                )
+                return
+            _audit_event(
+                connection,
+                admin,
+                "user.delete",
+                "user",
+                str(user_id),
+                {"email": target["email"], "role": target["role"]},
+            )
+            connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        self._send_json(HTTPStatus.OK, {"ok": True})
+
+    def _handle_admin_list_sessions(self) -> None:
+        admin = self._require_admin()
+        if admin is None:
+            return
+        query = self._query_parameters()
+        page, page_size = self._pagination(query)
+        purpose = self._query_value(query, "purpose")
+        status = self._query_value(query, "status")
+        user_id = self._query_value(query, "userId")
+        where: list[str] = []
+        parameters: list[Any] = []
+        now = int(time.time())
+        if purpose in {"user", "admin"}:
+            where.append("sessions.purpose = ?")
+            parameters.append(purpose)
+        if status in {"active", "expired"}:
+            where.append("sessions.expires_at > ?" if status == "active" else "sessions.expires_at <= ?")
+            parameters.append(now)
+        if user_id.isdigit():
+            where.append("sessions.user_id = ?")
+            parameters.append(int(user_id))
+        where_sql = f" WHERE {' AND '.join(where)}" if where else ""
+        with closing(connect_database(self.config.db_path)) as connection:
+            total = connection.execute(
+                f"SELECT COUNT(*) FROM sessions{where_sql}", parameters
+            ).fetchone()[0]
+            rows = connection.execute(
+                f"""
+                SELECT sessions.public_id, sessions.user_id, sessions.purpose,
+                       sessions.created_at, sessions.expires_at,
+                       users.email, users.display_name
+                FROM sessions
+                JOIN users ON users.id = sessions.user_id
+                {where_sql}
+                ORDER BY sessions.created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                [*parameters, page_size, (page - 1) * page_size],
+            ).fetchall()
+        items = [
+            {
+                "publicId": row["public_id"],
+                "userId": row["user_id"],
+                "email": row["email"],
+                "displayName": row["display_name"],
+                "purpose": row["purpose"],
+                "createdAt": row["created_at"],
+                "expiresAt": row["expires_at"],
+                "status": "active" if row["expires_at"] > now else "expired",
+                "isCurrent": row["public_id"] == admin["public_id"],
+            }
+            for row in rows
+        ]
+        self._send_json(
+            HTTPStatus.OK, self._page_payload(items, page, page_size, total)
+        )
+
+    def _handle_admin_revoke_session(self, public_id: str) -> None:
+        admin = self._require_admin(write=True)
+        if admin is None:
+            return
+        if public_id == admin["public_id"]:
+            self._send_api_error(
+                HTTPStatus.CONFLICT,
+                "current_session",
+                "当前管理员会话只能通过退出登录结束。",
+            )
+            return
+        with closing(connect_database(self.config.db_path)) as connection, connection:
+            target = connection.execute(
+                """
+                SELECT sessions.public_id, sessions.user_id, sessions.purpose,
+                       users.email
+                FROM sessions
+                JOIN users ON users.id = sessions.user_id
+                WHERE sessions.public_id = ?
+                """,
+                (public_id,),
+            ).fetchone()
+            if target is None:
+                self._send_api_error(
+                    HTTPStatus.NOT_FOUND, "session_not_found", "会话不存在。"
+                )
+                return
+            connection.execute("DELETE FROM sessions WHERE public_id = ?", (public_id,))
+            _audit_event(
+                connection,
+                admin,
+                "session.revoke",
+                "session",
+                public_id,
+                {
+                    "userId": target["user_id"],
+                    "email": target["email"],
+                    "purpose": target["purpose"],
+                },
+            )
+        self._send_json(HTTPStatus.OK, {"ok": True})
+
+    def _handle_admin_list_audit_logs(self) -> None:
+        admin = self._require_admin()
+        if admin is None:
+            return
+        query = self._query_parameters()
+        page, page_size = self._pagination(query)
+        search = self._query_value(query, "query").strip()
+        where_sql = ""
+        parameters: list[Any] = []
+        if search:
+            where_sql = (
+                " WHERE actor_email LIKE ? OR action LIKE ? OR target_id LIKE ?"
+            )
+            pattern = f"%{search}%"
+            parameters = [pattern, pattern, pattern]
+        with closing(connect_database(self.config.db_path)) as connection:
+            total = connection.execute(
+                f"SELECT COUNT(*) FROM admin_audit_log{where_sql}", parameters
+            ).fetchone()[0]
+            rows = connection.execute(
+                f"""
+                SELECT id, actor_user_id, actor_email, action, target_type,
+                       target_id, details_json, created_at
+                FROM admin_audit_log{where_sql}
+                ORDER BY id DESC
+                LIMIT ? OFFSET ?
+                """,
+                [*parameters, page_size, (page - 1) * page_size],
+            ).fetchall()
+        items = []
+        for row in rows:
+            try:
+                details = json.loads(row["details_json"])
+            except json.JSONDecodeError:
+                details = {}
+            items.append(
+                {
+                    "id": row["id"],
+                    "actorUserId": row["actor_user_id"],
+                    "actorEmail": row["actor_email"],
+                    "action": row["action"],
+                    "targetType": row["target_type"],
+                    "targetId": row["target_id"],
+                    "details": details,
+                    "createdAt": row["created_at"],
+                }
+            )
+        self._send_json(
+            HTTPStatus.OK, self._page_payload(items, page, page_size, total)
+        )
+
+    def _require_admin(self, *, write: bool = False) -> sqlite3.Row | None:
+        token = self._cookie_value(ADMIN_SESSION_COOKIE)
+        admin = admin_for_session(self.config.db_path, token)
+        if admin is None:
+            self._send_api_error(
+                HTTPStatus.UNAUTHORIZED, "not_authenticated", "请先登录管理员后台。"
+            )
+            return None
+        if write and not self._valid_admin_write(admin):
+            return None
+        return admin
+
+    def _valid_admin_write(self, admin: sqlite3.Row) -> bool:
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip()
+        if content_type != "application/json":
+            self._send_api_error(
+                HTTPStatus.BAD_REQUEST,
+                "json_required",
+                "管理员写操作必须使用 application/json。",
+            )
+            return False
+        origin = self.headers.get("Origin", "")
+        host = self.headers.get("Host", "")
+        parsed_origin = urlsplit(origin)
+        if (
+            parsed_origin.scheme not in {"http", "https"}
+            or not host
+            or parsed_origin.netloc.casefold() != host.casefold()
+        ):
+            self._send_api_error(
+                HTTPStatus.FORBIDDEN, "invalid_origin", "管理员请求来源无效。"
+            )
+            return False
+        csrf_header = self.headers.get("X-CSRF-Token", "")
+        csrf_cookie = self._cookie_value(ADMIN_CSRF_COOKIE)
+        expected_hash = admin["csrf_token_hash"] or ""
+        candidate_hash = hashlib.sha256(csrf_header.encode("utf-8")).hexdigest()
+        if (
+            not csrf_header
+            or not csrf_cookie
+            or not hmac.compare_digest(csrf_header, csrf_cookie)
+            or not hmac.compare_digest(candidate_hash, expected_hash)
+        ):
+            self._send_api_error(
+                HTTPStatus.FORBIDDEN, "invalid_csrf", "安全校验失败，请重新登录。"
+            )
+            return False
+        return True
+
+    def _validated_new_user(
+        self, payload: dict[str, Any]
+    ) -> tuple[str, str, str, str, bool] | None:
+        allowed = {"email", "displayName", "password", "role", "isActive"}
+        if not set(payload).issubset(allowed):
+            self._send_api_error(
+                HTTPStatus.BAD_REQUEST, "invalid_fields", "提交了不支持的用户字段。"
+            )
+            return None
+        email = payload.get("email")
+        display_name = payload.get("displayName")
+        password = payload.get("password")
+        role = payload.get("role", "user")
+        is_active = payload.get("isActive", True)
+        if not isinstance(email, str) or not validate_email(email):
+            self._send_api_error(
+                HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_email", "邮箱格式不正确。"
+            )
+            return None
+        if (
+            not isinstance(display_name, str)
+            or not display_name.strip()
+            or len(display_name.strip()) > 80
+        ):
+            self._send_api_error(
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+                "invalid_display_name",
+                "显示名称必须为 1-80 个字符。",
+            )
+            return None
+        if role not in {"user", "superadmin"}:
+            self._send_api_error(
+                HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_role", "用户角色无效。"
+            )
+            return None
+        if not isinstance(password, str) or not validate_password_for_role(password, role):
+            minimum = 12 if role == "superadmin" else 8
+            self._send_api_error(
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+                "invalid_password",
+                f"密码必须为 {minimum}-128 个字符。",
+            )
+            return None
+        if not isinstance(is_active, bool):
+            self._send_api_error(
+                HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_status", "用户状态无效。"
+            )
+            return None
+        return (
+            normalize_email(email),
+            display_name.strip(),
+            password,
+            role,
+            is_active,
+        )
+
+    def _active_admin_count(self, connection: sqlite3.Connection) -> int:
+        return connection.execute(
+            "SELECT COUNT(*) FROM users WHERE role = 'superadmin' AND is_active = 1"
+        ).fetchone()[0]
+
+    def _fetch_admin_user(
+        self, connection: sqlite3.Connection, user_id: int
+    ) -> sqlite3.Row:
+        return connection.execute(
+            """
+            SELECT users.id, users.email, users.display_name, users.role,
+                   users.is_active, users.created_at,
+                   (SELECT COUNT(*) FROM sessions
+                    WHERE sessions.user_id = users.id
+                      AND sessions.expires_at > ?) AS active_session_count
+            FROM users WHERE users.id = ?
+            """,
+            (int(time.time()), user_id),
+        ).fetchone()
+
+    def _admin_public_user(self, user: sqlite3.Row) -> dict[str, Any]:
+        result = {
+            "id": user["id"],
+            "email": user["email"],
+            "displayName": user["display_name"],
+            "role": user["role"],
+        }
+        keys = set(user.keys())
+        if "is_active" in keys:
+            result["isActive"] = bool(user["is_active"])
+        if "created_at" in keys:
+            result["createdAt"] = user["created_at"]
+        if "active_session_count" in keys:
+            result["activeSessionCount"] = user["active_session_count"]
+        return result
+
+    def _query_parameters(self) -> dict[str, list[str]]:
+        return parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+
+    def _query_value(self, query: dict[str, list[str]], key: str) -> str:
+        values = query.get(key, [""])
+        return values[0] if values else ""
+
+    def _pagination(self, query: dict[str, list[str]]) -> tuple[int, int]:
+        try:
+            page = max(1, int(self._query_value(query, "page") or "1"))
+        except ValueError:
+            page = 1
+        try:
+            page_size = int(self._query_value(query, "pageSize") or "25")
+        except ValueError:
+            page_size = 25
+        return page, min(100, max(1, page_size))
+
+    def _page_payload(
+        self, items: list[dict[str, Any]], page: int, page_size: int, total: int
+    ) -> dict[str, Any]:
+        return {
+            "items": items,
+            "page": page,
+            "pageSize": page_size,
+            "total": total,
+            "totalPages": max(1, (total + page_size - 1) // page_size),
+        }
 
     def _read_json_body(self) -> dict[str, Any] | None:
         try: length = int(self.headers.get("Content-Length", "0"))
@@ -1092,31 +2474,95 @@ class SkillSwapHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_request", "message": "Request body must be an object."}); return None
         return payload
 
-    def _session_token(self) -> str:
+    def _cookie_value(self, name: str) -> str:
+        raw_cookie = self.headers.get("Cookie", "")
         try:
-            morsel = SimpleCookie(self.headers.get("Cookie", "")).get(SESSION_COOKIE)
+            cookie = SimpleCookie(raw_cookie)
+            morsel = cookie.get(name)
             return morsel.value if morsel else ""
         except Exception: return ""
 
     def _session_cookie(self, token: str) -> str:
-        parts = [f"{SESSION_COOKIE}={token}", "Path=/", "HttpOnly", "SameSite=Lax", f"Max-Age={SESSION_TTL_SECONDS}"]
-        if self.config.secure_cookie: parts.append("Secure")
+        return self._cookie_header(
+            SESSION_COOKIE, token, SESSION_TTL_SECONDS, "Lax", http_only=True
+        )
+
+    def _admin_session_cookie(self, token: str) -> str:
+        return self._cookie_header(
+            ADMIN_SESSION_COOKIE,
+            token,
+            ADMIN_SESSION_TTL_SECONDS,
+            "Strict",
+            http_only=True,
+        )
+
+    def _admin_csrf_cookie(self, token: str) -> str:
+        return self._cookie_header(
+            ADMIN_CSRF_COOKIE,
+            token,
+            ADMIN_SESSION_TTL_SECONDS,
+            "Strict",
+            http_only=False,
+        )
+
+    def _cookie_header(
+        self,
+        name: str,
+        value: str,
+        max_age: int,
+        same_site: str,
+        *,
+        http_only: bool,
+    ) -> str:
+        parts = [
+            f"{name}={value}",
+            "Path=/",
+            f"SameSite={same_site}",
+            f"Max-Age={max_age}",
+        ]
+        if http_only:
+            parts.append("HttpOnly")
+        if self.config.secure_cookie:
+            parts.append("Secure")
         return "; ".join(parts)
 
-    def _expired_cookie(self) -> str:
-        parts = [f"{SESSION_COOKIE}=", "Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"]
-        if self.config.secure_cookie: parts.append("Secure")
-        return "; ".join(parts)
+    def _expired_cookie(self, name: str, same_site: str) -> str:
+        return self._cookie_header(
+            name, "", 0, same_site, http_only=name != ADMIN_CSRF_COOKIE
+        )
+
+    def _send_api_error(
+        self,
+        status: HTTPStatus,
+        code: str,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"error": code, "message": message}
+        if details:
+            payload["details"] = details
+        self._send_json(status, payload)
 
     def _send_problem(self, problem: ApiProblem) -> None:
-        self._send_json(problem.status, {"error": problem.code, "message": problem.message})
+        self._send_api_error(problem.status, problem.code, problem.message)
 
-    def _send_json(self, status: HTTPStatus, payload: dict[str, Any], *, extra_headers: dict[str, str] | None = None) -> None:
+    def _send_json(
+        self,
+        status: HTTPStatus,
+        payload: dict[str, Any],
+        *,
+        extra_headers: list[tuple[str, str]] | None = None,
+    ) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status); self._send_security_headers()
-        self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Content-Length", str(len(body))); self.send_header("Cache-Control", "no-store")
-        for key, value in (extra_headers or {}).items(): self.send_header(key, value)
-        self.end_headers(); self.wfile.write(body)
+        self.send_response(status)
+        self._send_security_headers()
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        for key, value in extra_headers or []:
+            self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(body)
 
     def _send_static(self, path: Path, content_type: str, *, head: bool = False) -> None:
         try: body = path.read_bytes()
@@ -1153,18 +2599,48 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    load_dotenv()
     args = parse_args()
-    admin_email = os.environ.get("SKILLSWAP_ADMIN_EMAIL", os.environ.get("SKILLSWAP_DEMO_EMAIL", "daniel@example.com"))
-    admin_password = os.environ.get("SKILLSWAP_ADMIN_PASSWORD", os.environ.get("SKILLSWAP_DEMO_PASSWORD", "SkillSwap123!"))
-    initialize_database(args.db, admin_email=admin_email, admin_password=admin_password)
-    initialize_skill_database(args.skills_db); seed_admin_user_skills(args.db)
-    config = ServerConfig(args.db, args.skills_db, os.environ.get("SKILLSWAP_SECURE_COOKIE") == "1")
+    demo_email = os.environ.get("SKILLSWAP_DEMO_EMAIL", "daniel@example.com")
+    demo_password = os.environ.get("SKILLSWAP_DEMO_PASSWORD", "SkillSwap123!")
+    admin_email = os.environ.get("SKILLSWAP_ADMIN_EMAIL")
+    admin_password = os.environ.get("SKILLSWAP_ADMIN_PASSWORD")
+    admin_name = os.environ.get("SKILLSWAP_ADMIN_NAME", "超级管理员")
+    backup_path = initialize_database(
+        args.db,
+        demo_email=demo_email,
+        demo_password=demo_password,
+        admin_email=admin_email,
+        admin_password=admin_password,
+        admin_name=admin_name,
+        admin_sync=env_flag("SKILLSWAP_ADMIN_SYNC"),
+    )
+    initialize_skill_database(args.skills_db)
+    seed_admin_user_skills(args.db)
+    config = ServerConfig(
+        db_path=args.db,
+        skills_db_path=args.skills_db,
+        secure_cookie=env_flag("SKILLSWAP_SECURE_COOKIE"),
+    )
     server = ThreadingHTTPServer((args.host, args.port), make_handler(config))
     print(f"SkillSwap running at http://{args.host}:{args.port}/")
-    print(f"Account database: {args.db.resolve()}"); print(f"Skill database: {args.skills_db.resolve()}"); print(f"Admin login: {admin_email}")
-    try: server.serve_forever()
-    except KeyboardInterrupt: print("\nStopping SkillSwap server.")
-    finally: server.server_close()
+    print(f"Account database: {args.db.resolve()}")
+    print(f"Skill database: {args.skills_db.resolve()}")
+    print(f"Demo login: {demo_email}")
+    if backup_path:
+        print(f"Database backup created before migration: {backup_path.resolve()}")
+    if admin_email:
+        print(f"Admin dashboard: http://{args.host}:{args.port}/admin")
+        print(f"Admin account: {normalize_email(admin_email)}")
+    else:
+        print(f"Admin dashboard: http://{args.host}:{args.port}/admin")
+        print("Admin bootstrap not configured; set SKILLSWAP_ADMIN_EMAIL and SKILLSWAP_ADMIN_PASSWORD for a fresh database")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopping SkillSwap server.")
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
