@@ -1,4 +1,4 @@
-# SkillSwap v4.2
+# SkillSwap v5.0
 
 一个带 Python/SQLite 后端的双语技能交换应用：分享自己会的技能、按地点发现伙伴、发起技能交换、与已连接伙伴聊天，并通过自适应测评认证技能水平。
 
@@ -6,7 +6,7 @@
 
 ## 本地运行
 
-项目无需安装第三方依赖，使用 Python 3.10+ 自带的 HTTP 与 SQLite 模块即可运行。v4.2 产品代码位于根目录的 `v4.2.html`；`index.html` 会自动跳转到该入口。在仓库目录启动服务：
+项目无需安装第三方依赖，使用 Python 3.10+ 自带的 HTTP 与 SQLite 模块即可运行。v5.0 继续使用根目录的 `v4.2.html` 作为兼容入口；`index.html` 会自动跳转到该文件。在仓库目录启动服务：
 
 ```bash
 python server.py
@@ -78,7 +78,7 @@ SKILLSWAP_ADMIN_SYNC=1
 - 本地头像仅接受 JPEG、PNG、WebP，原文件上限 5 MB；保存前裁切为 256×256 JPEG 预览数据。
 - 桌面/平板使用五项胶囊气泡导航，移动端使用五项底部导航；Hash 路由和本地状态均可恢复，“重置本地数据”只删除 SkillSwap 自己的数据。
 - 内置自测页：`http://localhost:4173/v4.2.html?selftest=1`。
-- 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0`、`v3.0` 保留历史基线，当前正式版本为 `v4.2`。
+- 版本记录见 [`CHANGELOG.md`](CHANGELOG.md)；Git 标签 `v2.0`、`v3.0` 保留历史基线，当前正式版本分支为 `v5.0`。
 
 ## 技术结构
 

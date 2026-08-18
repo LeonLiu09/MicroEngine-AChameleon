@@ -240,6 +240,7 @@ class AuthenticationHttpTests(unittest.TestCase):
         status, _, response_body = self.request("GET", "/")
         page = response_body.decode("utf-8")
         self.assertEqual(status, 200)
+        self.assertIn('SkillSwap v5.0', page)
         self.assertIn('registerWithEmail', page)
         self.assertIn('/api/search?', page)
         self.assertIn('admin-dashboard', page)
