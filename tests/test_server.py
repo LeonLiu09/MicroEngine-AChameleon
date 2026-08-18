@@ -247,6 +247,8 @@ class AuthenticationHttpTests(unittest.TestCase):
         self.assertIn('loadSwapRequests', page)
         self.assertIn('/api/chat/events?', page)
         self.assertIn('sendBackendChatMessage', page)
+        self.assertIn('chatConnectionText', page)
+        self.assertIn('const canChat=["accepted","completed"].includes(request.status)', page)
         self.assertNotIn('CHAT_REPLIES', page)
         self.assertNotIn('MOCK_USERS', page)
         self.assertNotIn('DEMO_USER', page)
