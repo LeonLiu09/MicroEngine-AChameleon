@@ -23,6 +23,29 @@ python server.py
 
 可通过环境变量 `SKILLSWAP_HOST`、`SKILLSWAP_PORT`、`SKILLSWAP_DB_PATH`、`SKILLSWAP_DEMO_EMAIL` 和 `SKILLSWAP_DEMO_PASSWORD` 覆盖默认配置。生产环境启用 HTTPS 时还应设置 `SKILLSWAP_SECURE_COOKIE=1`。
 
+## 本地管理员后台
+
+管理员后台位于 `http://127.0.0.1:4173/admin`，只接受服务器本机请求。首次创建超级管理员时，在启动服务的同一终端设置环境变量：
+
+```powershell
+$env:SKILLSWAP_ADMIN_EMAIL = "admin@example.com"
+$env:SKILLSWAP_ADMIN_PASSWORD = "请替换为至少12位的安全密码"
+$env:SKILLSWAP_ADMIN_NAME = "超级管理员"
+python server.py
+```
+
+管理员邮箱与密码必须同时设置。首次创建后，重复启动不会覆盖管理员密码；如邮箱已经属于普通用户，服务会拒绝静默提权并给出错误。现有旧数据库会在首次迁移前通过 SQLite Backup API 自动备份为 `skillswap.db.backup-时间戳`。
+
+后台提供以下能力：
+
+- 查看账号、活跃状态、角色、登录会话和操作审计概览。
+- 创建、编辑和删除普通用户或超级管理员。
+- 重置账号密码并同步撤销该账号的全部会话。
+- 强制结束普通或管理员登录会话。
+- 搜索和筛选用户、会话与审计记录。
+
+后台不会返回密码哈希、密码盐、会话令牌哈希或 CSRF 哈希，也不提供任意 SQL 和原始表编辑。资料、收藏、聊天、匹配和技能测评仍保存在各浏览器的 `localStorage`，不属于本期后台数据。
+
 ## 功能亮点
 
 - 中文默认界面与完整英文切换，选择会保存在浏览器中。
@@ -40,7 +63,7 @@ python server.py
 
 ## 技术结构
 
-前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器。后端使用 Python 标准库 HTTP 服务与 SQLite，提供邮箱密码登录、当前会话和退出登录接口；密码以 PBKDF2-SHA256 哈希保存，会话使用 HttpOnly、SameSite Cookie。静态 CDN 失败时仍保留可读回退页面，运行时错误由恢复界面接管。
+前端的 React 18.3.1、ReactDOM 18.3.1 与 Babel Standalone 仍通过固定版本 CDN 载入，无构建工具和包管理器；独立管理员后台使用原生 HTML、CSS 与 JavaScript。后端使用 Python 标准库 HTTP 服务与 SQLite，提供邮箱密码登录、管理员业务 API、会话管理和审计；密码以 PBKDF2-SHA256 哈希保存，普通与管理员会话使用隔离的 HttpOnly Cookie。管理员写操作额外验证同源请求和 CSRF Token。静态 CDN 失败时主站仍保留可读回退页面，运行时错误由恢复界面接管。
 
 ---
 
